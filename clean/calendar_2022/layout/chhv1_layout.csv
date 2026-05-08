@@ -1,0 +1,39 @@
+srl,field_name,name,block,item,length,byte_start,byte_end,remarks
+1,panel,Panel,,,2,1,2,P3
+2,file_id,File Identification,,,5,3,7,CFVH2
+3,sch,Schdule,1,2,3,8,10,104
+4,qtr,Quarter,,,2,11,12,"Q3,Q4,Q5,Q6"
+5,visit,Visit,,,2,13,14,
+6,sec,Sector,1,3,1,15,15,
+7,st,State/Ut Code,,1,2,16,17,
+8,dc,District Code,1,4,2,18,19,
+9,nss_reg,NSS-Region,1,4,3,20,22,
+10,strm,Stratum,1,5,2,23,24,
+11,sstrm,Sub-Stratum,1,6,2,25,26,
+12,ss,Sub-Sample,1,11,1,27,27,
+13,sro,Fod Sub-Region,1,12,4,28,31,
+14,mfsu,FSU,1,1,5,32,36,
+15,seg,Sample Sg/Sb No.,1,13,1,37,37,
+16,sss,Second Stage Stratum No.,1,14,1,38,38,
+17,ssu,Sample Household Number,1,15,2,39,40,
+18,smonth,Month of Survey,1,9,2,41,42,
+19,resp_code,Response Code,1,17,1,43,43,
+20,svc,Survey Code,1,18,1,44,44,
+21,rsr,Reason for Substitution of original household,1,19,1,45,45,
+22,hh_size,Household Size,3,1,2,46,47,
+23,hh_type,Household Type,3,2,1,48,48,
+24,religion,Religion,3,3,1,49,49,
+25,social_grp,Social Group,3,4,1,50,50,
+26,hce1,Household's usual consumer Expenditure in A Month for purposes out of Goods and Services(Rs.),3,5.1,8,51,58,
+27,hce2,Imputed value of usual consumption in a month out of Home Grown stock (Rs.),3,5.2,8,59,66,
+28,hce3,"Imputed value of usual consumption in a Month from wages in kind,free collection, gifts etc. (Rs.)",3,5.3,8,67,74,
+29,hce4,"Household's Annual Expenditure on purchase of items like clothing, footwear etc.(Rs.)",3,5.4,8,75,82,
+30,hce5,"Household's Annual Expenditure on purchase of durables like Bedstead, TV, fridge etc.(Rs.)",3,5.5,8,83,90,
+31,hce_tot,Household'S Usual Consumer Expenditure In A Month (Rs.),3,5.6,8,91,98,
+32,inf_srl,Informant Serial no.,1,16,2,99,100,
+33,sur_date,Survey Date,2,2(i),8,101,108,
+34,sur_time,Total Time Taken To Canvass Sch. 10.4,2,4,4,109,112,
+35,nss,Ns count for sector x stratum x substratum x sub-sample,Generated,,3,113,115,NSS
+36,nsc,Ns count for sector x stratum x substratum,Generated,,3,116,118,NSC
+37,mult,Sub-sample wise Multiplier,Generated,,10,119,128,MULT
+38,no_qtr,Occurance of State x Sector x Stratum x SubStratum in 4 Quarters,Generated,,1,129,129,No_Qtr

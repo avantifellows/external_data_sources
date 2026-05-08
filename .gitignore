@@ -16,10 +16,24 @@ clean/annual_2023_24/hhv1.csv
 clean/annual_2023_24/hhrv.csv
 clean/annual_2023_24/perv1.csv
 clean/annual_2023_24/perrv.csv
+clean/calendar_2022/chhv1.csv
+clean/calendar_2022/cperv1.csv
 clean/calendar_2024/chhv1.csv
 clean/calendar_2024/cperv1.csv
 clean/calendar_2025/chhv1.csv
 clean/calendar_2025/cperv1.csv
+clean/annual_2018_19/hhv1.csv
+clean/annual_2018_19/hhrv.csv
+clean/annual_2018_19/perv1.csv
+clean/annual_2018_19/perrv.csv
+
+# Pre-existing folders with redundant data (handled by 211/216 paths)
+raw/PLFS_*/
+raw/data/
+raw/data_calendar_*/
+
+# Catalog-numbered folders containing raw data (gitignored — too big, MoSPI-licensed)
+raw/[0-9]*/
 
 # Local scratch / OS detritus
 .DS_Store

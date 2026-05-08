@@ -36,8 +36,44 @@ ROOT = Path(__file__).resolve().parent.parent
 #            or by row order (False = use ordinal position)
 
 RELEASES = {
+    # ---- Annual Jul 2018 – Jun 2019 (catalog 216) ----
+    # Pre-COVID baseline. CSV input (txt2csv pre-converted).
+    # 4 files: HH_FV.txt, HH_RV.txt, PER_FV.txt, PER_RV.txt
+    # HH_FV and HH_RV share the same 32-field schema in this release.
+    "annual_2018_19": {
+        "label": "PLFS Annual, July 2018 – June 2019 (catalog 216)",
+        "input_kind": "csv",  # source CSVs already exist (txt2csv pre-converted)
+        "xlsx": ROOT / "raw" / "docs_annual_2018_19" / "Data_Layout_PLFS.xlsx",
+        "data_dir": ROOT / "raw" / "216 - PLFS_2018_19_CSV",
+        "out_dir": ROOT / "clean" / "annual_2018_19",
+        "layout_dir": ROOT / "clean" / "annual_2018_19" / "layout",
+        "files": [
+            # 2018-19 HH_FV and HH_RV share one section (rows 4-36, 32 fields, 86 bytes)
+            {"key": "hhv1",  "section": (4, 36),    "byte_total": 86,  "csv_name": "HHV1_2018-19 (1).csv"},
+            {"key": "hhrv",  "section": (4, 36),    "byte_total": 86,  "csv_name": "HHRV-2018-19 (1).csv"},
+            {"key": "perv1", "section": (40, 169),  "byte_total": 319, "csv_name": "PerV1_2018-19.csv"},
+            {"key": "perrv", "section": (173, 276), "byte_total": 275, "csv_name": "PerRV_2018-19.csv"},
+        ],
+    },
+
+    # ---- Calendar Year 2022 (catalog 211) ----
+    # Same schema as CY2024. CSV input (txt2csv pre-converted).
+    "calendar_2022": {
+        "label": "PLFS Calendar Year 2022, January – December 2022 (catalog 211)",
+        "input_kind": "csv",
+        "xlsx": ROOT / "raw" / "docs_calendar_2022" / "Data_LayoutPLFS_Calendar_2022.xlsx",
+        "data_dir": ROOT / "raw" / "211 - PLFS_Data_2022-22_CSV",
+        "out_dir": ROOT / "clean" / "calendar_2022",
+        "layout_dir": ROOT / "clean" / "calendar_2022" / "layout",
+        "files": [
+            {"key": "chhv1",  "section": (4, 44),   "byte_total": 129, "csv_name": "chhv1.csv"},
+            {"key": "cperv1", "section": (46, 296), "byte_total": 333, "csv_name": "cperv1.csv"},
+        ],
+    },
+
     "annual_2023_24": {
         "label": "PLFS Annual, July 2023 – June 2024 (catalog 213)",
+        "input_kind": "txt",
         "xlsx": ROOT / "raw" / "docs" / "Data_Layout_PLFS_2023-24.xlsx",
         "data_dir": ROOT / "raw" / "data",
         "out_dir": ROOT / "clean" / "annual_2023_24",
