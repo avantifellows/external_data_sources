@@ -1,0 +1,70 @@
+table: plfs.households
+description: |
+  Household-level facts unioned across all 11 PLFS releases (~2.5M rows).
+  One row per surveyed household per visit. Join to plfs.persons on hh_id.
+
+  PLFS does not collect income directly; HCE (Household Consumer
+  Expenditure) is the standard income proxy. The derived mpce column
+  (Monthly Per Capita Consumer Expenditure = hce_tot / hh_size) is what
+  most "low-income household" analyses use.
+clustering: [release_id, st]
+columns:
+  # ── Release metadata ───────────────────────────────────────────────────
+  - { name: release_id,     type: STRING, mode: REQUIRED,
+      description: "Release identifier, e.g. 'calendar_2025'." }
+  - { name: release_format, type: STRING, mode: REQUIRED,
+      description: "'annual' or 'calendar'." }
+  - { name: release_year,   type: STRING, mode: REQUIRED,
+      description: "Year label, e.g. '2018-19' or 'CY2024'." }
+  - { name: catalog_id,     type: STRING, mode: REQUIRED,
+      description: "microdata.gov.in catalog ID." }
+  - { name: src_file,       type: STRING,
+      description: "Source filename stem: 'hhv1' / 'hhrv' / 'chhv1'." }
+
+  # ── Join key + survey design ───────────────────────────────────────────
+  - { name: hh_id,          type: STRING, mode: REQUIRED,
+      description: "Stable 16-char SHA1 prefix; same derivation as plfs.persons.hh_id. Joins to plfs.persons." }
+  - { name: qtr,            type: STRING, description: "Quarter code." }
+  - { name: month,          type: STRING, description: "Month code (CY2025)." }
+  - { name: visit,          type: STRING, description: "Visit code." }
+  - { name: nss_reg,        type: STRING }
+  - { name: strm,           type: STRING }
+  - { name: sstrm,          type: STRING }
+  - { name: ss,             type: STRING }
+  - { name: mfsu,           type: STRING }
+  - { name: sss,            type: STRING }
+  - { name: ssu,            type: STRING }
+
+  # ── Geography ──────────────────────────────────────────────────────────
+  - { name: sec,            type: STRING, description: "Sector code. '1'=Rural, '2'=Urban." }
+  - { name: sec_label,      type: STRING, description: "Denormalized sector label." }
+  - { name: st,             type: STRING, description: "State/UT code." }
+  - { name: state_name,     type: STRING, description: "Denormalized state name." }
+  - { name: dc,             type: STRING, description: "District code." }
+
+  # ── Household characteristics ──────────────────────────────────────────
+  - { name: hh_size,           type: INT64,  description: "Total household members." }
+  - { name: hh_type,           type: STRING, description: "Household type code. Interpretation depends on sec — rural and urban use different code lists." }
+  - { name: hh_type_label,     type: STRING, description: "Denormalized hh_type label resolved against the correct rural/urban codemap based on sec." }
+  - { name: religion,          type: STRING, description: "Religion code." }
+  - { name: religion_label,    type: STRING, description: "Denormalized religion label." }
+  - { name: social_grp,        type: STRING, description: "Social group code (SC/ST/OBC/Other)." }
+  - { name: social_grp_label,  type: STRING, description: "Denormalized social group label." }
+
+  # ── HCE (income proxy) ─────────────────────────────────────────────────
+  - { name: hce_tot,  type: INT64, description: "Total household monthly consumer expenditure (₹). The PLFS-standard income proxy." }
+  - { name: mpce,     type: FLOAT64,
+      description: "Derived: hce_tot / hh_size. Monthly Per Capita Consumer Expenditure. Used as the income proxy in cross-household comparisons." }
+  - { name: hce1,     type: INT64, description: "Consumer goods + services HCE component." }
+  - { name: hce2,     type: INT64, description: "Home-grown stock imputed HCE component." }
+  - { name: hce3,     type: INT64, description: "Wages-in-kind imputed HCE component." }
+  - { name: hce4,     type: INT64, description: "Annual clothing/footwear (1/12 averaged into monthly)." }
+  - { name: hce5,     type: INT64, description: "Annual durables (1/12 averaged into monthly)." }
+
+  # ── Weight ─────────────────────────────────────────────────────────────
+  - { name: nss,           type: INT64 }
+  - { name: nsc,           type: INT64 }
+  - { name: mult,          type: INT64,   description: "Raw multiplier, 2 implied decimals." }
+  - { name: no_qtr,        type: INT64 }
+  - { name: weight_annual, type: FLOAT64,
+      description: "Calibrated annual weight per household. SUM(weight_annual) yields a weighted-household-count estimate. NULL for CY2021." }

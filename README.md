@@ -6,8 +6,8 @@ column schema, code-map lookups, and per-release calibrated weights. **11
 releases covered, 2018-19 → CY2025** — a continuous year-by-year picture of
 India's labour market for the post-COVID/post-AI period.
 
-The next step is loading into BigQuery; see [`bq_preview/`](bq_preview/) for
-the proposed schema (under review before we create BQ resources).
+The final step is loading into BigQuery via [`scripts/load_bq.py`](scripts/load_bq.py)
+— one script, six tables, idempotent.
 
 ---
 
@@ -135,20 +135,16 @@ Total one-time cost: ~₹100. Extracted TSVs and original catalog URLs are in
         │   codemaps/      │  Code-map dimension tables
         └────────┬────────┘
                  │ scripts/weights.py — per-release calibrated weights
-                 │ scripts/build_bq_preview.py — generates bq_preview/
+                 │ scripts/load_bq.py  — one-shot ETL into BigQuery
                  ▼
         ┌─────────────────┐
-        │   bq_preview/    │  ← schema preview (under review)
-        │     schemas/     │  JSON schemas (BQ format)
-        │     data/        │  JSONL samples + full dim tables
-        │     ddl/         │  CREATE TABLE statements
-        └────────┬────────┘
-                 │ (after sign-off)
-                 │ scripts/load_bq.py — to be written
-                 ▼
-        ┌─────────────────┐
-        │   BigQuery       │  plfs.persons, plfs.households, plfs.releases,
-        │                  │  plfs.dim_* (36 dimension tables)
+        │   BigQuery       │  6 tables in the `plfs` dataset:
+        │                  │    persons     (~10.5M rows, fact)
+        │                  │    households  (~2.5M rows, fact)
+        │                  │    releases    (11 rows, registry)
+        │                  │    dim_nco     (~2.7k, full occupation hierarchy)
+        │                  │    dim_nic     (~1.3k, full industry hierarchy)
+        │                  │    dim_geo     (~700, state + district)
         └─────────────────┘
 ```
 
@@ -189,15 +185,11 @@ PLFS/
 │   ├── parse_data.py             ← unified parser: handles txt / csv / tsv input
 │   ├── build_codemaps.py         ← writes codemaps/*.csv from instruction manual
 │   ├── parse_nco_2015.py         ← writes codemaps/nco_*.csv from NCO PDF
-│   └── build_bq_preview.py       ← generates bq_preview/ for BQ schema review
+│   └── load_bq.py                ← one-shot ETL into BigQuery (6 tables)
 │
-├── analyses/                     ← exploratory research scripts (read clean/* CSVs)
+├── schemas/                      ← BigQuery column-level docs (one YAML per table)
 │
-└── bq_preview/                   ← BigQuery schema proposal (under review)
-    ├── README.md                 ← review notes
-    ├── schemas/                  ← BQ JSON schemas (40 tables)
-    ├── data/                     ← sample data (JSONL) + full dim tables
-    └── ddl/create_tables.sql     ← CREATE TABLE statements
+└── analyses/                     ← exploratory research scripts (read clean/* CSVs)
 ```
 
 ## 6. Quickstart
@@ -219,8 +211,12 @@ python3 scripts/parse_data.py calendar_2025
 # Parse all 11 releases (~90 seconds total)
 python3 scripts/parse_data.py
 
-# Generate the BQ preview (~30 seconds)
-python3 scripts/build_bq_preview.py
+# Load everything into BigQuery (idempotent; ~5-10 min for full dataset)
+python3 scripts/load_bq.py                       # to dataset `plfs`
+python3 scripts/load_bq.py --dataset plfs_dev    # to a dev dataset
+python3 scripts/load_bq.py --release calendar_2025  # one release only
+python3 scripts/load_bq.py --dims-only           # just dims + registry
+python3 scripts/load_bq.py --dry-run             # build parquet locally, no upload
 ```
 
 ## 7. How to add a new release
@@ -285,18 +281,42 @@ total = sum(weight_fn(row) for row in csv.DictReader(f))
 
 Per-release `weight_rule` is recorded in [`clean/releases.csv`](clean/releases.csv).
 
-## 11. BigQuery — under review
+## 11. BigQuery
 
-Once moved to BQ:
+Six tables in the `plfs` dataset, populated by
+[`scripts/load_bq.py`](scripts/load_bq.py):
 
-- `plfs.persons` — all releases unioned, ~10.5M rows, canonical columns,
-  `weight_annual` pre-computed per row
-- `plfs.households` — ~2.5M rows, same structure
-- `plfs.releases` — 11-row registry
-- `plfs.dim_*` — 36 dimension tables for code lookups
+| Table | Rows | Notes |
+|---|---:|---|
+| `plfs.persons` | ~10.5M | All releases unioned. `weight_annual` pre-computed. `hh_id` joins to households. `ind_pas_div` (2-digit NIC prefix) and `*_label` columns for the common enums are denormalized inline. |
+| `plfs.households` | ~2.5M | `weight_annual`, `hh_id`, and `mpce = hce_tot/hh_size` pre-computed. |
+| `plfs.releases` | 11 | Registry: catalog IDs, URLs, weight rules, period bounds. |
+| `plfs.dim_nco` | ~2.7k | Full NCO 2015 occupation hierarchy in one wide table (division → subdivision → group → family → full). |
+| `plfs.dim_nic` | ~1.3k | Full NIC 2008 industry hierarchy in one wide table (division → group → class → subclass). |
+| `plfs.dim_geo` | ~700 | State + district. (State name is also inline on the facts.) |
 
-See [`bq_preview/`](bq_preview/) for the proposed schemas, sample data, DDL,
-and design decisions that need a second pair of eyes before we run `bq mk`.
+Labels for the small enums (sex, sector, religion, marital_status, education
+levels, activity_status, enterprise_type, social_security, job_contract, etc.)
+are denormalized as `*_label` columns on the fact tables rather than separate
+dim tables. Pattern matches `etl-next/production/`: a small number of
+well-shaped fact/dim tables, not a per-enum snowflake.
+
+Typical query:
+
+```sql
+SELECT release_year,
+       SUM(weight_annual) / 1e6 AS engg_grads_millions,
+       APPROX_QUANTILES(ern_reg, 100)[OFFSET(50)] AS median_wage
+FROM plfs.persons
+WHERE tedu_lvl IN ('03','13')   -- engineering degree
+  AND age BETWEEN 20 AND 24
+  AND pas = '31'                -- regular salaried
+GROUP BY release_year ORDER BY release_year;
+```
+
+The load script is idempotent (`WRITE_TRUNCATE`), reproducible, and runs in
+~5-10 minutes for the full 10.5M-row dataset. Re-run whenever a new PLFS
+release lands.
 
 ## Status
 

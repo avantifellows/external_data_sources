@@ -1,0 +1,28 @@
+table: plfs.dim_nco
+description: |
+  Full NCO 2015 (National Classification of Occupations) hierarchy in one
+  wide table — ~2,700 rows. Each row is one 8-digit detailed occupation
+  with all four parent levels denormalized.
+
+  Hierarchy: division (1-digit) → subdivision (2) → group (3) → family (4)
+  → full (8). Code structure is positional: code_family = code_full[:4]
+  with the '.' stripped; each higher level is a prefix of the next.
+
+  Joins:
+    - plfs.persons.ocu_pas  → code_group       (3-digit, in principal activity)
+    - plfs.persons.ocu_sas  → code_group       (3-digit, in subsidiary activity)
+    - plfs.persons.ocu_cws  → code_group       (3-digit, in CWS)
+columns:
+  - { name: code_full,         type: STRING, mode: REQUIRED,
+      description: "8-digit detailed NCO 2015 code with '.' separator, e.g. '2512.0100'." }
+  - { name: label_full,        type: STRING, mode: REQUIRED,
+      description: "Detailed occupation title at the 8-digit level." }
+  - { name: code_family,       type: STRING, description: "4-digit family code, e.g. '2512'." }
+  - { name: label_family,      type: STRING, description: "Family label." }
+  - { name: code_group,        type: STRING, description: "3-digit group code, e.g. '251'. This is the level analysts most often filter on." }
+  - { name: label_group,       type: STRING, description: "Group label, e.g. 'Software and Applications Developers and Analysts'." }
+  - { name: code_subdivision,  type: STRING, description: "2-digit subdivision code, e.g. '25'." }
+  - { name: label_subdivision, type: STRING, description: "Subdivision label." }
+  - { name: code_division,     type: STRING, description: "1-digit division code. '2'=Professionals, '5'=Service/Sales Workers, etc." }
+  - { name: label_division,    type: STRING, description: "Division label." }
+  - { name: nco_2004_code,     type: STRING, description: "Equivalent NCO 2004 code (e.g. '2132.10') for cross-walking with older datasets." }

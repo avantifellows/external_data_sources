@@ -1,9 +1,0 @@
-{"code": "1", "description": "Self"}
-{"code": "2", "description": "Spouse of head"}
-{"code": "3", "description": "Married child"}
-{"code": "4", "description": "Spouse of married child"}
-{"code": "5", "description": "Unmarried child"}
-{"code": "6", "description": "Grandchild"}
-{"code": "7", "description": "Father/mother/father-in-law/mother-in-law"}
-{"code": "8", "description": "Brother/sister/brother-in-law/sister-in-law/other relatives"}
-{"code": "9", "description": "Servant/employees/other non-relatives"}

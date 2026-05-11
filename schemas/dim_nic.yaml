@@ -1,0 +1,28 @@
+table: plfs.dim_nic
+description: |
+  Full NIC 2008 (National Industrial Classification) hierarchy in one wide
+  table — ~1,300 rows. Each row is one 5-digit detailed industry with all
+  three parent levels denormalized.
+
+  Hierarchy: division (2-digit) → group (3) → class (4) → subclass (5).
+  Code structure is positional: each higher level is a prefix of the next.
+
+  Joins:
+    - plfs.persons.ind_pas       → code_subclass (5-digit, principal activity)
+    - plfs.persons.ind_pas_div   → code_division (2-digit; pre-derived prefix)
+    - plfs.persons.ind_sas       → code_subclass (5-digit, subsidiary)
+    - plfs.persons.aind_cws      → code_division (2-digit, CWS)
+
+  Note: '62' and '63' (Computer programming / Information services) are
+  the standard "IT services" filter used in several analyses.
+columns:
+  - { name: code_subclass,    type: STRING, mode: REQUIRED,
+      description: "5-digit detailed industry code, e.g. '62011' = Computer programming activities." }
+  - { name: label_subclass,   type: STRING, mode: REQUIRED,
+      description: "Subclass label." }
+  - { name: code_class,       type: STRING, description: "4-digit class code, e.g. '6201'." }
+  - { name: label_class,      type: STRING, description: "Class label." }
+  - { name: code_group,       type: STRING, description: "3-digit group code, e.g. '620'." }
+  - { name: label_group,      type: STRING, description: "Group label." }
+  - { name: code_division,    type: STRING, description: "2-digit division code, e.g. '62' = Computer programming, consultancy and related activities." }
+  - { name: label_division,   type: STRING, description: "Division label." }

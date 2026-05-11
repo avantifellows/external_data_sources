@@ -57,6 +57,9 @@ PLFS_2025/
 # Local Claude harness state — not for the repo
 .claude/
 
+# Local virtualenv
+.venv/
+
 # CSVs from new releases (regenerable via parse_plfs_csv.py)
 clean/annual_2019_20/*.csv
 clean/annual_2020_21/*.csv

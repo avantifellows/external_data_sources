@@ -1,0 +1,22 @@
+table: plfs.dim_geo
+description: |
+  Geography lookup — every (state, district) pair across India.
+  ~700 rows.
+
+  State name is already denormalized inline on plfs.persons and
+  plfs.households as state_name, so this table is mostly needed when
+  resolving district names (district_code is scoped to state, so you
+  need the composite key st + dc to look up district_name).
+
+  Joins:
+    - (plfs.persons.st, plfs.persons.dc) → (state_code, district_code)
+    - (plfs.households.st, plfs.households.dc) → (state_code, district_code)
+columns:
+  - { name: state_code,    type: STRING, mode: REQUIRED,
+      description: "2-digit zero-padded state/UT code, e.g. '09' = Uttar Pradesh." }
+  - { name: state_name,    type: STRING, mode: REQUIRED,
+      description: "State/UT name as published by MoSPI." }
+  - { name: district_code, type: STRING, mode: REQUIRED,
+      description: "2-digit district code. Scoped to state — codes are NOT globally unique. Always join on (state_code, district_code)." }
+  - { name: district_name, type: STRING, mode: REQUIRED,
+      description: "District name as published by MoSPI." }

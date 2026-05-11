@@ -1,0 +1,35 @@
+table: plfs.releases
+description: |
+  Release registry — one row per PLFS release loaded into BQ. Acts as
+  human-readable metadata + the source-of-truth for catalog URLs and
+  per-release weight rules. Derived from scripts/releases.py.
+columns:
+  - { name: release_id,   type: STRING, mode: REQUIRED,
+      description: "Release identifier, e.g. 'calendar_2025'. Primary key. Joins to plfs.persons / plfs.households on release_id." }
+  - { name: label,        type: STRING, mode: REQUIRED,
+      description: "Full human-readable release name, e.g. 'PLFS Calendar Year 2025'." }
+  - { name: format,       type: STRING, mode: REQUIRED,
+      description: "'annual' (Jul–Jun) or 'calendar' (Jan–Dec)." }
+  - { name: year_label,   type: STRING, mode: REQUIRED,
+      description: "Short year label, e.g. '2018-19' or 'CY2024'." }
+  - { name: period_start, type: STRING, mode: REQUIRED,
+      description: "First month of reference period, YYYY-MM." }
+  - { name: period_end,   type: STRING, mode: REQUIRED,
+      description: "Last month of reference period, YYYY-MM." }
+  - { name: catalog_id,   type: STRING, mode: REQUIRED,
+      description: "microdata.gov.in catalog ID, e.g. '284'." }
+  - { name: catalog_url,  type: STRING, mode: REQUIRED,
+      description: "Direct URL to the catalog page on microdata.gov.in." }
+  - name: weight_rule
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Named weight rule applied at load time. One of:
+        'combined'    — mult/no_qtr / IF(nss=nsc, 100, 200). Standard.
+        'half_yearly' — combined / 2. CY2023 only (half-yearly panel).
+        'simple'      — mult / 100. CY2025 only (new calibration scheme).
+        'limited'     — CY2021 only; no usable weight, schema is partial.
+  - { name: n_files,      type: INT64,  mode: REQUIRED,
+      description: "Number of unit-level data files in the release (4 for annual, 2 for calendar)." }
+  - { name: file_keys,    type: STRING, mode: REQUIRED,
+      description: "Pipe-separated list of file keys, e.g. 'hhv1|hhrv|perv1|perrv' or 'chhv1|cperv1'." }

@@ -1,9 +1,0 @@
-{"code": "1", "description": "Only PF/pension"}
-{"code": "2", "description": "Only gratuity"}
-{"code": "3", "description": "Only health care/maternity benefits"}
-{"code": "4", "description": "Only PF/pension and gratuity"}
-{"code": "5", "description": "Only PF/pension and health care/maternity benefits"}
-{"code": "6", "description": "Only gratuity and health care/maternity benefits"}
-{"code": "7", "description": "PF/pension AND gratuity AND health care/maternity benefits"}
-{"code": "8", "description": "Not eligible for any of the above"}
-{"code": "9", "description": "Not known"}
