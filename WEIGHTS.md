@@ -1,147 +1,207 @@
-# PLFS — Weights / Multipliers
+# PLFS Weights — per-release rules and how to apply them
 
-This file is the operational reference for applying the survey weight when
-you tabulate PLFS estimates. It covers all three releases this repo handles
-and reproduces the official rule from the **README** that ships with each
-release plus the **Estimation Procedure** booklet.
+PLFS releases use **four different weight rules**. Using the wrong one will
+give estimates that are 2× too high (CY2023) or 100× too high (CY2025) etc.
+This file documents the rules and points to the canonical implementation.
 
-> **Important:** the rule changed between CY2024 and CY2025. Use the table
-> below to pick the right formula for your release.
+## TL;DR — use the module, not the math
 
-## TL;DR — by release
+```python
+from weights import get_weight_fn
+weight_fn = get_weight_fn('calendar_2023')
 
-| Release                          | Weight columns in record                       | Formula                                                                  |
-| -------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| **Annual Jul23-Jun24** (213)     | `nss`, `nsc`, `mult`, `no_qtr`                 | Quarterly sub-sample: `mult/100`. Quarterly combined: `mult/IF(nss=nsc, 100, 200)`. **Annual: `mult/no_qtr`**. |
-| **Calendar Year 2024** (254/251) | `nss`, `nsc`, `mult`, `no_qtr`                 | Same as Annual.                                                          |
-| **Calendar Year 2025** (284)     | `mult`, plus `bstrm`/`zst`/`caph`/`smallh`/`nsc` for variance | **`mult/100`** — that's it. No NSS=NSC dance. No NO_QTR.                 |
+import csv
+total = 0.0
+with open('clean/calendar_2023/cperv1.csv') as f:
+    for row in csv.DictReader(f):
+        total += weight_fn(row)
 
-`mult` is stored as integer hundredths in every release — the values you see in
-`mult` already encode 2 decimal places. Divide by **100** to get the float weight,
-then divide by the additional release-specific factor below to convert to a
-population-unit weight.
+print(f"Weighted population: {total/1e9:.2f}B")    # should print ≈ 1.18B
+```
 
-## Annual (213) and Calendar 2024 (254/251)
+`get_weight_fn(release_id)` looks up the rule in `scripts/releases.py`
+(authoritative — also exported as the `weight_rule` column in
+`clean/releases.csv`) and returns the matching Python function.
 
-Every record carries four pre-computed fields at the **end** of the row:
+## The four rules
 
-| field    | length | meaning                                                                                         |
-| -------- | -----: | ----------------------------------------------------------------------------------------------- |
-| `nss`    | 3      | # of FSUs surveyed in (sector × state × stratum × sub-stratum) **for one sub-sample**           |
-| `nsc`    | 3      | # of FSUs surveyed in (sector × state × stratum × sub-stratum) **combined** across sub-samples  |
-| `mult`   | 10     | Sub-sample-wise multiplier (raw weight, with 2 implied decimals — divide by 100 to get a float) |
-| `no_qtr` | 1      | Count of contributing (sector × state × stratum × sub-stratum) cells across the 4 quarters      |
+### 1. `combined` — the standard PLFS formula
 
-| You want…                                                                | Divisor              | Formula                  |
-| ------------------------------------------------------------------------ | -------------------- | ------------------------ |
-| **Quarterly, single sub-sample** (filter to one of `ss=1` or `ss=2` only) | `100`                | `weight = mult / 100 / 100`    |
-| **Quarterly, both sub-samples combined**                                 | `100` if `nss = nsc` else `200` | `weight = mult / IF(nss=nsc, 100, 200) / 100` |
-| **Annual** (Jul23-Jun24 or Jan-Dec 2024)                                 | `no_qtr` (per-record)           | `weight = mult / no_qtr / 100`                |
+Used by every annual release, plus calendar releases CY2022 and CY2024.
 
-(The trailing `/100` strips the 2 implied decimals from `mult`.)
+```
+weight = mult / no_qtr / IF(nss = nsc, 100, 200)
+```
 
-### Why it works that way
+Where:
 
-PLFS draws **two independent sub-samples** in every (sector × state × stratum
-× sub-stratum) cell. Each sub-sample independently estimates the cell's total,
-so combining them by simple addition would double-count — hence the `÷200`
-when both are present, and `÷100` when only one happens to be in the cell
-(`nss = nsc`). For an annual estimate the contributing cells are summed
-across quarters and divided by the number of quarters that contributed,
-which `no_qtr` gives you per-record.
+| Field    | Meaning                                                                            |
+| -------- | ---------------------------------------------------------------------------------- |
+| `mult`   | Per-record sub-sample-wise multiplier. Stored as integer with **2 implied decimals** (so `mult=1204376` means a float multiplier of 12,043.76). |
+| `no_qtr` | Count of contributing FSUs in this `sector × state × stratum × sub-stratum` cell across the 4 contributing quarters. |
+| `nss`    | FSUs surveyed in this cell **for the same sub-sample**.                            |
+| `nsc`    | FSUs surveyed in this cell **combined across both sub-samples**.                    |
 
-## Calendar Year 2025 (284) — simpler
+The `IF(nss = nsc, ...)` test handles the rare case where only one of the two
+independent sub-samples landed in this cell — divide by 100 to avoid double-
+counting; otherwise divide by 200.
 
-CY2025 is a redesign. The README states bluntly:
+### 2. `half_yearly` — CY2023 only
 
-> Since the weight (MULT) is calculated at two places of decimal, the final
-> weight will be: **Final Weight = MULT / 100**.
+CY2023 (catalog 208) is the one release that uses a **half-yearly panel**
+design instead of quarterly. The standard formula gives a half-year estimate;
+divide by 2 for the calendar-year estimate.
 
-That's it. No sub-sample combination. No annual-vs-quarterly distinction.
-Each record's `mult` is already the final calibrated weight to estimate the
-full population for the calendar year.
+```
+weight = combined(row) / 2
+```
 
-CY2025 also introduces new fields for **design-based variance estimation**
-(important if you're computing standard errors or relative-SE):
+Per the CY2023 README §2-3.
 
-| field    | meaning                                                                              |
-| -------- | ------------------------------------------------------------------------------------ |
-| `bstrm`  | Basic stratum code. Starts with `D` → district is basic stratum; starts with `N` → NSS region (multiple smaller districts) is basic stratum. |
-| `zst`    | Size of basic stratum (`bstrm`).                                                     |
-| `caph`   | Total households listed in the SSS × FSU.                                            |
-| `smallh` | Sample households actually surveyed in that SSS × FSU.                               |
-| `nsc`    | FSUs surveyed in (sector × state × stratum × group × substratum) for the SSS panel.  |
+### 3. `simple` — CY2025 only
 
-For design-based RSE you need `zst`, `nsc`, `caph`, `smallh` (see CY2025 README
-§B for the full procedure). The `Bstrm_file.xlsx` ships in catalog 284 if you
-need to pull district-level estimates.
+CY2025 (catalog 284) redesigned the weighting. Each record's `mult` is
+already a fully-calibrated annual weight; just strip the 2 implied decimals.
 
-## On the formula a researcher shared
+```
+weight = mult / 100
+```
 
-Some users (and Stata snippets) re-derive the `÷100 vs ÷200` divisor by
-*grouping*, like:
+Per the CY2025 README. No NSS=NSC logic, no NO_QTR.
+
+### 4. `limited` — CY2021, not usable
+
+CY2021 (catalog 209) shipped with a stripped-down schema (Blocks 1, 4, 6
+only — no `tedu_lvl`, `pas`, `ind_pas`, `ern_reg`). The dataset is usable for
+demographic and Current Weekly Status analysis, but not for engineering-jobs
+or wage analyses. `get_weight_fn('calendar_2021')` raises
+`NotImplementedError` if you call it for general use.
+
+## Per-release lookup
+
+| Release           | Catalog | Weight rule    |
+| ----------------- | ------: | -------------- |
+| `annual_2018_19`  | 216     | `combined`     |
+| `annual_2019_20`  | 217     | `combined`     |
+| `annual_2020_21`  | 206     | `combined`     |
+| `calendar_2021`   | 209     | **`limited`**  |
+| `annual_2021_22`  | 214     | `combined`     |
+| `calendar_2022`   | 211     | `combined`     |
+| `annual_2022_23`  | 210     | `combined`     |
+| `calendar_2023`   | 208     | **`half_yearly`** |
+| `annual_2023_24`  | 213     | `combined`     |
+| `calendar_2024`   | 254     | `combined`     |
+| `calendar_2025`   | 284     | **`simple`**   |
+
+Source of truth: `clean/releases.csv` column `weight_rule`. Generated from
+`scripts/releases.py`.
+
+## Sub-sample-wise and quarterly estimates
+
+The rules above are for the **annual / calendar-year combined estimate** —
+the most common use. The PLFS documentation also defines:
+
+- **Sub-sample-wise weight** (use when you've filtered to one sub-sample
+  only, e.g., for variance estimation):
+  ```
+  weight_subsample = mult / no_qtr / 100
+  ```
+
+- **Quarterly combined weight** (use when restricting to a single quarter):
+  ```
+  weight_quarter = mult / IF(nss = nsc, 100, 200)
+  ```
+  Note: not divided by `no_qtr` because you're not annualizing.
+
+These aren't in the module today — if you need them, add `_quarterly_*` rules
+to `scripts/weights.py`. PR welcome.
+
+## On the formula commonly shared by researchers
+
+A pattern that floats around in NSSO / PLFS analysis examples:
 
 ```
 mult / IF(Sector × Stratum × Sub-Stratum
         = Sector × Stratum × Sub-Stratum × Sub-Sample, 100, 200)
 ```
 
-That formula has three issues you should know about before using it:
+This re-derives the `NSS = NSC` check by grouping. It has three subtle issues:
 
-1. **It drops `state`.** The official cell key is `Sector × State × Stratum
-   × Sub-Stratum` (PLFS stratum codes reset within each state, so dropping
-   state collapses unrelated strata together).
-2. **It re-does work the file already did.** PLFS already provides `nss`
-   (one sub-sample's count) and `nsc` (combined count) per record. Just use
-   `IF(nss = nsc, 100, 200)` — also more robust under filtering, since
-   `nss/nsc` were computed on the full sample before any filter.
-3. **It only gives the *quarterly combined* weight.** For an **annual**
-   estimate, the divisor is `no_qtr`. The two are not interchangeable.
-4. **It doesn't apply at all to CY2025** — CY2025 just uses `mult/100`.
+1. **It drops `state` from the cell key.** PLFS stratum codes reset per
+   state — `Stratum = 2` in Punjab and `Stratum = 2` in Tamil Nadu are
+   different strata. Grouping without state collapses unrelated strata.
+   Fix: include `state` in the grouping key.
+2. **It re-does work the file already did.** PLFS provides `nss` and `nsc`
+   per record. Just compare them; don't re-derive by grouping. Also more
+   robust under filtering — the stored values were computed on the full
+   sample before any analysis filter.
+3. **It produces only the quarterly combined estimate.** For an **annual**
+   estimate (which is what almost every analysis wants), you also need the
+   `/ no_qtr` factor.
 
-## Worked examples
+Our `_combined()` in `weights.py` handles all three correctly.
 
-```python
-import pandas as pd
+## Validation
 
-# --- Annual (Jul23-Jun24) or Calendar 2024 ---
-per = pd.read_csv("clean/calendar_2024/cperv1.csv", dtype=str)
-for col in ["mult", "nss", "nsc", "no_qtr"]:
-    per[col] = pd.to_numeric(per[col])
+`python3 scripts/weights.py` runs a self-test: it sums the calibrated weights
+across each release's `perv1`/`cperv1` table and prints the result. **All
+totals should land in ~1.08-1.22B** (India's actual population is ~1.4B;
+PLFS under-counts institutional populations / floating workers).
 
-# Annual estimate (use mult / no_qtr)
-per["weight_annual"] = per["mult"] / per["no_qtr"] / 100
+Current output:
 
-# Quarterly combined estimate (filter to one quarter first)
-q1 = per[per["qtr"] == "Q3"].copy()
-q1["divisor"] = q1.apply(lambda r: 100 if r.nss == r.nsc else 200, axis=1)
-q1["weight_q"] = q1["mult"] / q1["divisor"] / 100
-
-# Sub-sample 1 only
-q1_ss1 = q1[q1["ss"] == "1"].copy()
-q1_ss1["weight"] = q1_ss1["mult"] / 100 / 100
-
-# --- Calendar 2025 ---
-per25 = pd.read_csv("clean/calendar_2025/cperv1.csv", dtype=str)
-per25["mult"] = pd.to_numeric(per25["mult"])
-per25["weight"] = per25["mult"] / 100   # done.
+```
+annual_2018_19     combined                 1.08B  ✓
+annual_2019_20     combined                 1.12B  ✓
+annual_2020_21     combined                 1.11B  ✓
+calendar_2021      limited                      —  skip
+annual_2021_22     combined                 1.16B  ✓
+calendar_2022      combined                 1.22B  ✓
+annual_2022_23     combined                 1.22B  ✓
+calendar_2023      half_yearly              1.18B  ✓
+annual_2023_24     combined                 1.20B  ✓
+calendar_2024      combined                 1.21B  ✓
+calendar_2025      simple                   1.19B  ✓
 ```
 
-## Validation checks
+If a release ever drifts outside `0.95B – 1.35B`, the self-test flags it. Run
+this after adding any new release, or after touching `weights.py`.
 
-- **Sum of annual weights** ≈ India's projected adult+child population for
-  the survey year (~1.4 billion). MoSPI's published figures use this.
-- **`nss <= nsc`** always (annual / CY2024). If you see `nss > nsc` it's a
-  parse error.
-- **`mult > 0`** for every record (no zero or negative weights).
-- For sub-sample-wise tabulation in annual / CY2024, the **two sub-samples
-  should give similar estimates** (their difference is the basis of variance
-  estimates — see Estimation Procedure §3.8.1, §4.1.6).
+## How to apply weights in analysis code
 
-## Sources
+```python
+import csv
+from weights import get_weight_fn
 
-- [README.docx for annual 2023-24](raw/docs/README.docx)
-- [README_Calendar_2024.docx](raw/docs_calendar_2024/README_Calendar_2024.docx)
-- [README2025.docx](raw/docs_calendar_2025/README2025.docx)
-- [Estimation Procedure_PLFS.pdf](raw/docs/EstimationProcedure_PLFS.pdf) — variance derivations
-- Each release's data layout XLSX confirms `nss`, `nsc`, `mult`, `no_qtr` (or for CY2025: `mult`, `bstrm`, `zst`, etc.) at end-of-record.
+release_id = 'calendar_2025'
+weight_fn = get_weight_fn(release_id)
+
+# Engineering grads age 25-29 — weighted population
+total = 0.0
+with open(f'clean/{release_id}/cperv1.csv') as f:
+    for row in csv.DictReader(f):
+        try:
+            age = int(row['age'])
+        except (ValueError, KeyError):
+            continue
+        if 25 <= age <= 29 and row.get('tedu_lvl') == '03':
+            total += weight_fn(row)
+
+print(f"Engineering grads aged 25-29 in {release_id}: {total:,.0f}")
+# → Engineering grads aged 25-29 in calendar_2025: 2,656,011
+```
+
+Same code pattern works for any release. Never hardcode a weight formula in
+an analysis — always go through `get_weight_fn(release_id)`.
+
+## When you add a new release
+
+1. Set the `weight_rule` field in `scripts/releases.py` to one of the four
+   names — usually `combined`. Verify by reading the release's README.
+2. Run `python3 scripts/releases.py` to regenerate `clean/releases.csv`.
+3. Run `python3 scripts/weights.py` — the self-test should pass for the new
+   release. If it doesn't (`Σ weights` < 0.95B or > 1.35B), the rule is wrong.
+4. If the release introduces a **new weight rule** (e.g., MoSPI changes the
+   methodology again — they've done it for CY2023 and CY2025 already), add
+   a new `_<rule>()` function to `scripts/weights.py` and register it in
+   `WEIGHT_FNS`. Document the rule in this file.

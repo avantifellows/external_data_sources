@@ -4,71 +4,54 @@ Across all usable PLFS releases 2018-19 to CY2025.
 
 Excluded: calendar_2021 (cat 209) — limited schema, no tedu_lvl/pas/ern_reg.
 
-Notes:
-  - calendar_2023 (cat 208) uses half-yearly panels — annual estimate needs an
-    extra /2 over the standard formula. Handled via release-specific weight.
-  - annual_2022_23 (cat 210) has known high-multiplier rural outlier (Assam,
-    single uninhabited village). Likely affects rural numbers; urban engineers
-    should be unaffected. Reported as-is.
-  - calendar_2025 (cat 284) uses simplified rule: weight = mult/100.
+This analysis uses the per-release weight functions from scripts/weights.py.
+Per-release rules are documented in WEIGHTS.md and surfaced as the
+`weight_rule` column in clean/releases.csv.
 
 Wage tiers (nominal):
   Low: ₹25,000 – ₹29,999
   Med: ₹30,000 – ₹49,999
   High: ≥ ₹50,000
 """
-import csv, collections
+import csv, collections, sys
 from pathlib import Path
+
+# Pull weight functions + release metadata from the shared module
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+from weights import get_weight_fn       # noqa: E402
+from releases import RELEASES as _ALL_RELEASES   # noqa: E402
 
 ENGG_TEDU = {'03', '13'}
 AGE_LO, AGE_HI = 20, 24
 WAGE_FLOOR = 25_000
 
-def safe_int(x, d=0):
-    try: return int(x)
-    except (ValueError, TypeError): return d
-
-def w_combined(r):
-    mult = safe_int(r.get('mult'))
-    nss = safe_int(r.get('nss')); nsc = safe_int(r.get('nsc'))
-    nq = safe_int(r.get('no_qtr'), 1) or 1
-    div = 100 if nss == nsc else 200
-    return mult / nq / div
-
-def w_combined_halfyearly(r):
-    """CY2023: half-yearly panels. Standard formula gives half-year estimate;
-    divide by 2 for full calendar year."""
-    return w_combined(r) / 2
-
-def w_simple(r):
-    return safe_int(r.get('mult')) / 100
-
-WEIGHT = {
-    'annual_2018_19': w_combined,
-    'annual_2019_20': w_combined,
-    'annual_2020_21': w_combined,
-    'annual_2021_22': w_combined,
-    'calendar_2022':  w_combined,
-    'annual_2022_23': w_combined,
-    'calendar_2023':  w_combined_halfyearly,   # release-specific
-    'annual_2023_24': w_combined,
-    'calendar_2024':  w_combined,
-    'calendar_2025':  w_simple,                # release-specific
-}
-
-# Release → file path + reference period label + format flag
-RELEASES = [
-    ('annual_2018_19',  'clean/annual_2018_19/perv1.csv',   'Jul 2018 – Jun 2019',  'annual',   '2018-19'),
-    ('annual_2019_20',  'clean/annual_2019_20/perv1.csv',   'Jul 2019 – Jun 2020',  'annual',   '2019-20'),
-    ('annual_2020_21',  'clean/annual_2020_21/perv1.csv',   'Jul 2020 – Jun 2021',  'annual',   '2020-21'),
-    ('annual_2021_22',  'clean/annual_2021_22/perv1.csv',   'Jul 2021 – Jun 2022',  'annual',   '2021-22'),
-    ('calendar_2022',   'clean/calendar_2022/cperv1.csv',   'Jan – Dec 2022',       'calendar', 'CY2022'),
-    ('annual_2022_23',  'clean/annual_2022_23/perv1.csv',   'Jul 2022 – Jun 2023',  'annual',   '2022-23'),
-    ('calendar_2023',   'clean/calendar_2023/cperv1.csv',   'Jan – Dec 2023 *',     'calendar', 'CY2023'),
-    ('annual_2023_24',  'clean/annual_2023_24/perv1.csv',   'Jul 2023 – Jun 2024',  'annual',   '2023-24'),
-    ('calendar_2024',   'clean/calendar_2024/cperv1.csv',   'Jan – Dec 2024',       'calendar', 'CY2024'),
-    ('calendar_2025',   'clean/calendar_2025/cperv1.csv',   'Jan – Dec 2025',       'calendar', 'CY2025'),
+# Which releases participate in this analysis — excludes 'limited' rules.
+# Ordered chronologically. Per-release labels for the report.
+RELEASE_ORDER = [
+    'annual_2018_19', 'annual_2019_20', 'annual_2020_21',
+    'annual_2021_22', 'calendar_2022',  'annual_2022_23',
+    'calendar_2023',  'annual_2023_24', 'calendar_2024',
+    'calendar_2025',
 ]
+
+def _per_path(release_id: str) -> Path:
+    """Return the person-level file path for a release (perv1 or cperv1)."""
+    cfg = _ALL_RELEASES[release_id]
+    candidates = ('perv1.csv', 'cperv1.csv')
+    for c in candidates:
+        p = cfg['out_dir'] / c
+        if p.exists():
+            return p
+    raise FileNotFoundError(f"No perv1/cperv1 for {release_id}")
+
+# Build the list of (release_id, path, period_label, format, year_label)
+RELEASES = []
+for rid in RELEASE_ORDER:
+    cfg = _ALL_RELEASES[rid]
+    period = f"{cfg['period_start']} – {cfg['period_end']}"
+    if rid == 'calendar_2023': period += " *"   # flagged for half-yearly note
+    RELEASES.append((rid, _per_path(rid), period, cfg['format'], cfg['year_label']))
 
 
 def tier(wage):
@@ -78,16 +61,21 @@ def tier(wage):
 
 TIERS = ['Low (₹25-30k)', 'Med (₹30-50k)', 'High (>₹50k)']
 
+def _safe_int(x, d=0):
+    try: return int(x)
+    except (ValueError, TypeError):
+        try: return int(float(x))
+        except (ValueError, TypeError): return d
+
 # Per release: collect cohort
 data = {}
 for release, path, period, fmt, year in RELEASES:
-    weight_fn = WEIGHT[release]
+    weight_fn = get_weight_fn(release)
     rows = []
-    p = Path(path)
-    if not p.exists():
+    if not path.exists():
         print(f'  MISSING: {path}')
         continue
-    with p.open() as f:
+    with path.open() as f:
         for r in csv.DictReader(f):
             if r.get('tedu_lvl') not in ENGG_TEDU: continue
             try: age = int(r['age'])
@@ -95,8 +83,8 @@ for release, path, period, fmt, year in RELEASES:
             if not (AGE_LO <= age <= AGE_HI): continue
             if r.get('pas') != '31': continue
             try: w = weight_fn(r)
-            except (ValueError, ZeroDivisionError): continue
-            wage = safe_int(r.get('ern_reg'))
+            except (ValueError, ZeroDivisionError, NotImplementedError): continue
+            wage = _safe_int(r.get('ern_reg'))
             if wage < WAGE_FLOOR: continue
             rows.append({'wage': wage, 'tier': tier(wage), 'weight': w})
     data[year] = {'rows': rows, 'fmt': fmt, 'period': period, 'release': release}
