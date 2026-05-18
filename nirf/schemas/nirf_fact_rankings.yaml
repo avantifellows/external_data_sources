@@ -1,0 +1,67 @@
+# nirf_fact_rankings
+#
+# Published NIRF rankings — one row per institute per ranking_year per
+# ranking_category. Sourced from the top-N lists NIRF publishes annually
+# (typically top 100 or 200 depending on discipline) on nirfindia.org,
+# aggregated by Dataful.in.
+#
+# When unranked-submitter PDFs are scraped later, those rows will have
+# overall_score = NULL and nirf_rank = NULL. The current parquet only has
+# ranked institutes so all values are populated.
+#
+# Source parquet: gs://avantifellows-external-data/nirf/nirf_rankings.parquet
+# BQ table:       avantifellows.external_data_sources.nirf_fact_rankings
+
+description: NIRF rankings — overall score + computed rank per institute/year/category.
+rows: ~7500
+grain: (institute_id, ranking_year, ranking_category)
+
+columns:
+  - name: ranking_year
+    type: INTEGER
+    mode: REQUIRED
+    description: Year of NIRF ranking (2016–2025 today; grows by one each year).
+
+  - name: ranking_category
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Discipline NIRF ranked the institute under. Examples: Engineering,
+      University, College, Medical, Management, Law, Pharmacy, Architecture,
+      Overall, Research, Innovation, Dental.
+
+  - name: institute_id
+    type: STRING
+    mode: REQUIRED
+    description: NIRF-assigned institute id (e.g. IR-E-U-XXXX). Stable across years.
+
+  - name: institute_name
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Full institute name. Has variations across years (commas, spacing,
+      dashes). Use `.str.contains()`-style multi-keyword matching, not
+      full-name equality.
+
+  - name: state
+    type: STRING
+    description: State the institute is located in (e.g. Tamil Nadu, Karnataka).
+
+  - name: city
+    type: STRING
+    description: City the institute is located in (e.g. Chennai, Bangalore).
+
+  - name: overall_score
+    type: FLOAT
+    mode: NULLABLE
+    description: |
+      NIRF overall score (0–100). NULL for unranked submitters (none yet,
+      but the column is nullable to support that case in the future).
+
+  - name: nirf_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: |
+      Computed rank within (ranking_category, ranking_year). 1 = best.
+      NULL for unranked submitters. Filter `WHERE nirf_rank IS NOT NULL`
+      to restrict to ranked institutes.

@@ -1,0 +1,60 @@
+# nirf_fact_strength
+#
+# Student-strength data in long format — one row per institute per year
+# per programme per category. "Category" describes the population being
+# counted (total students, male, female, economically backward, …) and
+# "value" holds the count.
+#
+# Source parquet: gs://avantifellows-external-data/nirf/nirf_strength.parquet
+# BQ table:       avantifellows.external_data_sources.nirf_fact_strength
+
+description: Student strength by programme + demographic category (long format).
+rows: ~198660
+grain: (institute_id, ranking_year, ranking_category, programme, category)
+
+columns:
+  - name: ranking_year
+    type: INTEGER
+    mode: REQUIRED
+
+  - name: ranking_category
+    type: STRING
+    mode: REQUIRED
+
+  - name: institute_id
+    type: STRING
+    mode: REQUIRED
+
+  - name: institute_name
+    type: STRING
+    mode: REQUIRED
+
+  - name: state
+    type: STRING
+
+  - name: city
+    type: STRING
+
+  - name: programme
+    type: STRING
+    description: |
+      Academic programme. Examples: "UG [4 Years Program(s)]",
+      "PG [2 Year Program(s)]", "UG [3 Years Program(s)]".
+
+  - name: category
+    type: STRING
+    description: |
+      Population being counted. Examples: "Total students",
+      "Number of male students", "Number of female students",
+      "Total students economically backward",
+      "Total students socially backward",
+      "Total students within state",
+      "Total students outside state".
+
+  - name: value
+    type: FLOAT
+    description: Count for (institute, year, programme, category).
+
+  - name: unit
+    type: STRING
+    description: Unit of measurement (typically "Number").

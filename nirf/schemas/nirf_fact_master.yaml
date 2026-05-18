@@ -1,0 +1,61 @@
+# nirf_fact_master
+#
+# Raw long-format admissions / graduation / placement data — one row per
+# institute per year per program type per academic_year per category.
+# Use this when nirf_fact_aggregate doesn't have what you need (e.g.
+# metric categories that weren't pivoted into the wide table).
+#
+# Source parquet: gs://avantifellows-external-data/nirf/nirf_master.parquet
+# BQ table:       avantifellows.external_data_sources.nirf_fact_master
+
+description: Raw master data (admissions, graduations, placements) in long format.
+rows: ~97166
+grain: (institute_id, ranking_year, type, academic_year, category)
+
+columns:
+  - name: ranking_year
+    type: INTEGER
+    mode: REQUIRED
+
+  - name: ranking_category
+    type: STRING
+    mode: REQUIRED
+
+  - name: institute_id
+    type: STRING
+    mode: REQUIRED
+
+  - name: institute_name
+    type: STRING
+    mode: REQUIRED
+
+  - name: state
+    type: STRING
+
+  - name: city
+    type: STRING
+
+  - name: type
+    type: STRING
+    description: Program type (UG / PG with duration string).
+
+  - name: academic_year
+    type: STRING
+    mode: NULLABLE
+    description: Academic year these metrics describe. Can be NULL.
+
+  - name: category
+    type: STRING
+    description: |
+      Metric being recorded. Examples: "Number of students placed",
+      "Median salary of placed graduates", "Number of first year students intake",
+      "Number of students graduating in min stipulated time".
+
+  - name: value
+    type: FLOAT
+    mode: NULLABLE
+    description: Value for (institute, year, type, academic_year, category).
+
+  - name: unit
+    type: STRING
+    description: Unit of measurement (count, INR, percent, …).

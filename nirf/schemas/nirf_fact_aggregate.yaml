@@ -1,0 +1,110 @@
+# nirf_fact_aggregate
+#
+# Pre-aggregated wide table joining rankings with the most-asked-about
+# admissions / placement / salary metrics. One row per institute per
+# ranking_year per ranking_category per academic_year per program type
+# (UG/PG). Built upstream (in the dashboards repo) by pivoting the long
+# nirf_fact_master from long-to-wide.
+#
+# Several source columns had spaces or `%` in their names and were
+# renamed at upload time (see scripts/sources.py → AGGREGATE_RENAMES).
+# The original parquet on disk (nirf/raw/) still has the spaced names;
+# the parquet on GCS and the BQ table use the cleaned names below.
+#
+# Source parquet: gs://avantifellows-external-data/nirf/nirf_aggregate.parquet
+# BQ table:       avantifellows.external_data_sources.nirf_fact_aggregate
+
+description: NIRF rankings joined with placement, salary, and admission metrics.
+rows: ~31700
+grain: (institute_id, ranking_year, ranking_category, academic_year, type)
+
+columns:
+  - name: ranking_year
+    type: INTEGER
+    mode: REQUIRED
+    description: Year of NIRF ranking.
+
+  - name: ranking_category
+    type: STRING
+    mode: REQUIRED
+    description: Discipline (Engineering, Management, …).
+
+  - name: institute_id
+    type: STRING
+    mode: REQUIRED
+
+  - name: institute_name
+    type: STRING
+    mode: REQUIRED
+
+  - name: state
+    type: STRING
+
+  - name: city
+    type: STRING
+
+  - name: overall_score
+    type: FLOAT
+    mode: NULLABLE
+    description: NIRF overall score. NULL for future unranked-submitter rows.
+
+  - name: nirf_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: NIRF rank within (category, year). NULL for unranked submitters.
+
+  - name: academic_year
+    type: STRING
+    mode: NULLABLE
+    description: Academic year these metrics describe (e.g. "2022-23"). Can be NULL.
+
+  - name: type
+    type: STRING
+    description: |
+      Program type and duration. Examples: "UG [4 Years Program(s)]",
+      "PG [2 Year Program(s)]", "UG [3 Years Program(s)]".
+
+  - name: median_salary
+    type: FLOAT
+    mode: NULLABLE
+    description: Median annual placement salary in INR. Source col was "Median salary of placed graduates".
+
+  - name: first_year_intake
+    type: FLOAT
+    mode: NULLABLE
+    description: Total sanctioned intake for first year. Source col "Number of first year students intake".
+
+  - name: first_year_admitted
+    type: FLOAT
+    mode: NULLABLE
+    description: Students actually admitted in first year. Source col "Number of first year students admitted".
+
+  - name: lateral_entry_admitted
+    type: FLOAT
+    mode: NULLABLE
+    description: Lateral-entry admissions. Source col "Number of students admmited through lateral entry" (sic).
+
+  - name: graduating_on_time
+    type: FLOAT
+    mode: NULLABLE
+    description: Students who graduated within the minimum stipulated time. Source col "Number of students graduating in min stipulated time".
+
+  - name: students_placed
+    type: FLOAT
+    mode: NULLABLE
+    description: Students who got placements. Source col "Number of students placed".
+
+  - name: higher_studies_selected
+    type: FLOAT
+    mode: NULLABLE
+    description: Students who proceeded to higher studies. Source col "Number of students selected for higher studies".
+
+  - name: percentage_placed
+    type: FLOAT
+    mode: NULLABLE
+    description: (students_placed / graduating_on_time) * 100. Source col "Percentage Placed (%)".
+
+  - name: admission_rate
+    type: FLOAT
+    mode: NULLABLE
+    description: (first_year_admitted / first_year_intake) * 100. Source col "Admission Rate (%)".
