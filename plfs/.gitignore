@@ -1,0 +1,64 @@
+# PLFS-specific ignores. Paths are relative to plfs/.
+
+# Unit-level data files — gated behind microdata.gov.in login, can't be
+# redistributed. Nesstar archives are too big for git anyway.
+raw/data*/*.txt
+raw/data*/*.TXT
+raw/data*/*.zip
+raw/data*/*.Nesstar
+raw/213*/
+raw/data*/Guide*.pdf
+raw/data*/*.exe
+
+# Built outputs from raw data — regenerable via scripts/parse_data.py.
+# Calendar-year CSVs especially are too large to commit (CY2025 cperv1.csv
+# alone is ~700MB).
+clean/annual_2023_24/hhv1.csv
+clean/annual_2023_24/hhrv.csv
+clean/annual_2023_24/perv1.csv
+clean/annual_2023_24/perrv.csv
+clean/calendar_2022/chhv1.csv
+clean/calendar_2022/cperv1.csv
+clean/calendar_2024/chhv1.csv
+clean/calendar_2024/cperv1.csv
+clean/calendar_2025/chhv1.csv
+clean/calendar_2025/cperv1.csv
+clean/annual_2018_19/hhv1.csv
+clean/annual_2018_19/hhrv.csv
+clean/annual_2018_19/perv1.csv
+clean/annual_2018_19/perrv.csv
+
+# Pre-existing folders with redundant data (handled by 211/216 paths)
+raw/PLFS_*/
+raw/data/
+raw/data_calendar_*/
+
+# Catalog-numbered folders containing raw data
+raw/[0-9]*/
+
+# Local scratch
+*.html
+catalog_page.html
+getmicro.html
+
+# Cached PDF text (regenerable from PDF via pdftotext)
+raw/docs/*.txt
+raw/external/*.txt
+
+# Pre-existing per-release folders (calendar-year releases use a different
+# layout from the annual release this repo documents).
+PLFS 2022/
+PLFS 2023/
+PLFS_2025/
+
+# CSVs from new releases (regenerable via parse_data.py)
+clean/annual_2019_20/*.csv
+clean/annual_2020_21/*.csv
+clean/calendar_2021/*.csv
+clean/annual_2021_22/*.csv
+clean/annual_2022_23/*.csv
+clean/calendar_2023/*.csv
+clean/annual_2023_24/*.csv
+
+# Nesstar-extracted TSVs (intermediate; regenerable via Nesstar Explorer)
+raw/_extracted_from_nesstar/
