@@ -8,7 +8,7 @@ CODEMAP = {
         "test_year": "2026",
         "test_name": "JEE Mains Overall",
         "max_score": 300,
-        "eligible": True,
+        "jee_adv_ineligible": False,
     },
     # 2026 eligible notes:
     # - Final scores only (no session-level columns in this file).

@@ -8,7 +8,6 @@ CODEMAP = {
         "test_year": "2022",
         "test_name": "JEE Mains Overall",
         "max_score": 300,
-        "eligible": None,
     },
     "columns": {
         "application_no":           ["APPNO"],
@@ -42,6 +41,8 @@ CODEMAP = {
         "st_rank":                  ["AI_ST1"],
         "ews_rank":                 ["AI_EWS1"],
         "jee_mains_qualified":      ["Qualified"],
-        "adv_ineligibility_reason": ["NELIG_ADV", "NELIG_REM"],
+        # NELIG_ADV: True = ineligible for JEE Advanced
+        "jee_adv_ineligible":       ["NELIG_ADV"],
+        "jee_advanced_ineligibility_reason": ["NELIG_ADV", "NELIG_REM"],
     },
 }

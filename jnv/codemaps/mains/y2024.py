@@ -8,7 +8,7 @@ CODEMAP = {
         "test_year": "2024",
         "test_name": "JEE Mains Overall",
         "max_score": 300,
-        "eligible": None,
+        "jee_adv_ineligible": None,
     },
     # 2024 notes:
     # - Has both 10th and 12th board columns; pandas assigns .1 suffix to the

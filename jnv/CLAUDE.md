@@ -105,7 +105,7 @@ Key column groups (full list in [`codemaps/mains/shared.py`](codemaps/mains/shar
 | Final scores | `physics_score`, `chemistry_score`, `maths_score`, `total_score`, `max_score` |
 | Session scores | `*_score_s1` (January), `*_score_s2` (April) — null for single-attempt years |
 | Ranks | `all_india_rank`, `category_rank`, `all_india_pwd_rank`, `category_pwd_rank`, `obc_rank`, `sc_rank`, `st_rank`, `ews_rank` |
-| Qualification | `jee_mains_qualified`, `jee_advanced_qualified`, `jee_prep_qualified`, `adv_prep_category_rank`, `adv_ineligibility_reason`, `eligible` |
+| Qualification | `jee_mains_qualified`, `jee_advanced_qualified`, `jee_prep_qualified`, `adv_prep_category_rank`, `jee_advanced_ineligibility_reason`, `jee_adv_ineligible` |
 
 Column availability by year — null where the source file doesn't carry that data:
 
@@ -119,7 +119,7 @@ Column availability by year — null where the source file doesn't carry that da
 | 12th board marks | ✓ | ✓ | — | ✓ | — | ✓ |
 | JNV metadata | partial | ✓ | — | ✓ | ✓ | — |
 | Adv/prep qualification | — | — | — | — | ✓ | — |
-| eligible flag | — | — | — | — | — | ✓ |
+| jee_adv_ineligible (NELIG_ADV / 2026 file) | ✓ | ✓ | ✓ | — | — | ✓ |
 
 ## Codemap architecture
 
@@ -133,7 +133,7 @@ contains no year-specific logic. All year-specific knowledge lives in
    CODEMAP = {
        "source":    {"file": "...", "sheet": "...", "header": 0},
        "constants": {"test_year": "YYYY", "test_name": "JEE Mains Overall",
-                     "max_score": 300, "eligible": None},
+                     "max_score": 300, "jee_adv_ineligible": None},
        "columns":   {"application_no": ["APPNO"], ...},
        # optional:
        "post_transform": my_fn,   # fn(raw_df, out_df) → out_df
@@ -167,7 +167,7 @@ contains no year-specific logic. All year-specific knowledge lives in
 | `gender` | `normalize_gender()` → Male / Female / Others |
 | `category` | `normalize_category()` → Gen / Gen-EWS / OBC / SC / ST / PWD-* |
 | `appeared` | `appeared()` → False if ABS or null, else True |
-| `bool_qualified` | `to_bool_qualified()` → True for yes/1/true/eligible |
+| `boolean` | `to_boolean()` → True for yes/1/true/eligible; None if missing |
 
 ## Design calls worth knowing before you change them
 
@@ -184,9 +184,12 @@ contains no year-specific logic. All year-specific knowledge lives in
   cohort and supersedes `JEE Mains 2025.xlsx` (4,037 rows, a subset).
   The All JNV file also carries richer JNV metadata and adv/prep flags.
 - **2026 is split across two files.** `y2026_eligible.py` covers candidates
-  who passed Class 12 in 2025 or later (`eligible = True`); 
-  `y2026_ineligible.py` covers those who passed before 2025 (`eligible =
-  False`). Both share `test_year = "2026"` and are deduped together.
+  who passed Class 12 in 2025 or later (`jee_adv_ineligible = False`) — these
+  are the standard 2026 cohort eligible for JEE Advanced. `y2026_ineligible.py`
+  covers 2+ year droppers who passed Class 12 before 2024 (`jee_adv_ineligible =
+  True`) — they can sit JEE Mains but are ineligible for JEE Advanced;
+  `jee_advanced_ineligibility_reason` carries the NTA remark explaining why. Both
+  share `test_year = "2026"` and are deduped together.
 - **`category_rank` is derived in post-processing for all years except 2024.**
   2024 has a direct `Category Rank` column. For other years, `post_process`
   in the engine picks from `obc_rank` / `sc_rank` / `st_rank` / `ews_rank`

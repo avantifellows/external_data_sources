@@ -31,7 +31,7 @@ from codemaps.mains import ALL_CODEMAPS
 from codemaps.mains.shared import (
     CANONICAL_COLS, COLUMN_TYPES,
     normalize_gender, normalize_category,
-    to_float, appeared, to_bool_qualified, safe_pct,
+    to_float, appeared, to_boolean, safe_pct,
 )
 
 # ── Column lookup helpers ─────────────────────────────────────────────────────
@@ -88,8 +88,8 @@ def process_year(df, codemap):
                 out[col] = series.apply(to_float)
             elif col_type == "gender":
                 out[col] = series.map(normalize_gender)
-            elif col_type == "bool_qualified":
-                out[col] = series.map(to_bool_qualified)
+            elif col_type == "boolean":
+                out[col] = series.map(to_boolean)
             else:
                 out[col] = series
 

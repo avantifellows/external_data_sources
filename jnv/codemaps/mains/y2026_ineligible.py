@@ -11,15 +11,16 @@ CODEMAP = {
         "test_year": "2026",
         "test_name": "JEE Mains Overall",
         "max_score": 300,
-        "eligible": False,
+        "jee_adv_ineligible": True,
         # All candidates in this file are ineligible — override qualified flag.
         "jee_mains_qualified": False,
     },
     # 2026 ineligible notes:
-    # - Candidates passed Class 12 before 2025; not eligible for 2026 JEE.
+    # - 2+ year droppers: passed Class 12 before 2024, so ineligible for JEE Advanced.
+    # - They can sit JEE Mains but NTA excludes them from Advanced qualification.
+    # - jee_advanced_ineligibility_reason (REMARK col) carries the NTA ineligibility message.
     # - Has session-level scores (P1A = Session 1, P1B = Session 2).
     # - No rank columns available.
-    # - adv_ineligibility_reason populated from REMARK col (long ineligibility message).
     "columns": {
         "application_no":           ["APPNO"],
         "student_full_name":        ["CNAME"],
@@ -50,6 +51,6 @@ CODEMAP = {
         "chemistry_score_s2":       ["PS_CHE_P1B"],
         "maths_score_s2":           ["PS_MAT_P1B"],
         "total_score_s2":           ["PS_TOT_P1B"],
-        "adv_ineligibility_reason": ["REMARK"],
+        "jee_advanced_ineligibility_reason": ["REMARK"],
     },
 }

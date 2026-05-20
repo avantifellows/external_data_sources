@@ -34,8 +34,8 @@ CANONICAL_COLS = [
     "obc_rank", "sc_rank", "st_rank", "ews_rank",
     # qualification
     "jee_mains_qualified", "jee_advanced_qualified", "jee_prep_qualified",
-    "adv_prep_category_rank", "adv_ineligibility_reason",
-    "eligible",
+    "adv_prep_category_rank", "jee_advanced_ineligibility_reason",
+    "jee_adv_ineligible",
 ]
 
 # ── Column types ──────────────────────────────────────────────────────────────
@@ -95,12 +95,12 @@ COLUMN_TYPES = {
     "sc_rank":                  "float",
     "st_rank":                  "float",
     "ews_rank":                 "float",
-    "jee_mains_qualified":      "bool_qualified",
-    "jee_advanced_qualified":   "bool_qualified",
-    "jee_prep_qualified":       "bool_qualified",
+    "jee_mains_qualified":      "boolean",
+    "jee_advanced_qualified":   "boolean",
+    "jee_prep_qualified":       "boolean",
     "adv_prep_category_rank":   "float",
-    "adv_ineligibility_reason": "str",
-    "eligible":                 "constant",
+    "jee_advanced_ineligibility_reason": "str",
+    "jee_adv_ineligible":           "boolean",
 }
 
 # ── Normalization helpers ─────────────────────────────────────────────────────
@@ -154,10 +154,11 @@ def appeared(val):
     return str(val).strip().upper() != "ABS"
 
 
-def to_bool_qualified(val):
+def to_boolean(val):
+    """Parse True/False/1/0/yes/no/eligible strings into Python bool. None if missing."""
     if pd.isna(val):
-        return False
-    return str(val).strip().lower() in ("yes", "1", "true", "y", "eligible")
+        return None
+    return str(val).strip().lower() in ("true", "1", "yes", "y", "eligible")
 
 
 def safe_pct(obtained, total):
