@@ -9,6 +9,7 @@ BigQuery for analysis. One folder per upstream source.
 |---|---|---|---|
 | PLFS (India) | [`plfs/`](plfs/) | Active | Periodic Labour Force Survey — MoSPI unit-level microdata across 11 releases (2018-19 → CY2025). Heavy local parsing → 6 `plfs_*` tables. |
 | NIRF (India) | [`nirf/`](nirf/) | Active | National Institutional Ranking Framework — rankings + admissions/placements/strength data, top-200 institutes across 9 disciplines, 2016-2025. Light pipeline (parquet → GCS → BQ) → 4 `nirf_fact_*` tables. |
+| JNV JEE Mains | [`jnv/`](jnv/) | Active | JEE Mains results for Jawahar Navodaya Vidyalaya students, 2021–2026. Heavy transform with codemap-driven schema normalisation (aligned with `fact_student_jee_main_results`) → 1 `jnv_fact_jee_mains_results` table. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables

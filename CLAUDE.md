@@ -18,6 +18,7 @@ when an upstream publishes a new release. No orchestrator, no schedule.
 external_data_sources/
 ├── README.md            # top-level: sources list + conventions
 ├── CLAUDE.md            # this file
+├── requirements.txt     # shared Python deps for all sources
 ├── .gitignore           # cross-cutting only (.DS_Store, __pycache__, .venv)
 ├── plfs/                # one folder per source
 │   ├── README.md
@@ -29,12 +30,22 @@ external_data_sources/
 │   ├── clean/
 │   ├── analyses/
 │   └── .gitignore       # source-specific
-└── nirf/                # …another source
+├── nirf/                # …another source
+│   ├── README.md
+│   ├── CLAUDE.md
+│   ├── scripts/
+│   ├── schemas/
+│   ├── raw/             # source artifacts before upload (gitignored)
+│   └── .gitignore
+└── jnv/                 # JNV JEE Mains results pipeline
     ├── README.md
     ├── CLAUDE.md
+    ├── codemaps/        # per-year column mapping configs (Python)
+    │   └── mains/
     ├── scripts/
     ├── schemas/
-    ├── raw/             # source artifacts before upload (gitignored)
+    ├── raw/             # source Excel files (gitignored)
+    ├── clean/           # transformed CSV output (gitignored)
     └── .gitignore
 ```
 
@@ -54,15 +65,17 @@ only covers cross-cutting conventions.
   into `avantifellows.external_data_sources.*`, with tables named
   `<source>_<kind>_<name>` — e.g. `plfs_fact_persons`, `nirf_fact_rankings`,
   `udise_dim_school` (when those exist). The dataset is in `asia-south1`.
-  > Historical note: PLFS was originally targeted at a per-source `plfs`
-  > dataset and its current `CLAUDE.md` still says so. PLFS hasn't been
-  > loaded to BQ yet — it'll move to the shared dataset on first load.
 - **GCS as the raw staging layer (when applicable).** For sources whose
   upstream is already analyst-clean (parquet/CSV/NDJSON), the raw files
   live at `gs://avantifellows-external-data/<source>/`, and the loader
   reads from GCS via `client.load_table_from_uri`. For sources that need
   real local parsing (PLFS), raw + clean stay on local disk and the
   loader uploads from a pandas DataFrame. Both patterns are first-class.
+- **Raw data backed up to GCS for gated sources.** If upstream requires a
+  manual download (e.g. PLFS from microdata.gov.in), back up the raw files
+  to `gs://avantifellows-external-data/<source>/raw/<release_id>/` after
+  each download. For releases already on GCS, pull from there rather than
+  re-downloading from the source.
 - **One-shot loader.** Each source has `scripts/load_bq.py` (or equivalent)
   that writes BQ tables. Idempotent. No DAG framework, no schedule.
 - **Raw data gitignored; reference docs committed.** Manuals, layouts,
@@ -76,9 +89,11 @@ only covers cross-cutting conventions.
   `<source>/schemas/`, named to match the table (e.g.
   `schemas/nirf_fact_rankings.yaml`). Documentation today; can be wired
   in as explicit BQ schemas later if type control is needed.
-- **Python venv per source**, not at the repo root. Each source's
-  README documents its setup. Different sources may use different Python
-  versions or dependency managers.
+- **Shared `requirements.txt` at the repo root.** All sources use the same
+  Python dependencies. Each source still creates its own `.venv` (run
+  `python3.13 -m venv .venv && .venv/bin/pip install -r ../requirements.txt`
+  from inside the source folder). If a future source needs a conflicting
+  dependency, split it into a per-source `requirements.txt` at that point.
 
 ## Adding a new source
 
@@ -113,5 +128,9 @@ Two patterns, two examples:
   pandas DataFrame → BQ. Use when upstream isn't analyst-ready.
 - [`nirf/`](nirf/) — light pass-through. Already-clean parquet → GCS →
   BQ via `load_table_from_uri`. Use when upstream is analyst-ready.
+- [`jnv/`](jnv/) — heavy transform with codemap-driven config. Raw Excel
+  files → schema-normalised CSV → parquet → GCS → BQ. Introduces the
+  codemap pattern: all year-specific column mappings live outside the
+  script, making the engine zero-config for new years.
 
 See `<source>/CLAUDE.md` for the full orientation of either.

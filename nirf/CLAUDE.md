@@ -41,7 +41,7 @@ downstream reads from there.
 ```bash
 # Local Python env
 python3.13 -m venv .venv
-.venv/bin/pip install pandas pyarrow google-cloud-bigquery google-cloud-storage
+.venv/bin/pip install -r ../requirements.txt
 
 # Drop the parquet files into raw/ first (filenames must match sources.py):
 #   raw/nirf_rankings.parquet

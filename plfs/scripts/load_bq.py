@@ -6,13 +6,13 @@ Reads from:
   - codemaps/*.csv                   (code → label lookups; see build_codemaps.py)
   - scripts/releases.py              (release registry — single source of truth)
 
-Writes 6 tables to the target dataset (default: `plfs`):
-  - {ds}.persons       (~10.5M rows, fact)
-  - {ds}.households    (~2.5M rows, fact)
-  - {ds}.releases      (11 rows, registry)
-  - {ds}.dim_nco       (~2.7k rows, full occupation hierarchy in one wide table)
-  - {ds}.dim_nic       (~1.3k rows, full industry hierarchy in one wide table)
-  - {ds}.dim_geo       (~700 rows, state + district)
+Writes 6 tables to the target dataset (default: `external_data_sources`):
+  - {ds}.plfs_fact_persons       (~10.5M rows, fact)
+  - {ds}.plfs_fact_households    (~2.5M rows, fact)
+  - {ds}.plfs_fact_releases      (11 rows, registry)
+  - {ds}.plfs_dim_nco            (~2.7k rows, full occupation hierarchy in one wide table)
+  - {ds}.plfs_dim_nic            (~1.3k rows, full industry hierarchy in one wide table)
+  - {ds}.plfs_dim_geo            (~700 rows, state + district)
 
 Labels for small enums (sex, religion, sector, marital_status, education levels,
 activity status, enterprise type, job contract, social security, …) are
@@ -24,7 +24,7 @@ first release, WRITE_APPEND for subsequent — but the truncate makes the whole
 load atomic per table).
 
 Usage:
-  python3 scripts/load_bq.py                              # full load to plfs
+  python3 scripts/load_bq.py                              # full load to external_data_sources
   python3 scripts/load_bq.py --project my-gcp-project     # override project
   python3 scripts/load_bq.py --dataset plfs_dev           # write to a dev dataset
   python3 scripts/load_bq.py --release calendar_2025      # one release only (facts)
@@ -48,7 +48,7 @@ from weights import get_weight_fn, weight_rule_of
 
 CODEMAPS = ROOT / "codemaps"
 CLEAN = ROOT / "clean"
-DEFAULT_DATASET = "plfs"
+DEFAULT_DATASET = "external_data_sources"
 
 # Household join key columns. Both qtr (annual / pre-CY2025) and month (CY2025)
 # are included — exactly one is populated per row depending on release.
@@ -466,10 +466,10 @@ def main() -> None:
     if not args.facts_only:
         print("\n=== Dimension tables ===")
         for name, df in [
-            ("releases", build_releases_df()),
-            ("dim_nco", build_dim_nco()),
-            ("dim_nic", build_dim_nic()),
-            ("dim_geo", build_dim_geo()),
+            ("plfs_fact_releases", build_releases_df()),
+            ("plfs_dim_nco", build_dim_nco()),
+            ("plfs_dim_nic", build_dim_nic()),
+            ("plfs_dim_geo", build_dim_geo()),
         ]:
             print(f"{name}:")
             _upload(df, tbl(name), append=False, project=args.project, dry_run_dir=dry_dir)
@@ -488,15 +488,15 @@ def main() -> None:
         if p is None:
             print(f"  ⚠ no persons CSV found for {release_id}, skipping")
         else:
-            print(f"  persons:")
-            _upload(p, tbl("persons"), append=not first, project=args.project, dry_run_dir=dry_dir)
+            print(f"  plfs_fact_persons:")
+            _upload(p, tbl("plfs_fact_persons"), append=not first, project=args.project, dry_run_dir=dry_dir)
 
         h = build_households_for_release(release_id, labels)
         if h is None:
             print(f"  ⚠ no households CSV found for {release_id}, skipping")
         else:
-            print(f"  households:")
-            _upload(h, tbl("households"), append=not first, project=args.project, dry_run_dir=dry_dir)
+            print(f"  plfs_fact_households:")
+            _upload(h, tbl("plfs_fact_households"), append=not first, project=args.project, dry_run_dir=dry_dir)
 
     print("\n✓ done.")
 

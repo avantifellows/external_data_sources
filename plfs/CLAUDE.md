@@ -20,10 +20,15 @@ orchestrator and no daily schedule.
 
 ```
 microdata.gov.in        (gated source — manual download, see README §3)
-        │
+        │               For releases already on GCS, use download instead
+        │               (see "Raw data backup" below — avoids MoSPI re-download)
         ▼
 raw/data_<release>/     (gitignored — too big + MoSPI licensing)
 raw/docs_<release>/     (committed — layout XLSX + READMEs)
+        │
+        │  scripts/backup_raw_to_gcs.py upload   (GCS backup — run after each new download)
+        ▼
+gs://avantifellows-external-data/plfs/raw/<release_id>/   (backup only; not used by loader)
         │
         │  scripts/build_layouts.py   (XLSX → clean/layouts/{release}.csv)
         │  scripts/parse_data.py      (per-release source → canonical CSV)
@@ -33,7 +38,7 @@ codemaps/*.csv           (committed — small lookup tables)
         │
         │  scripts/load_bq.py
         ▼
-BigQuery `plfs` dataset  (6 tables — see "BQ schema" below)
+BigQuery `external_data_sources` dataset  (6 tables — see "BQ schema" below)
         │
         ▼
 analyses/*.py            (exploratory research scripts; today read CSVs, will move to BQ)
@@ -51,7 +56,7 @@ There is no build system — everything runs as a plain Python script.
 ```bash
 # Local Python env (only needed for scripts/load_bq.py — others run on stdlib)
 python3.13 -m venv .venv
-.venv/bin/pip install pandas pyarrow google-cloud-bigquery pyyaml
+.venv/bin/pip install -r ../requirements.txt
 
 # Regenerate the release registry CSV
 python3 scripts/releases.py
@@ -67,7 +72,7 @@ python3 scripts/parse_data.py             # all 11, ~90s
 # Validate weight calibration (Σ weight_annual should be ~1.1B per release)
 python3 scripts/weights.py
 
-# Load everything to BigQuery (dataset `plfs` in your gcloud-default project)
+# Load everything to BigQuery (dataset `external_data_sources` in your gcloud-default project)
 .venv/bin/python scripts/load_bq.py                       # full load
 .venv/bin/python scripts/load_bq.py --project <gcp> --dataset plfs_dev
 .venv/bin/python scripts/load_bq.py --release calendar_2025  # one release only
@@ -75,8 +80,34 @@ python3 scripts/weights.py
 .venv/bin/python scripts/load_bq.py --dry-run             # parquet to /tmp/plfs_bq, no upload
 ```
 
-`bq mk plfs` must be run once before the first real load — the loader does
+`bq mk external_data_sources` must be run once before the first real load — the loader does
 not auto-create the dataset.
+
+## Raw data backup
+
+Raw source files are not committed to git (too large + MoSPI licensing). They
+are backed up to GCS at `gs://avantifellows-external-data/plfs/raw/<release_id>/`
+using `scripts/backup_raw_to_gcs.py`. This is the authoritative copy for
+tracing back to the original MoSPI source.
+
+```bash
+# After downloading a new release from microdata.gov.in:
+.venv/bin/python scripts/backup_raw_to_gcs.py upload --release calendar_2025
+
+# Back up all releases that exist locally:
+.venv/bin/python scripts/backup_raw_to_gcs.py upload
+
+# Restore a release on a fresh machine (avoids re-downloading from MoSPI):
+.venv/bin/python scripts/backup_raw_to_gcs.py download --release calendar_2025
+
+# Dry-run to see what would be uploaded/downloaded:
+.venv/bin/python scripts/backup_raw_to_gcs.py upload --dry-run
+```
+
+**For releases already present on GCS, always pull from GCS rather than
+re-downloading from microdata.gov.in** — MoSPI's download process is manual
+and gated. All 11 existing releases (2018-19 → CY2025) should be on GCS
+once `upload` has been run for each.
 
 ## How releases differ (this matters)
 
@@ -108,17 +139,17 @@ all three:
 
 ## BQ schema (what `load_bq.py` produces)
 
-Six tables in the `plfs` dataset. Authoritative column-level docs in
+Six tables in the `external_data_sources` dataset. Authoritative column-level docs in
 [`schemas/*.yaml`](schemas/).
 
 | Table | Rows | Notes |
 |---|---:|---|
-| `persons` | ~10.5M | Fact. `weight_annual`, `hh_id`, `ind_pas_div` (2-digit NIC prefix), and `*_label` columns for the small enums are pre-computed/denormalized at load time. |
-| `households` | ~2.5M | Fact. `weight_annual`, `hh_id`, `mpce = hce_tot/hh_size` pre-computed. |
-| `releases` | 11 | Registry derived from `scripts/releases.py`. |
-| `dim_nco` | ~2.7k | Full NCO 2015 occupation hierarchy in one wide table (division → subdivision → group → family → full). |
-| `dim_nic` | ~1.3k | Full NIC 2008 industry hierarchy in one wide table (division → group → class → subclass). |
-| `dim_geo` | ~700 | State + district. |
+| `plfs_fact_persons` | ~10.5M | Fact. `weight_annual`, `hh_id`, `ind_pas_div` (2-digit NIC prefix), and `*_label` columns for the small enums are pre-computed/denormalized at load time. |
+| `plfs_fact_households` | ~2.5M | Fact. `weight_annual`, `hh_id`, `mpce = hce_tot/hh_size` pre-computed. |
+| `plfs_fact_releases` | 11 | Registry derived from `scripts/releases.py`. |
+| `plfs_dim_nco` | ~2.7k | Full NCO 2015 occupation hierarchy in one wide table (division → subdivision → group → family → full). |
+| `plfs_dim_nic` | ~1.3k | Full NIC 2008 industry hierarchy in one wide table (division → group → class → subclass). |
+| `plfs_dim_geo` | ~700 | State + district. |
 
 **Design calls worth knowing before you change them:**
 

@@ -1,0 +1,269 @@
+# jnv_fact_jee_mains_results
+#
+# JEE Mains results for JNV (Jawahar Navodaya Vidyalaya) students, 2021–2026.
+# One row per candidate per test_year. Schema is aligned with the production
+# dbt model fact_student_jee_main_results so analysts can join or compare
+# without re-mapping.
+#
+# Produced by: scripts/clean_jee_mains.py (codemap-driven transform)
+# Source files: raw/jee_mains/*.xlsx  (one Excel file per year/cohort)
+# GCS parquet:  gs://avantifellows-external-data/jnv/clean/jnv_fact_jee_mains_results.parquet
+# BQ table:     avantifellows.external_data_sources.jnv_fact_jee_mains_results
+
+description: JEE Mains results for JNV students — scores, ranks, board marks, and qualification flags across 2021–2026.
+grain: (test_year, application_no)
+rows: ~55000
+
+columns:
+
+  # ── Core ────────────────────────────────────────────────────────────────────
+
+  - name: test_year
+    type: STRING
+    mode: REQUIRED
+    description: JEE Mains exam year (e.g. "2026"). STRING to match fact_student_jee_main_results. Cast to INT64 in SQL if needed.
+
+  - name: test_name
+    type: STRING
+    mode: REQUIRED
+    description: Always "JEE Mains Overall". Final/overall result row only — no separate session rows.
+
+  - name: application_no
+    type: STRING
+    mode: REQUIRED
+    description: NTA application number. Unique within a test_year.
+
+  - name: student_full_name
+    type: STRING
+    description: Candidate full name as submitted to NTA.
+
+  - name: dob
+    type: STRING
+    description: Date of birth. Stored as string; format varies by source year.
+
+  - name: student_gender
+    type: STRING
+    description: "Normalised gender. Values: Male, Female, Others."
+
+  - name: category
+    type: STRING
+    description: |
+      Normalised reservation category. Values: Gen, Gen-EWS, OBC, SC, ST,
+      PWD-Gen, PWD-EWS, PWD-OBC, PWD-SC, PWD-ST.
+      Matches fact_student_jee_main_results category values exactly.
+
+  # ── Identifiers ─────────────────────────────────────────────────────────────
+
+  - name: school_code
+    type: STRING
+    description: NTA school code (SCODE_E). Available 2021–2023 only; null for 2024/2025.
+
+  - name: roll_no_s1
+    type: STRING
+    description: January session (Session 1) roll number. Available 2021–2023 only.
+
+  - name: roll_no_s2
+    type: STRING
+    description: April session (Session 2) roll number. Available 2023 only.
+
+  # ── Location ─────────────────────────────────────────────────────────────────
+
+  - name: student_state
+    type: STRING
+    description: State from candidate's Class 12 qualification.
+
+  - name: district_12
+    type: STRING
+    description: District from Class 12 qualification. Available 2021–2024 only.
+
+  - name: place_of_school
+    type: STRING
+    description: "Rural or Urban classification of the candidate's school."
+
+  - name: jnv_name
+    type: STRING
+    description: JNV school name. Available 2021, 2022, 2024, 2025 only.
+
+  - name: jnv_region
+    type: STRING
+    description: JNV regional grouping. Available 2021–2022 only.
+
+  # ── 12th Board ───────────────────────────────────────────────────────────────
+
+  - name: year_of_passing_12
+    type: FLOAT
+    description: Year candidate passed Class 12. Available all years.
+
+  - name: board_12
+    type: STRING
+    description: Class 12 board name (e.g. CBSE). Available 2021–2022 only.
+
+  - name: marks_12_obtained
+    type: FLOAT
+    description: Marks obtained in Class 12. Available 2021, 2022, 2024, 2026.
+
+  - name: marks_12_total
+    type: FLOAT
+    description: Total marks for Class 12 exam.
+
+  - name: marks_12_pct
+    type: FLOAT
+    description: Class 12 percentage. Computed from obtained/total where not directly available.
+
+  # ── 10th Board ───────────────────────────────────────────────────────────────
+
+  - name: year_of_passing_10
+    type: FLOAT
+    description: Year candidate passed Class 10. Available 2024 and 2026 only.
+
+  - name: board_10
+    type: STRING
+    description: Class 10 board name. Available 2024 only.
+
+  - name: marks_10_obtained
+    type: FLOAT
+    description: Marks obtained in Class 10. Available 2024 and 2026 only.
+
+  - name: marks_10_total
+    type: FLOAT
+    description: Total marks for Class 10 exam.
+
+  - name: marks_10_pct
+    type: FLOAT
+    description: Class 10 percentage. Computed from obtained/total where not directly available.
+
+  # ── Final Scores ─────────────────────────────────────────────────────────────
+
+  - name: appeared_for_exam
+    type: BOOLEAN
+    description: False if the candidate was absent (ABS in source or null total score); True otherwise.
+
+  - name: physics_score
+    type: FLOAT
+    description: Final Physics score (percentile for Overall rows). Null if absent.
+
+  - name: chemistry_score
+    type: FLOAT
+    description: Final Chemistry score. Null if absent.
+
+  - name: maths_score
+    type: FLOAT
+    description: Final Mathematics score. Column is "maths_score" (not "math_score") to match fact_student_jee_main_results.
+
+  - name: total_score
+    type: FLOAT
+    description: |
+      Final overall score. For JEE Mains this is a percentile (0–100),
+      not raw marks. max_score = 300 is retained for reference only.
+
+  - name: max_score
+    type: FLOAT
+    description: Maximum possible raw marks (300). For reference only — total_score is a percentile.
+
+  # ── Session Scores ────────────────────────────────────────────────────────────
+
+  - name: physics_score_s1
+    type: FLOAT
+    description: Physics score for Session 1 (January attempt). Available 2023 and 2026-ineligible cohort only; null for all other years.
+
+  - name: chemistry_score_s1
+    type: FLOAT
+    description: Chemistry score for Session 1. See physics_score_s1 availability note.
+
+  - name: maths_score_s1
+    type: FLOAT
+    description: Mathematics score for Session 1. See physics_score_s1 availability note.
+
+  - name: total_score_s1
+    type: FLOAT
+    description: Total score for Session 1. See physics_score_s1 availability note.
+
+  - name: physics_score_s2
+    type: FLOAT
+    description: Physics score for Session 2 (April attempt). Available 2023 and 2026-ineligible cohort only; null for all other years.
+
+  - name: chemistry_score_s2
+    type: FLOAT
+    description: Chemistry score for Session 2. See physics_score_s2 availability note.
+
+  - name: maths_score_s2
+    type: FLOAT
+    description: Mathematics score for Session 2. See physics_score_s2 availability note.
+
+  - name: total_score_s2
+    type: FLOAT
+    description: Total score for Session 2. See physics_score_s2 availability note.
+
+  # ── Ranks ─────────────────────────────────────────────────────────────────────
+
+  - name: all_india_rank
+    type: FLOAT
+    description: All India Rank (general). Null for absent candidates and 2026 cohort (ranks not published).
+
+  - name: category_rank
+    type: FLOAT
+    description: |
+      Category-specific rank. For 2024, sourced directly from the "Category Rank"
+      column. For all other years, derived from the per-category rank column
+      matching the candidate's normalised category (obc_rank, sc_rank, etc.).
+
+  - name: all_india_pwd_rank
+    type: FLOAT
+    description: All India Rank for PwD candidates. Null for non-PWD categories and 2026.
+
+  - name: category_pwd_rank
+    type: FLOAT
+    description: |
+      Category-specific PwD rank. For 2024, sourced directly from source.
+      For 2025, derived from per-category PWD rank columns via post_transform.
+
+  - name: obc_rank
+    type: FLOAT
+    description: OBC category rank. Available 2021–2025 only.
+
+  - name: sc_rank
+    type: FLOAT
+    description: SC category rank. Available 2021–2025 only.
+
+  - name: st_rank
+    type: FLOAT
+    description: ST category rank. Available 2021–2025 only.
+
+  - name: ews_rank
+    type: FLOAT
+    description: EWS category rank. Available 2021–2025 only.
+
+  # ── Qualification ─────────────────────────────────────────────────────────────
+
+  - name: jee_mains_qualified
+    type: BOOLEAN
+    description: |
+      True if the candidate qualified for JEE Advanced. Sourced from the
+      "Qualified" / "JeeQualified" / REMARK column depending on year.
+      No cutoff calculation is applied — value is read directly from source.
+
+  - name: jee_advanced_qualified
+    type: BOOLEAN
+    description: Whether the candidate qualified JEE Advanced. Available 2025 only.
+
+  - name: jee_prep_qualified
+    type: BOOLEAN
+    description: Whether the candidate qualified under the prep programme criteria. Available 2025 only.
+
+  - name: adv_prep_category_rank
+    type: FLOAT
+    description: Category rank under the Advanced prep programme. Available 2025 only.
+
+  - name: adv_ineligibility_reason
+    type: STRING
+    description: |
+      NTA ineligibility reason code or message. Available 2021–2023 (from
+      NELIG_ADV / NELIG_REM columns) and the 2026 ineligible cohort
+      (long remark string explaining why the candidate is excluded).
+
+  - name: eligible
+    type: BOOLEAN
+    description: |
+      2026 only. True = candidate passed Class 12 in 2025 or later (eligible
+      for 2026 JEE). False = candidate passed before 2025 (not eligible).
+      Null for all years other than 2026.
