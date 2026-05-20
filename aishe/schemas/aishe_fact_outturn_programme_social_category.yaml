@@ -6,7 +6,7 @@
 # rows for 2021-22.
 #
 # Source sheet: 34a.
-# Source parquet: gs://avantifellows-external-data/aishe/outturn_programme_social_category.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/outturn_programme_social_category.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_outturn_programme_social_category
 #
 # Validation: sum(out_turn where social_category='All Categories' and

@@ -5,7 +5,7 @@
 # 3 observed years; estimates floored at 0. These are MODEL ESTIMATES, not
 # AISHE-published figures — use for directional capacity planning only.
 #
-# Source parquet: gs://avantifellows-external-data/aishe/ug_discipline_extrapolated.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/ug_discipline_extrapolated.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_ug_discipline_extrapolated
 
 description: Linear extrapolation of UG enrolment + out-turn by discipline to 2024-26. Model estimates, not published data.

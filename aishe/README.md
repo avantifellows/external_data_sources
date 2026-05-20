@@ -20,12 +20,21 @@ raw/aishe_<year>_final_report.xlsx          (local; gitignored)
        │ scripts/clean_aishe.py
        ▼
 clean/*.parquet                             (local; gitignored)
-       │ scripts/upload_to_gcs.py
+       │ scripts/upload_to_gcs.py   (uploads raw sheets + clean tables, both as parquet)
        ▼
-gs://avantifellows-external-data/aishe/*.parquet
+gs://avantifellows-external-data/aishe/raw/<year>/<sheet>.parquet     (traceability)
+gs://avantifellows-external-data/aishe/clean/<table>.parquet          (loaded to BQ)
        │ scripts/load_bq.py
        ▼
 avantifellows.external_data_sources.aishe_*   (asia-south1, 7 tables)
+```
+
+## GCS layout
+
+```
+gs://avantifellows-external-data/
+  aishe/raw/<year>/<sheet>.parquet     ← faithful dump of each source sheet (traceability)
+  aishe/clean/<table>.parquet          ← the 7 parsed tables; load_bq.py loads these
 ```
 
 The single source of truth for filenames, GCS URIs, and BQ destinations is
@@ -81,17 +90,20 @@ gcloud auth application-default login   # for upload + load
 # 2. parse the workbooks -> clean/*.parquet
 .venv/bin/python scripts/clean_aishe.py
 
-# 3. stage to GCS
-.venv/bin/python scripts/upload_to_gcs.py            # --dry-run to preview
-.venv/bin/python scripts/upload_to_gcs.py --dry-run
+# 3. stage to GCS — uploads raw sheets + clean tables (both parquet)
+.venv/bin/python scripts/upload_to_gcs.py --dry-run   # preview
+.venv/bin/python scripts/upload_to_gcs.py             # raw + clean
+#   …or just one side: --raw-only / --clean-only
 
-# 4. load to BigQuery
-.venv/bin/python scripts/load_bq.py                  # --dry-run to preview
+# 4. load the clean tables to BigQuery
+.venv/bin/python scripts/load_bq.py --dry-run         # preview
+.venv/bin/python scripts/load_bq.py
 ```
 
-All three runtime scripts accept `--table <bq_name>` to operate on a single
-table and `--dry-run` to preview without side effects. `load_bq.py` uses
-`WRITE_TRUNCATE`, so each load fully replaces its destination table.
+`upload_to_gcs.py` takes `--raw-only` / `--clean-only` / `--dry-run`;
+`load_bq.py` takes `--table <bq_name>` / `--dry-run` and uses `WRITE_TRUNCATE`,
+so each load fully replaces its destination table. Only the clean tables are
+loaded to BQ — the raw parquet on GCS is for traceability.
 
 ## Caveat — the discipline × social-category rollup
 

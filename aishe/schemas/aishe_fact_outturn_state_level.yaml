@@ -5,7 +5,7 @@
 # 3 gender = 864 rows for 2021-22.
 #
 # Source sheet: 33OutTurnState in the Final Report workbook.
-# Source parquet: gs://avantifellows-external-data/aishe/outturn_state_level.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/outturn_state_level.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_outturn_state_level
 
 description: AISHE out-turn by state/UT, level, and gender (Table 33).

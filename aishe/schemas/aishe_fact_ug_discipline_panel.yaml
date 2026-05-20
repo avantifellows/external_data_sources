@@ -5,7 +5,7 @@
 # enrolment, 35UGDisc = out-turn). Long format: one row per
 # (aishe_year, metric, discipline, gender).
 #
-# Source parquet: gs://avantifellows-external-data/aishe/ug_discipline_panel.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/ug_discipline_panel.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_ug_discipline_panel
 
 description: 3-year (2019-22) panel of UG enrolment + out-turn by discipline and gender.

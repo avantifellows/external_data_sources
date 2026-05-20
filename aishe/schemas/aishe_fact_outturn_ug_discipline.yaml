@@ -6,7 +6,7 @@
 # retained. One row per (aishe_year, discipline, gender).
 #
 # Source sheet: 35UGDisc.
-# Source parquet: gs://avantifellows-external-data/aishe/outturn_ug_discipline.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/outturn_ug_discipline.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_outturn_ug_discipline
 #
 # Validation: sum(out_turn where gender='Total') = 7,754,223, which equals the

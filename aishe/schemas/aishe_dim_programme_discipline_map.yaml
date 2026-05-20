@@ -7,7 +7,7 @@
 # aishe_fact_outturn_discipline_social_category.
 #
 # Source CSV: aishe/codemaps/programme_to_discipline.csv  (committed)
-# Source parquet: gs://avantifellows-external-data/aishe/programme_discipline_map.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/programme_discipline_map.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_dim_programme_discipline_map
 
 description: Heuristic programme-name -> AISHE discipline mapping (audit dimension for the discipline rollup).

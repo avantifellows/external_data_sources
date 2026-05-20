@@ -13,7 +13,7 @@
 # Management, Education, Commerce, IT & Computer, …). Arts and Science are
 # OVER-counted. See README for the full reliable/unreliable breakdown.
 #
-# Source parquet: gs://avantifellows-external-data/aishe/outturn_discipline_social_category.parquet
+# Source parquet: gs://avantifellows-external-data/aishe/clean/outturn_discipline_social_category.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_outturn_discipline_social_category
 
 description: AISHE out-turn rolled up from programme (Table 34a) to discipline via the codemap. Derived; degree-name based.

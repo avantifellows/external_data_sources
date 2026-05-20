@@ -19,8 +19,8 @@ aishe/
 │   ├── sources.py            # config + Table registry (single source of truth)
 │   ├── build_programme_map.py# 34a programme names -> discipline (heuristic) -> codemaps/*.csv
 │   ├── clean_aishe.py        # parse raw/*.xlsx -> clean/*.parquet (all 7 tables)
-│   ├── upload_to_gcs.py      # clean/*.parquet -> gs://avantifellows-external-data/aishe/
-│   └── load_bq.py            # GCS -> avantifellows.external_data_sources.aishe_*
+│   ├── upload_to_gcs.py      # raw sheets + clean tables -> gs://…/aishe/{raw,clean}/ (both parquet)
+│   └── load_bq.py            # GCS clean/ -> avantifellows.external_data_sources.aishe_*
 ├── schemas/                  # one YAML per BQ table
 ├── codemaps/                 # programme_to_discipline.csv (committed, auditable)
 ├── raw/                      # source workbooks (gitignored)
