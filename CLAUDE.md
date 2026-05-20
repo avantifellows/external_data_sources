@@ -18,7 +18,6 @@ when an upstream publishes a new release. No orchestrator, no schedule.
 external_data_sources/
 ├── README.md            # top-level: sources list + conventions
 ├── CLAUDE.md            # this file
-├── requirements.txt     # shared Python deps for all sources
 ├── .gitignore           # cross-cutting only (.DS_Store, __pycache__, .venv)
 ├── plfs/                # one folder per source
 │   ├── README.md
@@ -71,11 +70,6 @@ only covers cross-cutting conventions.
   reads from GCS via `client.load_table_from_uri`. For sources that need
   real local parsing (PLFS), raw + clean stay on local disk and the
   loader uploads from a pandas DataFrame. Both patterns are first-class.
-- **Raw data backed up to GCS for gated sources.** If upstream requires a
-  manual download (e.g. PLFS from microdata.gov.in), back up the raw files
-  to `gs://avantifellows-external-data/<source>/raw/<release_id>/` after
-  each download. For releases already on GCS, pull from there rather than
-  re-downloading from the source.
 - **One-shot loader.** Each source has `scripts/load_bq.py` (or equivalent)
   that writes BQ tables. Idempotent. No DAG framework, no schedule.
 - **Raw data gitignored; reference docs committed.** Manuals, layouts,
@@ -89,11 +83,9 @@ only covers cross-cutting conventions.
   `<source>/schemas/`, named to match the table (e.g.
   `schemas/nirf_fact_rankings.yaml`). Documentation today; can be wired
   in as explicit BQ schemas later if type control is needed.
-- **Shared `requirements.txt` at the repo root.** All sources use the same
-  Python dependencies. Each source still creates its own `.venv` (run
-  `python3.13 -m venv .venv && .venv/bin/pip install -r ../requirements.txt`
-  from inside the source folder). If a future source needs a conflicting
-  dependency, split it into a per-source `requirements.txt` at that point.
+- **Python venv per source**, not at the repo root. Each source's
+  README documents its setup. Different sources may use different Python
+  versions or dependency managers.
 
 ## Adding a new source
 

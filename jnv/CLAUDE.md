@@ -49,7 +49,7 @@ It declares `CANONICAL_COLS`, `COLUMN_TYPES`, and all normalisation helpers.
 ```bash
 # One-time: set up local Python env
 python3 -m venv .venv
-.venv/bin/pip install -r ../requirements.txt
+.venv/bin/pip install -r requirements.txt
 
 # 1. Transform raw Excel → clean CSV
 .venv/bin/python scripts/clean_jee_mains.py

@@ -10,7 +10,7 @@ See [`CLAUDE.md`](CLAUDE.md) for full pipeline orientation, design decisions, an
 ```bash
 # 1. Set up local Python env (from inside jnv/)
 python3 -m venv .venv
-.venv/bin/pip install -r ../requirements.txt
+.venv/bin/pip install -r requirements.txt
 
 # 2. Drop raw Excel files into raw/jee_mains/ (filenames must match sources.py → RAW_FILES)
 
