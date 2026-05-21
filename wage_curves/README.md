@@ -91,10 +91,17 @@ PLFS wage anchors come from [`../plfs/analyses/wage_by_discipline.py`](../plfs/a
 - **NIRF `graduating_on_time` undercounts IITs/NITs/IIITs** (inconsistent 4-yr/5-yr
   program reporting) — so the public engineering tiers are sized from JoSAA seats,
   not NIRF counts. Private colleges report completely and keep their NIRF counts.
-- **PLFS reconciles cleanly only for Engineering & Agriculture** (true degree
-  buckets). Law uses an occupation anchor (employed lawyers ≠ all law grads);
-  Medical's AISHE total is a degree-mixed cluster (MBBS+BDS+AYUSH+nursing), so its
-  tail isn't back-solved — wages are segmented by degree in `medical_salaries.csv`.
+- **Wage anchors by basis**: Engineering uses the PLFS *degree* bucket; Law and
+  Agriculture use PLFS *occupation* wages (NCO 261 legal; NCO 131+213 agri —
+  blended salaried+self) since their degree buckets are unusable (law not
+  separable; agri n too small); Medical uses occupation wages (doctor/dentist/
+  nurse). Occupation wages describe those *working in the field* (≠ all grads).
+- **Placement rate** = PLFS young-cohort employment (WPR) per discipline,
+  back-solved for the non-NIRF tiers. NIRF "placement" is a campus-offer %, PLFS
+  is observed employment % — mixed first-order. Watch: Agri Others (35.5%) > Agri
+  NIRF (29.6%) because agri grads favour PG/govt over campus placement; and
+  Medical's 50.6% is the discipline WPR (young, depressed by residency/PG pipeline
+  — actual doctor employment is higher).
 - **Vintage drift**: NIRF 2022 / AISHE 2021-22 / PLFS 2022-23 / JoSAA 2022 /
   NMC 2024-25 / BDS 2025-26. Aligned to ~2021-22 where possible.
 - **MBA dropped** (PG; AISHE parquet is UG-only and NIRF management placement

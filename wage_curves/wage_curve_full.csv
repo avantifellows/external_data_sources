@@ -1,14 +1,14 @@
-discipline,tier,institutes,graduates,share_in_disc_pct,share_all_pct,placement_pct,median_wage_inr,wage_source
+discipline,tier,institutes,graduates,share_in_disc_pct,share_all_pct,placement_pct,median_wage_inr,source
 Engineering,IIT,23,15436,1.9,0.2,78.7,1303865,"NIRF 2022 median; grads = JoSAA 16,598 seats × 93%"
 Engineering,IIIT,26,6627,0.8,0.09,64.4,1319861,"NIRF 2022 median; grads = JoSAA 7,126 seats × 93%"
 Engineering,NIT,31,22314,2.7,0.29,78.3,717327,"NIRF 2022 median; grads = JoSAA 23,994 seats × 93%"
 Engineering,Top Colleges (rest of top-200 NIRF),144,143015,17.2,1.84,69.7,571998,NIRF 2022 median + graduating_on_time
-Engineering,Others (non-NIRF),,642234,77.4,8.28,,267786,"PLFS-anchored back-solve (Eng degree 22-28 = ₹360,000)"
-Medical,Govt Medical (MBBS+BDS),,59864,19.9,0.77,,521143,"PLFS doctor ₹540,000/dentist ₹240,000; seats MBBS 60,324+BDS 4,046×93%"
-Medical,Pvt Medical (MBBS+BDS),,76107,25.2,0.98,,452129,"PLFS doctor ₹540,000/dentist ₹240,000; seats MBBS 57,866+BDS 23,970×93%"
-Medical,Others (AYUSH/Nursing/allied),,165508,54.9,2.13,,192000,PLFS NCO-222 nursing/allied (young); residual of AISHE Medical Science
+Engineering,Others (non-NIRF),,642234,77.4,8.28,51.4,267786,"PLFS back-solve (Eng degree ₹360,000, WPR 55.9%)"
+Medical,Govt Medical (MBBS+BDS),,59864,19.9,0.77,50.6,521143,"PLFS doctor ₹540,000/dentist ₹240,000; WPR 50.6% (Medicine&Health; doctor occ. higher); seats MBBS 60,324+BDS 4,046×93%"
+Medical,Pvt Medical (MBBS+BDS),,76107,25.2,0.98,50.6,452129,"PLFS doctor ₹540,000/dentist ₹240,000; WPR 50.6% (Medicine&Health; doctor occ. higher); seats MBBS 57,866+BDS 23,970×93%"
+Medical,Others (AYUSH/Nursing/allied),,165508,54.9,2.13,50.6,192000,PLFS NCO-222 nursing/allied; WPR 50.6%; residual of AISHE Medical Science
 Agriculture,NIRF ranked,36,14052,20.5,0.18,29.6,492448,NIRF 2023 median
-Agriculture,Others (non-NIRF),,54625,79.5,0.7,,190146,"PLFS-anchored back-solve (Agri degree = ₹252,000; small n)"
+Agriculture,Others (non-NIRF),,54625,79.5,0.7,35.5,250494,"PLFS back-solve (occupation NCO 131+213 ₹300,000, WPR 34.3%)"
 Law,NIRF ranked,28,3695,3.4,0.05,61.7,783159,NIRF 2022 median
-Law,Others (non-NIRF),,104250,96.6,1.34,,158622,"PLFS-anchored back-solve (General graduate ₹180,000; law not separable in PLFS)"
-Others (general),All non-NIRF disciplines,,6446494,100.0,83.14,,180000,PLFS General graduate/PG 22-28; Arts/Commerce/Science/IT/Mgmt/Education/…
+Law,Others (non-NIRF),,104250,96.6,1.34,37.7,282875,"PLFS back-solve (occupation NCO 261 legal ₹300,000, WPR 38.5%)"
+Others (general),All non-NIRF disciplines,,6446494,100.0,83.14,38.5,180000,"PLFS General graduate/PG (wage ₹180,000, WPR 38.5%); Arts/Commerce/Science/IT/Mgmt/…"
