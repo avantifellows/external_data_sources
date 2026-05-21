@@ -50,6 +50,7 @@ Agriculture; everything else collapses to "General graduate/PG"):
 | `build_wage_curve.py` + `nirf_engineering_tiers.sql` | Engineering tiered curve (IIT/NIT/IIIT/Other-NIRF/tail), seat-corrected publics |
 | `build_discipline_summary.py` → `discipline_summary.csv` | Cross-discipline summary (NIRF elite vs AISHE vs PLFS, one row/discipline) |
 | `general_grad_occupations.py` → `general_grad_occupations.csv` | Occupation profile of general (non-technical) grads — decomposes the flat "Others (general)" row by NCO occupation (share + wage) |
+| `wage_growth.py` → `wage_growth.csv` | Age 25→40 wage growth: PLFS age-wage profile per discipline + NIRF-elite projection (PLFS-rate ×1.7 floor vs 9% elite CAGR) |
 | `josaa_2022_seats.csv` + `extract_*`† | Public-tier UG seat counts (JoSAA 2022) |
 | `iit_nit_iiit_institutes_avanti_db.csv` + `extract_avanti_college_db.py` | Per-institute IIT/NIT/IIIT reference (counts + placement) |
 | `govt_medical_seats.csv` + `medical_salaries.csv` + `extract_govt_medical_seats.py` | Govt MBBS/BDS seats + credible doctor/dentist wages |
@@ -86,6 +87,12 @@ PLFS wage anchors come from [`../plfs/analyses/wage_by_discipline.py`](../plfs/a
 - `iit_nit_iiit_institutes_avanti_db.csv` — Avanti College DB (`_institute_lookup.csv` + `college_database.csv`)
 - `govt_medical_seats.csv` — MBBS from repo `nmc/` source; BDS from Avanti College DB (DCI/MCC)
 - `medical_salaries.csv` — PLFS NCO-221/226 (doctors/dentists) + 7th Pay Commission junior-resident scale
+- `wage_growth.csv` — PLFS age-wage profile (annual_2022_23); elite 9% CAGR anchored to IIT
+  alumni salary data (start ₹8-15L → ₹30-60L mid-career → ₹50L-1cr senior ⇒ ~8-10% 15-yr CAGR).
+  Caveat: top-campus entry wages ↓~22% real since 2010 & IIT placement <70%. Sources:
+  [IITian earnings 5-10y (Quora)](https://www.quora.com/How-much-does-an-IITian-earn-after-5-10-years-of-work-experience) ·
+  [Top Talent, Elite Colleges & Migration: Evidence from the IITs, J.Dev.Econ](https://www.sciencedirect.com/science/article/pii/S0304387823000755) ·
+  [Diminishing Returns of Higher Education in India](https://www.puirp.com/index.php/research/article/view/53)
 
 ## Caveats (also documented in-script)
 
