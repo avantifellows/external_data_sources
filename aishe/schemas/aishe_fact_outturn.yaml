@@ -1,0 +1,75 @@
+# aishe_fact_outturn
+#
+# Single denormalized AISHE out-turn (graduates) fact. Unifies three published
+# cuts into one grain, using the sentinel "All" for dimensions a cut doesn't
+# break out (the same way AISHE reports Total gender / All Categories):
+#
+#   Table 33  state × level (2021-22)            → level, state set;       discipline/programme/social_category = "All"
+#   Table 34a programme × social cat (2021-22)   → programme, social set;  level/state/discipline = "All"
+#   Table 35  UG discipline (2019-20 → 2021-22)  → level="Under Graduate", discipline set; state/programme/social_category = "All"
+#
+# QUERY BY FILTERING TO ONE SLICE — never SUM(out_turn) across rows of different
+# grain (e.g. a state= row plus a state="All" row). Worked slices:
+#   state × level:      programme="All" AND discipline="All" AND social_category="All"
+#   programme × social: state="All" AND discipline="All" AND level="All"
+#   UG by discipline:   state="All" AND programme="All" AND social_category="All" AND level="Under Graduate"
+#
+# Derived cuts (discipline × social rollup, 2025-26 projection) are in analyses/,
+# not tables. See analyses/README.md.
+#
+# Source parquet: gs://avantifellows-external-data/aishe/clean/outturn.parquet
+# BQ table:       avantifellows.external_data_sources.aishe_fact_outturn
+#
+# Validation: 2021-22 UG out-turn (gender=Total) = 7,754,223 via BOTH the state
+# slice and the discipline slice (Tables 33 and 35 reconcile).
+
+description: AISHE out-turn (graduates), one wide fact across state×level, programme×social-category, and UG discipline. "All" = dimension not broken out on that slice.
+rows: 6654
+grain: (aishe_year, level, state, discipline, programme, social_category, gender)
+
+columns:
+  - name: aishe_year
+    type: STRING
+    mode: REQUIRED
+    description: AISHE survey year. "2021-22" for all cuts; the discipline slice also has "2019-20" and "2020-21" for trend.
+
+  - name: level
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Programme level (Ph.D., M.Phil., Post Graduate, Under Graduate, PG Diploma,
+      Diploma, Certificate, Integrated) on the state slice; "Under Graduate" on
+      the discipline slice; "All" (all levels combined) on the programme slice.
+
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State/UT on the state×level slice; "All" elsewhere.
+
+  - name: discipline
+    type: STRING
+    mode: REQUIRED
+    description: AISHE major discipline (subject-based, Table 35) on the discipline slice; "All" elsewhere.
+
+  - name: programme
+    type: STRING
+    mode: REQUIRED
+    description: Degree programme (B.A., B.Tech., MBBS, …) on the programme slice; "All" elsewhere.
+
+  - name: social_category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      On the programme slice: All Categories, Scheduled Caste, Scheduled Tribe,
+      Other Backward Classes, Persons with Disability, Muslim, Other Minority
+      Communities, EWS (these overlap — don't sum across them). "All" elsewhere.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: Male, Female, or Total.
+
+  - name: out_turn
+    type: INTEGER
+    mode: REQUIRED
+    description: Number of qualifiers (graduates) for that cell. 0 where the report is blank.

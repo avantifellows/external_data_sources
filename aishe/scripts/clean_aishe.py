@@ -1,37 +1,35 @@
 """
-Parse the AISHE Final Report workbooks in raw/ into the tidy parquet tables
-registered in sources.py, written to clean/.
+Parse the AISHE Final Report workbooks in raw/ into the single denormalized
+out-turn fact (clean/outturn.parquet → BQ aishe_fact_outturn).
 
-Produces (one parquet per BQ table):
-  outturn_state_level.parquet                 Table 33  — out-turn by state x level
-  outturn_ug_discipline.parquet               Table 35  — UG out-turn by discipline
-  outturn_programme_social_category.parquet   Table 34a — out-turn by programme x social category
-  outturn_discipline_social_category.parquet  derived   — 34a rolled up to discipline via the codemap
-  programme_discipline_map.parquet            codemap   — codemaps/programme_to_discipline.csv as a dim
-  ug_discipline_panel.parquet                 Tables 12 + 35 across 2019-20..2021-22
-  ug_discipline_extrapolated.parquet          derived   — linear projection of the panel to 2024-26
+The fact unifies three published cuts into one grain, using the sentinel "All"
+for dimensions a given cut doesn't break out:
 
-The single-year out-turn cuts (Tables 33/34a/35) come from the 2021-22 report
-and carry aishe_year = "2021-22" so future reports can be appended.
+  Table 33  state × level             → (year, level, state, "All","All","All", gender)
+  Table 34a programme × social cat    → (year, "All","All","All", programme, social_category, gender)
+  Table 35  UG discipline (3 years)   → (year, "Under Graduate","All", discipline, "All","All", gender)
+
+Grain: (aishe_year, level, state, discipline, programme, social_category, gender) → out_turn
+
+Query by filtering to one slice; never SUM across rows of different grain.
+See analyses/README.md for the questions and worked slices.
 
 Usage:
-  python3 scripts/clean_aishe.py             # parse everything -> clean/*.parquet
-  python3 scripts/clean_aishe.py --table aishe_fact_outturn_state_level
+  python3 scripts/clean_aishe.py
 """
 from __future__ import annotations
 
-import argparse
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 import openpyxl
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import CLEAN, CODEMAPS, REPORTS, TABLES
+from sources import CLEAN, OUTTURN_YEAR, REPORTS, SENTINEL, TABLES
 
-OUTTURN_YEAR = "2021-22"   # the single-year out-turn cuts come from this report
+COLUMNS = ["aishe_year", "level", "state", "discipline", "programme",
+           "social_category", "gender", "out_turn"]
 
 LEVELS = [
     "Ph.D.", "M.Phil.", "Post Graduate", "Under Graduate",
@@ -55,19 +53,27 @@ def _wb(year: str):
     return openpyxl.load_workbook(path, data_only=True)
 
 
-def _sheet(wb, *normalized_names):
-    """Find a sheet whose space-stripped lowercase name matches any candidate."""
-    want = {n.replace(" ", "").lower() for n in normalized_names}
+def _sheet(wb, *names):
+    want = {n.replace(" ", "").lower() for n in names}
     for s in wb.sheetnames:
         if s.replace(" ", "").lower() in want:
             return wb[s]
-    raise SystemExit(f"no sheet matching {normalized_names} (have: {wb.sheetnames})")
+    raise SystemExit(f"no sheet matching {names} (have: {wb.sheetnames})")
 
 
-# ─── Table 33: state x level out-turn ─────────────────────────────────────────
-def parse_state_level(wb) -> pd.DataFrame:
+def _row(year, level, state, discipline, programme, social_category, gender, out_turn):
+    return {
+        "aishe_year": year, "level": level, "state": state,
+        "discipline": discipline, "programme": programme,
+        "social_category": social_category, "gender": gender,
+        "out_turn": int(out_turn) if isinstance(out_turn, (int, float)) else 0,
+    }
+
+
+# ─── Table 33: state × level (2021-22) ────────────────────────────────────────
+def state_level_rows(wb) -> list[dict]:
     ws = _sheet(wb, "33OutTurnState")
-    rows = []
+    out = []
     for row in ws.iter_rows(min_row=5, values_only=True):
         state = row[1]
         if state is None or not str(state).strip():
@@ -77,40 +83,15 @@ def parse_state_level(wb) -> pd.DataFrame:
             continue
         for li, level in enumerate(LEVELS):
             for gi, gender in enumerate(GENDERS):
-                val = row[2 + li * 3 + gi]
-                rows.append({
-                    "aishe_year": OUTTURN_YEAR, "state": state, "level": level,
-                    "gender": gender,
-                    "out_turn": int(val) if isinstance(val, (int, float)) else 0,
-                })
-    return pd.DataFrame(rows)
+                out.append(_row(OUTTURN_YEAR, level, state, SENTINEL, SENTINEL,
+                                SENTINEL, gender, row[2 + li * 3 + gi]))
+    return out
 
 
-# ─── Table 35: UG out-turn by discipline ──────────────────────────────────────
-def parse_ug_discipline(wb) -> pd.DataFrame:
-    ws = _sheet(wb, "35UGDisc")
-    rows = []
-    for row in ws.iter_rows(min_row=4, values_only=True):
-        disc, subj, male, female, total = row[1], row[2], row[3], row[4], row[5]
-        if disc is None:
-            continue
-        disc = str(disc).strip()
-        if disc.endswith("Total"):
-            disc = disc[: -len("Total")].strip()
-        if subj not in (None, "") and not str(disc).endswith("Total"):
-            continue
-        if not isinstance(total, (int, float)):
-            continue
-        rows.append({"aishe_year": OUTTURN_YEAR, "discipline": disc, "gender": "Male", "out_turn": int(male or 0)})
-        rows.append({"aishe_year": OUTTURN_YEAR, "discipline": disc, "gender": "Female", "out_turn": int(female or 0)})
-        rows.append({"aishe_year": OUTTURN_YEAR, "discipline": disc, "gender": "Total", "out_turn": int(total or 0)})
-    return pd.DataFrame(rows)
-
-
-# ─── Table 34a: out-turn by programme x social category ───────────────────────
-def parse_programme_social(wb) -> pd.DataFrame:
+# ─── Table 34a: programme × social category (2021-22, national, all levels) ───
+def programme_social_rows(wb) -> list[dict]:
     ws = _sheet(wb, "34a")
-    rows = []
+    out = []
     for row in ws.iter_rows(min_row=5, values_only=True):
         prog = row[1]
         if prog is None or not str(prog).strip():
@@ -118,45 +99,16 @@ def parse_programme_social(wb) -> pd.DataFrame:
         prog = str(prog).strip()
         for ci, cat in enumerate(SOCIAL_CATEGORIES):
             for gi, gender in enumerate(GENDERS):
-                col_idx = 2 + ci * 3 + gi
-                val = row[col_idx] if col_idx < len(row) else None
-                rows.append({
-                    "aishe_year": OUTTURN_YEAR, "programme": prog,
-                    "social_category": cat, "gender": gender,
-                    "out_turn": int(val) if isinstance(val, (int, float)) else 0,
-                })
-    return pd.DataFrame(rows)
+                idx = 2 + ci * 3 + gi
+                val = row[idx] if idx < len(row) else None
+                out.append(_row(OUTTURN_YEAR, SENTINEL, SENTINEL, SENTINEL,
+                                prog, cat, gender, val))
+    return out
 
 
-# ─── codemap: programme -> discipline (committed CSV -> dim) ───────────────────
-def load_programme_map() -> pd.DataFrame:
-    csv_path = CODEMAPS / "programme_to_discipline.csv"
-    if not csv_path.exists():
-        raise SystemExit(
-            f"missing codemap: {csv_path}\nRun scripts/build_programme_map.py first."
-        )
-    return pd.read_csv(csv_path, dtype=str).fillna("")
-
-
-# ─── derived: 34a rolled up to discipline via the codemap ─────────────────────
-def rollup_discipline_social(prog_df: pd.DataFrame, map_df: pd.DataFrame) -> pd.DataFrame:
-    prog_to_disc = dict(zip(map_df["programme"], map_df["discipline"]))
-    agg: dict[tuple, int] = defaultdict(int)
-    for r in prog_df.itertuples(index=False):
-        disc = prog_to_disc.get(r.programme, "Others")
-        agg[(disc, r.social_category, r.gender)] += int(r.out_turn)
-    cat_idx = {c: i for i, c in enumerate(SOCIAL_CATEGORIES)}
-    gen_idx = {g: i for i, g in enumerate(GENDERS)}
-    keys = sorted(agg, key=lambda k: (k[0], cat_idx.get(k[1], 99), gen_idx.get(k[2], 99)))
-    return pd.DataFrame([
-        {"aishe_year": OUTTURN_YEAR, "discipline": k[0], "social_category": k[1],
-         "gender": k[2], "out_turn": agg[k]}
-        for k in keys
-    ])
-
-
-# ─── 3-year UG discipline panel (Tables 12 enrolment + 35 out-turn) ───────────
-def _parse_discipline_series(ws, metric: str, year: str) -> list[dict]:
+# ─── Table 35: UG out-turn by discipline (2019-20 → 2021-22, the trend) ───────
+def _discipline_series(ws, year) -> list[dict]:
+    """35UGDisc layout shifts across years (S.No. column added in 2021-22)."""
     schema = None
     for ri in range(1, 6):
         cells = [str(c.value).strip() if c.value is not None else "" for c in ws[ri]]
@@ -173,7 +125,7 @@ def _parse_discipline_series(ws, metric: str, year: str) -> list[dict]:
     else:
         col_disc, col_subj, col_m, col_f, col_t = 1, 2, 3, 4, 5
 
-    rows = []
+    out = []
     for r in ws.iter_rows(min_row=4, values_only=True):
         if not r or len(r) <= col_t:
             continue
@@ -190,117 +142,43 @@ def _parse_discipline_series(ws, metric: str, year: str) -> list[dict]:
         if not clean or not isinstance(total, (int, float)):
             continue
         for gender, val in (("Male", male), ("Female", female), ("Total", total)):
-            rows.append({
-                "aishe_year": year, "metric": metric, "discipline": clean,
-                "gender": gender, "value": int(val) if isinstance(val, (int, float)) else 0,
-            })
-    return rows
+            out.append(_row(year, "Under Graduate", SENTINEL, clean, SENTINEL,
+                            SENTINEL, gender, val))
+    return out
 
 
-def parse_panel() -> pd.DataFrame:
-    all_rows = []
-    for year in REPORTS:
-        wb = _wb(year)
-        enrol = _sheet(wb, "12UGDisc")
-        outturn = _sheet(wb, "35UGDisc")
-        all_rows += _parse_discipline_series(enrol, "enrolment", year)
-        all_rows += _parse_discipline_series(outturn, "out_turn", year)
-    return pd.DataFrame(all_rows)
-
-
-# ─── derived: linear projection of the panel to 2024-25 / 2025-26 ─────────────
-YEAR_INDEX = {"2019-20": 2019, "2020-21": 2020, "2021-22": 2021}
-TARGET_YEARS = {"2024-25": 2024, "2025-26": 2025}
-EXCLUDE_DISCIPLINES = {"Grand", "All India", "Grand Total", "Total"}
-
-
-def _linear_fit(xs, ys):
-    n = len(xs)
-    if n < 2:
-        return 0.0, ys[0] if ys else 0.0
-    mx, my = sum(xs) / n, sum(ys) / n
-    den = sum((x - mx) ** 2 for x in xs)
-    if den == 0:
-        return 0.0, my
-    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / den
-    return slope, my - slope * mx
-
-
-def extrapolate(panel_df: pd.DataFrame) -> pd.DataFrame:
-    by_key: dict[tuple, list] = defaultdict(list)
-    for r in panel_df.itertuples(index=False):
-        disc = r.discipline.strip()
-        if disc in EXCLUDE_DISCIPLINES or disc.startswith("Grand"):
-            continue
-        yr = YEAR_INDEX.get(r.aishe_year)
-        if yr is None:
-            continue
-        by_key[(r.metric, disc, r.gender)].append((yr, int(r.value)))
-
+def discipline_rows() -> list[dict]:
     out = []
-    for (metric, disc, gender), points in sorted(by_key.items()):
-        if len(points) < 2:
-            continue
-        points.sort()
-        xs = [p[0] for p in points]
-        ys = [p[1] for p in points]
-        if max(ys) == 0:
-            continue
-        slope, intercept = _linear_fit(xs, ys)
-        base_year, base_val = xs[-1], ys[-1]
-        for label, ti in TARGET_YEARS.items():
-            est = max(0.0, slope * ti + intercept)
-            growth = ((est / base_val) - 1) * 100 if base_val else 0
-            out.append({
-                "target_year": label, "metric": metric, "discipline": disc,
-                "gender": gender, "value_estimate": int(round(est)),
-                "method": f"linear fit on {len(points)} years (2019-22)",
-                "slope_per_year": round(slope, 1),
-                "base_year": f"{base_year}-{(base_year + 1) % 100:02d}",
-                "base_year_value": base_val,
-                "years_extrapolated": ti - base_year,
-                "growth_pct_total": round(growth, 1),
-            })
-    return pd.DataFrame(out)
-
-
-def build_all() -> dict[str, pd.DataFrame]:
-    wb2122 = _wb(OUTTURN_YEAR)
-    prog_df = parse_programme_social(wb2122)
-    map_df = load_programme_map()
-    panel_df = parse_panel()
-    return {
-        "outturn_state_level.parquet": parse_state_level(wb2122),
-        "outturn_ug_discipline.parquet": parse_ug_discipline(wb2122),
-        "outturn_programme_social_category.parquet": prog_df,
-        "outturn_discipline_social_category.parquet": rollup_discipline_social(prog_df, map_df),
-        "programme_discipline_map.parquet": map_df,
-        "ug_discipline_panel.parquet": panel_df,
-        "ug_discipline_extrapolated.parquet": extrapolate(panel_df),
-    }
+    for year in REPORTS:
+        out += _discipline_series(_sheet(_wb(year), "35UGDisc"), year)
+    return out
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--table", default=None, help="Build only this BQ table (e.g. aishe_fact_outturn_state_level)")
-    args = ap.parse_args()
+    wb2122 = _wb(OUTTURN_YEAR)
+    rows = state_level_rows(wb2122) + programme_social_rows(wb2122) + discipline_rows()
+    df = pd.DataFrame(rows, columns=COLUMNS)
+    df["out_turn"] = df["out_turn"].astype("Int64")
 
-    by_parquet = {t.parquet: t for t in TABLES}
-    frames = build_all()
     CLEAN.mkdir(parents=True, exist_ok=True)
+    out = TABLES[0].local_path
+    df.to_parquet(out, index=False, engine="pyarrow")
 
-    chosen = frames.items()
-    if args.table:
-        match = [t for t in TABLES if t.bq_name == args.table]
-        if not match:
-            raise SystemExit(f"unknown table {args.table!r}; known: {[t.bq_name for t in TABLES]}")
-        chosen = [(match[0].parquet, frames[match[0].parquet])]
-
-    print("AISHE → clean/*.parquet")
-    for parquet, df in chosen:
-        out = CLEAN / parquet
-        df.to_parquet(out, index=False, engine="pyarrow")
-        print(f"  {by_parquet[parquet].bq_name:<46} {len(df):>6,} rows → {out.name}")
+    print(f"AISHE → {out.name}: {len(df):,} rows")
+    cuts = {
+        "state × level (Table 33)": (df.state != SENTINEL).sum(),
+        "programme × social (Table 34a)": (df.programme != SENTINEL).sum(),
+        "UG discipline (Table 35, 3 yrs)": (df.discipline != SENTINEL).sum(),
+    }
+    for k, v in cuts.items():
+        print(f"  {k:<34} {v:>6,} rows")
+    # Validation: 2021-22 UG out-turn reconciles across the state and discipline cuts.
+    ug_state = df[(df.aishe_year == OUTTURN_YEAR) & (df.level == "Under Graduate")
+                  & (df.state != SENTINEL) & (df.gender == "Total")].out_turn.sum()
+    ug_disc = df[(df.aishe_year == OUTTURN_YEAR) & (df.discipline != SENTINEL)
+                 & (df.gender == "Total")].out_turn.sum()
+    print(f"  2021-22 UG out-turn: state-cut={ug_state:,}  discipline-cut={ug_disc:,}  "
+          f"{'OK' if ug_state == ug_disc == 7754223 else 'CHECK'}")
     print("✓ done.")
 
 

@@ -4,3 +4,6 @@ raw/*.xlsx
 raw/*.XLSX
 # Parsed parquet (regenerable via scripts/clean_aishe.py).
 clean/*.parquet
+
+# Analysis outputs (regenerable via analyses/*.py --save)
+analyses/out/
