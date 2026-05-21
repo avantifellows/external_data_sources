@@ -49,6 +49,7 @@ Agriculture; everything else collapses to "General graduate/PG"):
 | **`build_full_curve.py` → `wage_curve_full.csv`** | **Headline output** — every tier of every discipline, top to tail (NIRF elite + non-NIRF residuals), PLFS-anchored |
 | `build_wage_curve.py` + `nirf_engineering_tiers.sql` | Engineering tiered curve (IIT/NIT/IIIT/Other-NIRF/tail), seat-corrected publics |
 | `build_discipline_summary.py` → `discipline_summary.csv` | Cross-discipline summary (NIRF elite vs AISHE vs PLFS, one row/discipline) |
+| `general_grad_occupations.py` → `general_grad_occupations.csv` | Occupation profile of general (non-technical) grads — decomposes the flat "Others (general)" row by NCO occupation (share + wage) |
 | `josaa_2022_seats.csv` + `extract_*`† | Public-tier UG seat counts (JoSAA 2022) |
 | `iit_nit_iiit_institutes_avanti_db.csv` + `extract_avanti_college_db.py` | Per-institute IIT/NIT/IIIT reference (counts + placement) |
 | `govt_medical_seats.csv` + `medical_salaries.csv` + `extract_govt_medical_seats.py` | Govt MBBS/BDS seats + credible doctor/dentist wages |
@@ -91,11 +92,15 @@ PLFS wage anchors come from [`../plfs/analyses/wage_by_discipline.py`](../plfs/a
 - **NIRF `graduating_on_time` undercounts IITs/NITs/IIITs** (inconsistent 4-yr/5-yr
   program reporting) — so the public engineering tiers are sized from JoSAA seats,
   not NIRF counts. Private colleges report completely and keep their NIRF counts.
-- **Wage anchors by basis**: Engineering uses the PLFS *degree* bucket; Law and
-  Agriculture use PLFS *occupation* wages (NCO 261 legal; NCO 131+213 agri —
-  blended salaried+self) since their degree buckets are unusable (law not
-  separable; agri n too small); Medical uses occupation wages (doctor/dentist/
-  nurse). Occupation wages describe those *working in the field* (≠ all grads).
+- **Wage & placement use the SAME population (degree view)**: rate and wage must
+  describe one population, else you double-count a professional premium. So
+  Engineering and Agriculture use their PLFS *degree* buckets (separable); Law
+  isn't separable in PLFS → it uses the *general-graduate* bucket. The occupation
+  wages (lawyers ₹300k, agri-pros ₹300k) are kept only as side references — most
+  law grads don't practise law (see `general_grad_occupations.csv`: NCO-261 legal
+  is <0.5% of general grads), so the lawyer wage can't price all law grads.
+  Medicine is the exception: MBBS→doctor is a tight pipeline, so its occupation
+  wage ≈ the employed-grad wage.
 - **Placement rate** = PLFS young-cohort employment (WPR) per discipline,
   back-solved for the non-NIRF tiers. NIRF "placement" is a campus-offer %, PLFS
   is observed employment % — mixed first-order. Watch: Agri Others (35.5%) > Agri

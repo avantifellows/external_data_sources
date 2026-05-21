@@ -38,10 +38,13 @@ MED_CSV = ROOT / "govt_medical_seats.csv"
 OUT = ROOT / "wage_curve_full.csv"
 
 COMPLETION = 0.93                  # UG seats → graduates
-# PLFS ANNUAL wage anchors, ₹/yr
-A_ENG, A_GEN = 360_000, 180_000                # degree bucket (Eng 22-28; general catch-all)
-A_LAW, A_AGRI = 300_000, 300_000               # occupation blended salaried+self (NCO 261; NCO 131+213)
+# PLFS ANNUAL wage anchors, ₹/yr — DEGREE buckets (rate + wage on the same population).
+# Eng & Agri are separable in PLFS (own tedu codes); Law is not → it falls in the general
+# graduate bucket (A_GEN). Medicine uses occupation wages because MBBS→doctor is a tight pipeline.
+A_ENG, A_AGRI, A_GEN = 360_000, 252_000, 180_000
 W_MBBS, W_BDS, W_NURS = 540_000, 240_000, 192_000   # occupation (NCO 221 doctor / 226 dentist / 222 nurse)
+# In-field occupation wages — reference only (what those WORKING in the field earn, not all grads):
+OCC_LAW, OCC_AGRI = 300_000, 300_000                # NCO 261 legal; NCO 131+213 agri (see general_grad_occupations.csv)
 # PLFS young-cohort employment rate (WPR), % — the placement-rate anchor per discipline
 # (plfs/analyses/wage_by_discipline.py --age-min 22 --age-max 28). NIRF "placement" is a
 # campus-offer %, PLFS is observed employment %; mixed first-order, like the wages.
@@ -173,7 +176,7 @@ def main():
     w_ago = (A_AGRI * ag_total - g_ag * w_ag) / g_ago
     p_ago = (P_AGRI * ag_total - g_ag * pl_ag) / g_ago
     add("Agriculture", "Others (non-NIRF)", None, g_ago, ag_total, round(p_ago, 1), w_ago,
-        f"PLFS back-solve (occupation NCO 131+213 ₹{A_AGRI:,}, WPR {P_AGRI}%)")
+        f"PLFS agri degree ₹{A_AGRI:,}, WPR {P_AGRI}% (agri-professionals in-field earn ~₹{OCC_AGRI:,}; small n)")
 
     # ---------------- LAW ----------------
     la = nirf_rollup(["Law"], 2022)
@@ -182,10 +185,10 @@ def main():
     add("Law", "NIRF ranked", int(float(la["n_inst"])), g_la, la_total, pl_la,
         w_la, "NIRF 2022 median")
     g_lao = la_total - g_la
-    w_lao = (A_LAW * la_total - g_la * w_la) / g_lao
+    w_lao = (A_GEN * la_total - g_la * w_la) / g_lao
     p_lao = (P_GEN * la_total - g_la * pl_la) / g_lao
     add("Law", "Others (non-NIRF)", None, g_lao, la_total, round(p_lao, 1), w_lao,
-        f"PLFS back-solve (occupation NCO 261 legal ₹{A_LAW:,}, WPR {P_GEN}%)")
+        f"PLFS general-graduate ₹{A_GEN:,}, WPR {P_GEN}% (law not separable; practising lawyers in-field earn ~₹{OCC_LAW:,})")
 
     # ---------------- OTHERS (general non-NIRF) ----------------
     covered = eng_total + med_total + ag_total + la_total
