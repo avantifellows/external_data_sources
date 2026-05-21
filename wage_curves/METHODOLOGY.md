@@ -238,16 +238,29 @@ steep.
 
 ## 12. Headline output
 
-`wage_curve_full.csv` (13 rows). Engineering example, top to tail:
+**`wage_curve_full.csv`** (13 rows) is the single consolidated table. Columns:
+`discipline, tier, institutes, graduates, share_in_disc_pct, share_all_pct,
+placement_pct, start_wage_inr, wage_growth_pct_to40, wage_at_40_inr,
+growth_basis, source` — i.e. graduating-class size, placement rate, starting
+wage, growth %, and the projected wage at ~age 40, all in one place (growth per
+the §11 rule: elite 9% CAGR for NIRF-ranked engineering tiers, PLFS discipline
+multiple for the rest).
 
 ```
-IIT  15,436 grads  78.7% placed  ₹13.0L      ← 0.2% of all UG grads
-IIIT  6,627        64.4%         ₹13.2L
-NIT  22,314        78.3%         ₹7.2L
-Top Colleges 143,015  69.7%      ₹5.7L
-Others (non-NIRF) 642,234  51.4% ₹2.7L        ← 77% of engineering grads
-…
-Others (general) 6,446,494  38.5%  ₹1.8L      ← 83% of ALL UG grads
+Tier                   Grads   Place%   Start ₹   Grow%    @40 ₹
+IIT                   15,436    78.7%    13.0L     264%    47.5L     ← 0.2% of all UG grads
+IIIT                   6,627    64.4%    13.2L     264%    48.0L
+NIT                   22,314    78.3%     7.2L     264%    26.1L
+Top Colleges         143,015    69.7%     5.7L     264%    20.8L
+Eng Others (non-NIRF) 642,234   51.4%     2.7L      72%     4.6L     ← 77% of engineering grads
+Govt Medical          59,864    50.6%     5.2L     175%    14.3L
+Pvt Medical           76,107    50.6%     4.5L     175%    12.4L
+Medical Others       165,508    50.6%     1.9L     175%     5.3L
+Agriculture NIRF      14,052    29.6%     4.9L     103%    10.0L
+Agriculture Others    54,625    35.5%     1.9L     103%     3.9L
+Law NIRF               3,695    61.7%     7.8L      79%    14.0L
+Law Others           104,250    37.7%     1.6L      79%     2.8L
+Others (general)   6,446,494    38.5%     1.8L      79%     3.2L     ← 83% of ALL UG grads
 ```
 
 ---

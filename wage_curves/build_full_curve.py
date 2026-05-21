@@ -50,6 +50,20 @@ OCC_LAW, OCC_AGRI = 300_000, 300_000                # NCO 261 legal; NCO 131+213
 # campus-offer %, PLFS is observed employment %; mixed first-order, like the wages.
 # Law has no PLFS degree bucket → uses the general-graduate WPR (P_GEN).
 P_ENG, P_MED, P_AGRI, P_GEN = 55.9, 50.6, 34.3, 38.5
+# Wage growth to ~age 40 (see wage_growth.py). PLFS cross-sectional 25→40 multiples
+# per discipline; NIRF-ranked ENGINEERING tiers sit above PLFS's range, so they get an
+# elite CAGR instead (9%/yr × 15y, anchored to IIT alumni data — see METHODOLOGY §11).
+ELITE_CAGR = 0.09
+ELITE_MULT = round((1 + ELITE_CAGR) ** 15, 2)            # ≈ 3.64
+GROWTH_PLFS = {"Engineering": 1.72, "Medical": 2.75, "Agriculture": 2.03,
+               "Law": 1.79, "Others (general)": 1.79}
+
+
+def growth_for(disc, tier):
+    """(multiple to age 40, basis label) for a row."""
+    if disc == "Engineering" and not tier.startswith("Others"):
+        return ELITE_MULT, f"elite {ELITE_CAGR:.0%} CAGR ×15y (above PLFS range)"
+    return GROWTH_PLFS.get(disc, 1.79), f"PLFS {disc} 25→40"
 
 
 def bq(sql):
@@ -117,11 +131,16 @@ def main():
     grand = aishe_grand()   # all-India UG graduating class, all disciplines
 
     def add(disc, tier, inst, grads, total, place, wage, src):
+        mult, gbasis = growth_for(disc, tier)
         rows.append(dict(discipline=disc, tier=tier, institutes=inst,
                          graduates=round(grads),
                          share_in_disc_pct=round(grads / total * 100, 1),
                          share_all_pct=round(grads / grand * 100, 2),
-                         placement_pct=place, median_wage_inr=round(wage) if wage else None,
+                         placement_pct=place,
+                         start_wage_inr=round(wage) if wage else None,
+                         wage_growth_pct_to40=round((mult - 1) * 100) if wage else None,
+                         wage_at_40_inr=round(wage * mult) if wage else None,
+                         growth_basis=gbasis if wage else "",
                          source=src))
 
     # ---------------- ENGINEERING ----------------
@@ -198,19 +217,20 @@ def main():
 
     # ---- write + print ----
     cols = ["discipline", "tier", "institutes", "graduates", "share_in_disc_pct",
-            "share_all_pct", "placement_pct", "median_wage_inr", "source"]
+            "share_all_pct", "placement_pct", "start_wage_inr",
+            "wage_growth_pct_to40", "wage_at_40_inr", "growth_basis", "source"]
     with OUT.open("w", newline="") as f:
         w = csvmod.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
 
     print(f"Wrote {ROOT.name}/{OUT.name}  ({len(rows)} rows)\n")
-    print(f'{"Discipline":<16}{"Tier":<35}{"Inst":>5}{"Grads":>10}{"%disc":>6}{"%all":>6}{"Place%":>7}{"₹/yr":>11}')
-    print("-" * 102)
+    print(f'{"Discipline":<16}{"Tier":<34}{"Grads":>10}{"%all":>6}{"Place%":>7}'
+          f'{"Start ₹":>11}{"Grow%":>7}{"@40 ₹":>12}')
+    print("-" * 103)
     for r in rows:
-        print(f'{r["discipline"]:<16}{r["tier"]:<35}'
-              f'{(str(r["institutes"]) if r["institutes"] else "—"):>5}'
-              f'{r["graduates"]:>10,}{r["share_in_disc_pct"]:>6}{r["share_all_pct"]:>6}'
+        print(f'{r["discipline"]:<16}{r["tier"][:34]:<34}'
+              f'{r["graduates"]:>10,}{r["share_all_pct"]:>6}'
               f'{(str(r["placement_pct"]) if r["placement_pct"] else "—"):>7}'
-              f'{r["median_wage_inr"]:>11,}')
+              f'{r["start_wage_inr"]:>11,}{r["wage_growth_pct_to40"]:>6}%{r["wage_at_40_inr"]:>12,}')
 
 
 def se_count(tier):

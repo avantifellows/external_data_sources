@@ -97,8 +97,8 @@ def eng_tiers_start():
     """Engineering tier start wages (₹/yr) from the full curve."""
     out = {}
     for r in csv.DictReader(FULL.open()):
-        if r["discipline"] == "Engineering" and r["median_wage_inr"]:
-            out[r["tier"]] = float(r["median_wage_inr"])
+        if r["discipline"] == "Engineering" and r.get("start_wage_inr"):
+            out[r["tier"]] = float(r["start_wage_inr"])
     return out
 
 
