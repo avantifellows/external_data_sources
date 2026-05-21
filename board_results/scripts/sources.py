@@ -25,12 +25,23 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "raw"        # source MoE report PDFs (gitignored)
 CLEAN = ROOT / "clean"    # parsed parquet, ready for upload (gitignored)
 
-# ─── Raw source PDFs (gitignored; re-downloadable — see README) ───────────────
+# ─── Raw source PDFs (gitignored; fetched from the URLs below by fetch.py) ────
 REPORTS: dict[int, Path] = {
     2020: RAW / "moe_results_secondary_hs_2020.pdf",
     2021: RAW / "moe_results_secondary_hs_2021.pdf",
     2022: RAW / "moe_results_secondary_hs_2022.pdf",
     2024: RAW / "moe_results_secondary_hs_2024.pdf",
+}
+
+# Canonical source URLs — MoE "Result of Secondary & Higher Secondary
+# Examination" (RSHSE) annual reports, education.gov.in. fetch.py downloads
+# these into raw/ so the source files are regenerable from scratch.
+_MOE = "https://www.education.gov.in/sites/upload_files/mhrd/files/statistics-new"
+REPORT_URLS: dict[int, str] = {
+    2020: f"{_MOE}/Result_Secondary_Higher_Secondary_Examination_2020.pdf",
+    2021: f"{_MOE}/RSHSE2021.pdf",
+    2022: f"{_MOE}/RSHSE2022.pdf",
+    2024: f"{_MOE}/result-2024.pdf",
 }
 
 # ─── GCS ──────────────────────────────────────────────────────────────────────
@@ -69,14 +80,9 @@ class Table:
 
 TABLES: list[Table] = [
     Table(
-        bq_name="board_results_fact_overall",
-        parquet="overall_class_x_xii.parquet",
-        grain="(year, level, state, board, gender)",
-    ),
-    Table(
-        bq_name="board_results_fact_class_xii_stream",
-        parquet="class_xii_stream.parquet",
-        grain="(year, state, board, social_category, stream, gender)",
+        bq_name="board_results_fact_passes",
+        parquet="board_results.parquet",
+        grain="(year, level, state, board, social_category, stream, gender)",
     ),
 ]
 

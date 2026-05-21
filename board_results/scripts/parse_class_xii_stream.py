@@ -16,9 +16,8 @@ Each table layout is identical:
                                 | Science Boys/Girls/Total
                                 | Vocational Boys/Girls/Total
 
-Output: clean/class_xii_stream.parquet  (BQ: board_results_fact_class_xii_stream)
-Schema: year, state, board, social_category, stream, gender, students_passed
-        (15 stream-gender combos x 4 years x ~45 boards x 3 categories)
+Returns (via build_df): DataFrame [year, state, board, social_category, stream,
+gender, students_passed] — merged into the single fact by clean_board_results.py.
 """
 import re
 import sys
@@ -28,9 +27,7 @@ import pandas as pd
 import pdfplumber
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import CLEAN, REPORTS
-
-OUT = CLEAN / "class_xii_stream.parquet"
+from sources import REPORTS
 
 # (year, table_label_in_pdf -> social_category)
 # Each entry: title regex (matches the table title text on each page) + category label.
@@ -188,7 +185,7 @@ def parse_stream_rows(table, year, category):
     return out
 
 
-def main():
+def build_df() -> pd.DataFrame:
     all_rows = []
     for cfg in TABLES:
         year = cfg["year"]
@@ -212,21 +209,9 @@ def main():
             print(f"  {year} {cfg['label']} ({cfg['category']:18s}): "
                   f"{len(pages)} pages -> {n_rows_for_table} board rows")
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     cols = ["year", "state", "board", "social_category", "stream", "gender", "students_passed"]
     # Drop blacked-out cells (None values) — same as the CSV extractor.
     records = [dict(zip(cols, r)) for r in all_rows if r[6] is not None]
     df = pd.DataFrame(records, columns=cols)
-    df["year"] = df["year"].astype("Int64")
-    df["students_passed"] = df["students_passed"].astype("Int64")
-    df.to_parquet(OUT, index=False, engine="pyarrow")
-
-    n_unique_boards = len({(r[0], r[2]) for r in all_rows})
-    n_with_value = sum(1 for r in all_rows if r[6] is not None)
-    print(f"\nWrote {n_with_value:,} non-null rows -> {OUT}")
-    print(f"  ({len(all_rows):,} total rows, {len(all_rows)-n_with_value:,} blacked-out cells dropped)")
-    print(f"  Coverage: {n_unique_boards} (year, board) combinations across all 4 years")
-
-
-if __name__ == "__main__":
-    main()
+    print(f"  stream: {len(df):,} non-null rows ({len(all_rows) - len(records):,} blacked-out cells dropped)")
+    return df

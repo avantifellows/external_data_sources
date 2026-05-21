@@ -17,9 +17,9 @@ Schema after extraction (15 cols, 1-3 ID + 12 numeric):
   Sl.No | State | Board | Reg-B | Reg-G | Reg-T | App-B | App-G | App-T
                        | Pass-B | Pass-G | Pass-T | Pct-B | Pct-G | Pct-T
 
-Output: clean/overall_class_x_xii.parquet  (BQ: board_results_fact_overall)
-Schema: year, level, state, board, gender, registered, appeared,
-        passed_annual_and_supp, pass_percentage
+Returns (via build_df): DataFrame [year, level, state, board, gender, registered,
+appeared, passed_annual_and_supp, pass_percentage] — merged into the single fact
+by clean_board_results.py.
 """
 import re
 import sys
@@ -29,9 +29,7 @@ import pandas as pd
 import pdfplumber
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import CLEAN, REPORTS
-
-OUT = CLEAN / "overall_class_x_xii.parquet"
+from sources import REPORTS
 
 # Per year, the "all categories Reg+Private" table number for each section.
 # (Same number applies to Section A and Section B — page header disambiguates.)
@@ -212,7 +210,7 @@ def find_tables(pdf, year):
     return found
 
 
-def main():
+def build_df() -> pd.DataFrame:
     all_rows = []
     for year in [2020, 2021, 2022, 2024]:
         pdf_path = REPORTS[year]
@@ -250,18 +248,9 @@ def main():
         seen.add(key)
         final_rows.append(r)
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(final_rows, columns=[
         "year", "level", "state", "board", "gender",
         "registered", "appeared", "passed_annual_and_supp", "pass_percentage",
     ])
-    # Nullable integers (registered is NULL for 2020/2021) → BQ INTEGER, not FLOAT.
-    for col in ["year", "registered", "appeared", "passed_annual_and_supp"]:
-        df[col] = df[col].astype("Int64")
-    df["pass_percentage"] = df["pass_percentage"].astype("float64")
-    df.to_parquet(OUT, index=False, engine="pyarrow")
-    print(f"\nWrote {len(df):,} rows -> {OUT}")
-
-
-if __name__ == "__main__":
-    main()
+    print(f"  overall: {len(df):,} rows")
+    return df

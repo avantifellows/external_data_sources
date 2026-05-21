@@ -14,33 +14,47 @@ redistributed in git — see *Raw data* below.
 ## Pipeline at a glance
 
 ```
+education.gov.in RSHSE PDFs                  (canonical source URLs in sources.py)
+       │ scripts/fetch.py
+       ▼
 raw/moe_results_secondary_hs_<year>.pdf     (local; gitignored)
-       │ scripts/clean_overall.py
-       │ scripts/clean_class_xii_stream.py
+       │ scripts/parse_overall.py            (Class X+XII overall)
+       │ scripts/parse_class_xii_stream.py   (Class XII by stream/social cat)
+       │ scripts/clean_board_results.py      (merges both → one fact)
        ▼
-clean/*.parquet                             (local; gitignored)
-       │ scripts/upload_to_gcs.py   (uploads raw PDFs + clean tables)
+clean/board_results.parquet                 (local; gitignored)
+       │ scripts/upload_to_gcs.py   (uploads raw PDFs + clean fact)
        ▼
-gs://avantifellows-external-data/board_results/raw/<pdf>          (traceability)
-gs://avantifellows-external-data/board_results/clean/<table>.parquet
+gs://avantifellows-external-data/board_results/raw/<pdf>             (traceability)
+gs://avantifellows-external-data/board_results/clean/board_results.parquet
        │ scripts/load_bq.py
        ▼
-avantifellows.external_data_sources.board_results_*   (asia-south1, 2 tables)
+avantifellows.external_data_sources.board_results_fact_passes   (asia-south1)
 ```
 
 The single source of truth for filenames, GCS URIs, and BQ destinations is
 [`scripts/sources.py`](scripts/sources.py).
 
-## Tables produced
+## Table produced
 
-| Table | Rows | Grain | Source tables |
-|---|---:|---|---|
-| `board_results_fact_overall`          | 1,026 | (year, level, state, board, gender)                       | Sec A/B Table 3 (2020/21), Table 1 (2022/24) |
-| `board_results_fact_class_xii_stream` | 5,567 | (year, state, board, social_category, stream, gender)     | Sec B Tables 13/15/17 (2020/21), 31/33/35 (2022/24) |
+**`board_results_fact_passes`** — one wide fact. Grain:
+`(year, level, state, board, social_category, stream, gender)` → `passed`
+(+ `registered`, `appeared`, `pass_percentage` on the overall rows). It unifies
+two published cuts; dimensions a cut doesn't break out carry `"All Categories"`
+/ `"All Streams"`:
 
-Schemas: [`schemas/*.yaml`](schemas/).
+| Cut | Source | Set dimensions | Measures |
+|---|---|---|---|
+| Class X + XII overall | Sec A/B Table 3 (2020/21), Table 1 (2022/24) | level, state, board | registered, appeared, passed, pass_percentage |
+| Class XII stream      | Sec B Tables 13/15/17 (2020/21), 31/33/35 (2022/24) | + social_category, stream | passed only |
 
-**Validation** (all-India sum of board Totals, `passed_annual_and_supp`):
+`registered` / `appeared` / `pass_percentage` are populated only on the overall
+(All Categories, All Streams) rows. **Query by filtering to one slice — don't
+`SUM(passed)` across overlapping categories or across stream + All Streams.**
+
+Schema: [`schemas/board_results_fact_passes.yaml`](schemas/board_results_fact_passes.yaml).
+
+**Validation** (all-India sum of board Totals, `passed`, overall rows):
 
 | Year | Class X | Class XII |
 |---|---:|---:|
@@ -55,21 +69,24 @@ Schemas: [`schemas/*.yaml`](schemas/).
 
 ```
 gs://avantifellows-external-data/
-  board_results/raw/<pdf>                ← source MoE PDFs, as-is (traceability)
-  board_results/clean/<table>.parquet    ← the 2 parsed tables; load_bq.py loads these
+  board_results/raw/<pdf>                      ← source MoE PDFs, as-is (traceability)
+  board_results/clean/board_results.parquet    ← the fact; load_bq.py loads this
 ```
 
 ## Raw data
 
-The report PDFs are gitignored (`raw/*.pdf`). Download them and drop into `raw/`
-with these names before running:
+The report PDFs are gitignored (`raw/*.pdf`) and **fetched from source** by
+`scripts/fetch.py` (canonical URLs in `scripts/sources.py` → `REPORT_URLS`) — no
+manual download:
 
-| File | URL |
+| File | Source URL (education.gov.in/…/statistics-new/) |
 |---|---|
-| `moe_results_secondary_hs_2020.pdf` | education.gov.in …/Result_Secondary_Higher_Secondary_Examination_2020.pdf |
-| `moe_results_secondary_hs_2021.pdf` | education.gov.in …/RSHSE2021.pdf |
-| `moe_results_secondary_hs_2022.pdf` | education.gov.in …/RSHSE2022.pdf |
-| `moe_results_secondary_hs_2024.pdf` | education.gov.in …/result-2024.pdf |
+| `moe_results_secondary_hs_2020.pdf` | `Result_Secondary_Higher_Secondary_Examination_2020.pdf` |
+| `moe_results_secondary_hs_2021.pdf` | `RSHSE2021.pdf` |
+| `moe_results_secondary_hs_2022.pdf` | `RSHSE2022.pdf` |
+| `moe_results_secondary_hs_2024.pdf` | `result-2024.pdf` |
+
+(MoE did not publish a 2023 edition.)
 
 ## First-time setup
 
@@ -82,23 +99,26 @@ gcloud auth application-default login   # for upload + load
 ## Running
 
 ```bash
-# 1. parse the PDFs → clean/*.parquet
-.venv/bin/python scripts/clean_overall.py
-.venv/bin/python scripts/clean_class_xii_stream.py
+# 0. fetch the raw PDFs from source → raw/  (regenerable; no manual download)
+.venv/bin/python scripts/fetch.py            # --force to re-download, --year YYYY for one
 
-# 2. stage to GCS — uploads raw PDFs + clean tables
+# 1. parse the PDFs and merge → clean/board_results.parquet
+.venv/bin/python scripts/clean_board_results.py
+
+# 2. stage to GCS — uploads raw PDFs + the clean fact
 .venv/bin/python scripts/upload_to_gcs.py --dry-run   # preview
 .venv/bin/python scripts/upload_to_gcs.py             # raw + clean
 #   …or just one side: --raw-only / --clean-only
 
-# 3. load the clean tables to BigQuery
+# 3. load to BigQuery
 .venv/bin/python scripts/load_bq.py --dry-run         # preview
 .venv/bin/python scripts/load_bq.py
 ```
 
-`load_bq.py` takes `--table <bq_name>` / `--dry-run` and uses `WRITE_TRUNCATE`,
-so each load fully replaces its destination table. Only the clean tables are
-loaded to BQ — the raw PDFs on GCS are for traceability.
+`load_bq.py` uses `WRITE_TRUNCATE`, so the load fully replaces the table. Only
+the clean fact is loaded to BQ — the raw PDFs on GCS are for traceability.
+(`parse_overall.py` and `parse_class_xii_stream.py` are parser modules invoked
+by `clean_board_results.py`.)
 
 ## Caveats — read before analysing
 

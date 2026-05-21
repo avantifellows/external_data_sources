@@ -1,0 +1,91 @@
+# board_results_fact_passes
+#
+# Single denormalized board-exam-results fact. One grain, with the sentinel
+# "All Categories" / "All Streams" for cells a cut doesn't break out:
+#
+#   Class X overall    → level="Class X",  social_category="All Categories", stream="All Streams"
+#   Class XII overall  → level="Class XII", social_category="All Categories", stream="All Streams"
+#   Class XII stream   → level="Class XII", social_category ∈ {All Categories, SC, ST},
+#                        stream ∈ {All Streams, Arts, Commerce, Science, Vocational}
+#
+# `passed` is populated on every row. `registered` / `appeared` /
+# `pass_percentage` are populated ONLY on the overall (All Categories, All
+# Streams) rows — the source publishes only pass counts for the stream/category
+# breakdowns. The Class XII (All Cat, All Streams) row comes from the overall
+# table (so it carries the extra measures); the stream table's duplicate of that
+# cell is dropped.
+#
+# QUERY BY FILTERING TO ONE SLICE — don't SUM(passed) across overlapping
+# social categories (SC/ST ⊂ All Categories) or across stream + All Streams.
+#
+# Source parquet: gs://avantifellows-external-data/board_results/clean/board_results.parquet
+# BQ table:       avantifellows.external_data_sources.board_results_fact_passes
+#
+# Validation: 2024 Class XII passed (All Categories / All Streams / Total),
+# summed across boards = 12,929,386 (matches the MoE report).
+
+description: Class X + XII board-exam results, one wide fact by year/level/state/board/social-category/stream/gender. "All" sentinels for un-broken-out dims.
+rows: 5999
+grain: (year, level, state, board, social_category, stream, gender)
+
+columns:
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: Exam year — 2020, 2021, 2022, or 2024 (no 2023 edition).
+
+  - name: level
+    type: STRING
+    mode: REQUIRED
+    description: '"Class X" (Secondary) or "Class XII" (Higher Secondary). Class X has no stream/social breakdown.'
+
+  - name: state
+    type: STRING
+    mode: NULLABLE
+    description: State/UT or "Central". Forward-filled from the report's grouping column.
+
+  - name: board
+    type: STRING
+    mode: REQUIRED
+    description: Board name (whitespace normalized). Varies slightly across years — fuzzy-join on key tokens.
+
+  - name: social_category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      "All Categories", "Scheduled Caste", or "Scheduled Tribe" (Class XII
+      stream breakdowns); "All Categories" on overall rows. SC/ST ⊂ All
+      Categories — do not sum across categories.
+
+  - name: stream
+    type: STRING
+    mode: REQUIRED
+    description: >
+      "All Streams" (total), "Arts", "Commerce", "Science", or "Vocational"
+      (Class XII); "All Streams" on overall rows. Streams sum to All Streams
+      where all are published.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: Boys, Girls, or Total.
+
+  - name: registered
+    type: INTEGER
+    mode: NULLABLE
+    description: Students registered (Reg+Private). Only on overall (All Cat / All Streams) rows; NULL on breakdowns and for 2020/2021 (not published).
+
+  - name: appeared
+    type: INTEGER
+    mode: NULLABLE
+    description: Students appeared (Reg+Private). Only on overall rows; NULL on stream/category breakdowns.
+
+  - name: passed
+    type: INTEGER
+    mode: NULLABLE
+    description: Students passed (Annual + Supplementary, Regular + Private). Populated on every row. Blacked-out source cells are omitted, not zeroed.
+
+  - name: pass_percentage
+    type: FLOAT
+    mode: NULLABLE
+    description: Pass rate (%). Only on overall rows; NULL on stream/category breakdowns.
