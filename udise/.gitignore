@@ -1,0 +1,4 @@
+# UDISE source + derived data — never in git. Staged to GCS instead.
+raw/*.xlsx
+raw/*.XLSX
+clean/*.parquet

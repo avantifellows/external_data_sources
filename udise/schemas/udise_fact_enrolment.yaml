@@ -1,0 +1,63 @@
+# udise_fact_enrolment
+#
+# UDISE+ school enrolment, AY 2024-25, as a long-form fact: one row per
+# (state, school management, school category, urban/rural, class, gender).
+# 42,270 rows. Reshaped from the wide dashboard cross-tab (Report 4000).
+#
+# Only LEAF detail rows are kept (urban_rural in {Rural, Urban}, with state +
+# management + category present). The dashboard's subtotal / "Total" /
+# all-India rows are dropped — they're derivable by summing and would
+# double-count. Sum of `enrolment` = 246,932,680 (the all-India total the
+# dashboard reports).
+#
+# Source xlsx: gs://avantifellows-external-data/udise/raw/udise_2024-25_enrolment.xlsx
+# Source parquet: gs://avantifellows-external-data/udise/clean/enrolment.parquet
+# BQ table:    avantifellows.external_data_sources.udise_fact_enrolment
+
+description: UDISE+ school enrolment by state, school management, category, location, class, and gender (AY 2024-25).
+rows: 42270
+grain: (academic_year, state, school_management, school_category, urban_rural, class_level, gender)
+
+columns:
+  - name: academic_year
+    type: STRING
+    mode: REQUIRED
+    description: AY of the export, e.g. "2024-25".
+
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State / UT name (UDISE "Location", state-wise national report).
+
+  - name: school_management
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Detailed management type — 21 values, e.g. Department of Education,
+      Government Aided, Private Unaided (Recognized), Kendriya Vidyalaya,
+      Jawahar Navodaya Vidyalaya, Local Body, Madrasa (various), etc.
+
+  - name: school_category
+    type: STRING
+    mode: REQUIRED
+    description: 'Detailed school category: "Foundational and Preparatory", "Middle", or "Secondary".'
+
+  - name: urban_rural
+    type: STRING
+    mode: REQUIRED
+    description: '"Rural" or "Urban" (leaf detail only; the dashboard''s "Total" aggregate is excluded).'
+
+  - name: class_level
+    type: STRING
+    mode: REQUIRED
+    description: 'Class: "Balvatika-1/2/3" (pre-primary) or "Class-1" … "Class-12".'
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: '"Girls" or "Boys" (the source reports only these two).'
+
+  - name: enrolment
+    type: INTEGER
+    mode: NULLABLE
+    description: Number of students enrolled in this cell. NULL where the source cell was blank.
