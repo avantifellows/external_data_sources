@@ -8,6 +8,9 @@ primary sources plus two reference pulls.
 > `aishe/`, and `plfs/` sources rather than ingesting an upstream. It lives at
 > the repo root (not under a single source) because it spans all three.
 
+**[METHODOLOGY.md](METHODOLOGY.md)** is the full analytical record — every data
+source, decision, formula, and caveat. This README is the quick file reference.
+
 ## The question
 
 For a given discipline, what does a graduate earn — and how steeply does that
