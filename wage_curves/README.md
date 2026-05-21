@@ -46,8 +46,9 @@ Agriculture; everything else collapses to "General graduate/PG"):
 
 | File | What |
 |---|---|
+| **`build_full_curve.py` → `wage_curve_full.csv`** | **Headline output** — every tier of every discipline, top to tail (NIRF elite + non-NIRF residuals), PLFS-anchored |
 | `build_wage_curve.py` + `nirf_engineering_tiers.sql` | Engineering tiered curve (IIT/NIT/IIIT/Other-NIRF/tail), seat-corrected publics |
-| `build_discipline_summary.py` → `discipline_summary.csv` | Cross-discipline summary table |
+| `build_discipline_summary.py` → `discipline_summary.csv` | Cross-discipline summary (NIRF elite vs AISHE vs PLFS, one row/discipline) |
 | `josaa_2022_seats.csv` + `extract_*`† | Public-tier UG seat counts (JoSAA 2022) |
 | `iit_nit_iiit_institutes_avanti_db.csv` + `extract_avanti_college_db.py` | Per-institute IIT/NIT/IIIT reference (counts + placement) |
 | `govt_medical_seats.csv` + `medical_salaries.csv` + `extract_govt_medical_seats.py` | Govt MBBS/BDS seats + credible doctor/dentist wages |
