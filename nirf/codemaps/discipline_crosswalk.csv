@@ -1,0 +1,17 @@
+ranking_category,nirf_discipline,is_subject_discipline,plfs_discipline,notes
+Engineering,Engineering,yes,Engineering & Technology,
+Management,Management,yes,General graduate/PG,PLFS cannot isolate MBA/management; falls in general graduate
+Pharmacy,Pharmacy,yes,Medicine & Health,B.Pharm grouped under health in PLFS
+Medical,Medical,yes,Medicine & Health,
+Dental,Dental,yes,Medicine & Health,
+Law,Law,yes,General graduate/PG,PLFS cannot isolate LLB; falls in general graduate
+Architecture,Architecture & Planning,yes,Other technical/professional,Pre-2024 name; merges into Architecture & Planning
+Architecture and Planning,Architecture & Planning,yes,Other technical/professional,B.Arch ~ PLFS technical degree in other subjects
+Agriculture and Allied Sectors,Agriculture & Allied,yes,Agriculture,
+College,Institution type (College),no,,Not a subject discipline; multidisciplinary institution ranking
+Overall,Institution type (Overall),no,,Cross-discipline institution ranking
+University,Institution type (University),no,,Not a subject discipline; multidisciplinary institution ranking
+Research,Institution type (Research),no,,Pre-2024 name; merges into Research Institutions
+Research Institutions,Institution type (Research),no,,Not a subject discipline
+State Public University,Institution type (State Public Univ),no,,Singular pre-2025 name; merges into State Public Universities
+State Public Universities,Institution type (State Public Univ),no,,Not a subject discipline

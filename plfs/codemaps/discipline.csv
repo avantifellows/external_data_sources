@@ -1,0 +1,17 @@
+tedu_lvl,tedu_description,plfs_discipline,degree_level
+01,No technical education,General / non-technical,n/a
+02,Technical degree in agriculture,Agriculture,Degree
+03,Technical degree in engineering/technology,Engineering & Technology,Degree
+04,Technical degree in medicine,Medicine & Health,Degree
+05,Technical degree in crafts,Crafts,Degree
+06,Technical degree in other subjects,Other technical/professional,Degree
+07,Diploma/certificate (below graduate) in agriculture,Agriculture,Diploma (below graduate)
+08,Diploma/certificate (below graduate) in engineering/technology,Engineering & Technology,Diploma (below graduate)
+09,Diploma/certificate (below graduate) in medicine,Medicine & Health,Diploma (below graduate)
+10,Diploma/certificate (below graduate) in crafts,Crafts,Diploma (below graduate)
+11,Diploma/certificate (below graduate) in other subjects,Other technical/professional,Diploma (below graduate)
+12,Diploma/certificate (graduate+) in agriculture,Agriculture,Diploma (graduate+)
+13,Diploma/certificate (graduate+) in engineering/technology,Engineering & Technology,Diploma (graduate+)
+14,Diploma/certificate (graduate+) in medicine,Medicine & Health,Diploma (graduate+)
+15,Diploma/certificate (graduate+) in crafts,Crafts,Diploma (graduate+)
+16,Diploma/certificate (graduate+) in other subjects,Other technical/professional,Diploma (graduate+)

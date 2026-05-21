@@ -1,0 +1,8 @@
+program,segment,metric,inr_per_month,inr_per_year,source,note
+MBBS,Government,starting gross (junior resident),65000,780000,7th Pay Commission Pay Level 10 (basic Rs56100 + NPA/DA/HRA),Fresh MBBS govt entry (junior resident/medical officer); typical gross Rs65k-94k
+MBBS,Government,basic pay (junior resident),56100,673200,7th Pay Commission Pay Level 10,Basic only; excludes NPA/DA/HRA
+MBBS,All,median salaried doctor (all ages),64200,770400,PLFS 2022-23 NCO 221 Medical Doctors regular-salaried,Official labour-force survey; corroborates the 7th CPC govt figure
+MBBS,All,median salaried doctor (early career 25-34),45000,540000,PLFS 2022-23 NCO 221 age 25-34 regular-salaried,Blended govt+private; private/non-resident pulls below 7th CPC scale
+MBBS,All,median self-employed doctor (all ages),30000,360000,PLFS 2022-23 NCO 221 self-employed,Private practice; early-career self-employed lower (~Rs20k)
+BDS,All,median salaried (dentist / other health prof),20000,240000,PLFS 2022-23 NCO 226 Other Health Professionals regular-salaried,Dental early-career pay is low; far below MBBS
+Nursing,All,median salaried (nursing professional),14500,174000,PLFS 2022-23 NCO 222 Nursing regular-salaried,Context: lowest of the clinical occupations

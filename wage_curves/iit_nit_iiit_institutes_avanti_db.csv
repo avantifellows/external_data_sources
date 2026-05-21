@@ -1,0 +1,85 @@
+institute_type,college_name,state,management_type,top_200_nirf,placement_rate_pct,median_salary_inr,salary_tier,source
+IIIT,Atal Bihari Vajpayee Indian Institute Of Information Technology And Management Gwalior,Madhya Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,2000000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Agartala,Tripura,,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Allahabad,Uttar Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,2800000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Bhagalpur,Bihar,IIT/NIT/IIIT - Government Funded Technical Institution,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Bhopal,Madhya Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Design And Manufacturing Kancheepuram,Tamil Nadu,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,94.2,1016000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Design And Manufacturing Kurnool,Andhra Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,No,94.2,1016000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Dharwad,Karnataka,,,,,,Avanti college DB
+IIIT,Indian Institute Of Information Technology Guwahati,Assam,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,91.8,1400000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Kalyani,West Bengal,,No,80.9,1200000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Kota,Rajasthan,IIT/NIT/IIIT - Government Funded Technical Institution,No,83.0,1247000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Kottayam,Kerala,,No,93.2,900000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Lucknow,Uttar Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Nagpur,Maharashtra,,No,87.0,1000000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Nagpur,Maharashtra,,No,87.0,1000000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Pune,Maharashtra,,No,86.2,1100000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Raichur,Karnataka,,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Ranchi,Jharkhand,IIT/NIT/IIIT - Government Funded Technical Institution,No,88.8,1332000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Senapati,Manipur,IIT/NIT/IIIT - Government Funded Technical Institution,No,76.2,600000.0,2.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Sri City,Andhra Pradesh,,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Surat,Gujarat,,No,72.6,1500000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Tiruchirappalli,Tamil Nadu,,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Tiruchirappalli,Tamil Nadu,,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Una,Himachal Pradesh,,No,81.9,780000.0,1.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Vadodara,Gujarat,IIT/NIT/IIIT - Government Funded Technical Institution,No,,,4.0,Avanti college DB
+IIIT,Indian Institute Of Information Technology Vadodara International Campus Diu,The Dadra and Nagar Haveli and Daman and Diu,Central Government,,,,,Avanti college DB
+IIIT,"Indian Institute of Information Technology(IIIT) Kilohrad, Sonepat, Haryana",,,,,,,Avanti college DB
+IIIT,"Indian Institute of Information Technology(IIIT), Sri City, Chittoor District, Andhra Pradesh",,,,,,,Avanti college DB
+IIIT,"Indian Institute of Information Technology(IIIT), Sri City, Chittoor District, Andra Pradesh",,,,,,,Avanti college DB
+IIIT,"Pt. Dwarka Prasad Mishra Indian Institute of Information Technology, Design & Manufacture Jabalpur",,,,,,,Avanti college DB
+IIT,Dhanbad Institute Of Technology,Jharkhand,Private Un-Aided,,,,,Avanti college DB
+IIT,Indian Institute Of Technology Bhilai,Chhattisgarh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,87.1,1400000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Bhubaneswar,Odisha,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,98.7,1500000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Bombay,Maharashtra,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,1880000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Delhi,Delhi,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,2050000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Dharwad,Karnataka,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,68.1,1485000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Gandhinagar,Gujarat,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,69.9,1417000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Goa,Goa,IIT/NIT/IIIT - Government Funded Technical Institution,No,91.2,1600000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Guwahati,Assam,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,96.2,2250000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Hyderabad,Telangana,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,91.0,2100000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Indore,Madhya Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,90.1,1850000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Jammu,Jammu and Kashmir,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,79.5,1600000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Jodhpur,Rajasthan,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,1500000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Kanpur,Uttar Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,99.4,2207000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Kharagpur,West Bengal,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,93.8,1885000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Madras,Tamil Nadu,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,95.8,1700000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Mandi,Himachal Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,96.9,2100000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Palakkad,Kerala,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,82.3,1200000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Patna,Bihar,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,2000000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Roorkee,Uttarakhand,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,1700000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Ropar,Punjab,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,86.7,1714000.0,1.0,Avanti college DB
+IIT,Indian Institute Of Technology Tirupati,Andhra Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,94.0,1210000.0,1.0,Avanti college DB
+IIT,Indian Institute of Technology (BHU) Varanasi,,,,,,,Avanti college DB
+NIT,Dr B R Ambedkar National Institute Of Technology Jalandhar,Punjab,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,96.0,891000.0,1.0,Avanti college DB
+NIT,Malviya National Institute Of Technology Jaipur,Rajasthan,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,84.9,900000.0,1.0,Avanti college DB
+NIT,Maulana Azad National Institute Of Technology Bhopal,Madhya Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,82.1,1100000.0,1.0,Avanti college DB
+NIT,Motilal Nehru National Institute Of Technology Allahabad,Uttar Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,94.7,1200000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Agartala,Tripura,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,99.4,700000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Andhra Pradesh,Andhra Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,No,75.9,712000.0,2.0,Avanti college DB
+NIT,National Institute Of Technology Arunachal Pradesh,Arunachal Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,69.3,835000.0,2.0,Avanti college DB
+NIT,National Institute Of Technology Calicut,Kerala,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,97.7,1080000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Delhi,Delhi,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,96.0,1475000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Durgapur,West Bengal,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,99.1,810000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Goa,Goa,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,86.0,800000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Hamirpur,Himachal Pradesh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,79.3,754000.0,2.0,Avanti college DB
+NIT,National Institute Of Technology Jamshedpur,Jharkhand,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,950000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Karnataka Surathkal,Karnataka,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,91.2,1284000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Kurukshetra,Haryana,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,92.0,1100000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Manipur,Manipur,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,98.7,750000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Meghalaya,Meghalaya,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,64.1,945000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Mizoram,Mizoram,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,100.0,735000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Nagaland,Nagaland,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,98.1,900000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Patna,Bihar,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,98.8,1000000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Puducherry,Puducherry,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,79.8,755000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Raipur,Chhattisgarh,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,85.2,900000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Rourkela,Odisha,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,91.8,1000000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Sikkim,Sikkim,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,81.8,800000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Silchar,Assam,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,93.8,1100000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Srinagar,Jammu and Kashmir,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,89.3,833000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Tiruchirappalli,Tamil Nadu,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,88.1,1200000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Uttarakhand,Uttarakhand,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,88.5,680000.0,1.0,Avanti college DB
+NIT,National Institute Of Technology Warangal,Telangana,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,79.2,1592000.0,1.0,Avanti college DB
+NIT,Sardar Vallabhbhai National Institute Of Technology Surat,Gujarat,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,94.0,801000.0,1.0,Avanti college DB
+NIT,Visvesvaraya National Institute Of Technology Nagpur,Maharashtra,IIT/NIT/IIIT - Government Funded Technical Institution,Yes,99.4,842000.0,1.0,Avanti college DB
