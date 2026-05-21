@@ -1,17 +1,17 @@
 """
 AISHE source configuration — the single source of truth.
 
-Everything downstream (clean_aishe.py, upload_to_gcs.py, load_bq.py, analyses/)
+Everything downstream (clean_aishe.py, upload_to_gcs.py, load_bq.py, analysis/)
 reads from here.
 
-One denormalized fact (see analyses/README.md for the questions that drive it):
+One denormalized fact (see analysis/README.md for the questions that drive it):
   aishe_fact_outturn — out-turn (graduates) unified across AISHE Tables 33
   (state × level), 34a (programme × social category), and 35 (UG discipline,
   2019-20 → 2021-22). Dimensions that don't apply to a given source cut carry
   the sentinel "All" (as AISHE itself does with Total / All Categories).
 
 Derived cuts (discipline × social-category rollup, 2025-26 projection) live in
-analyses/, not as tables. The programme→discipline codemap stays a committed
+analysis/, not as tables. The programme→discipline codemap stays a committed
 CSV in codemaps/.
 
 GCS layout (mirrors the jnv/ convention):
@@ -30,13 +30,22 @@ CODEMAPS = ROOT / "codemaps"
 
 SENTINEL = "All"          # dimension value for "not broken out on this cut"
 
-# ─── Raw source workbooks (gitignored; re-downloadable — see README) ──────────
+# ─── Raw source workbooks (gitignored; fetched from the URLs below by fetch.py) ─
 REPORTS: dict[str, Path] = {
     "2019-20": RAW / "aishe_2019-20_final_report.xlsx",
     "2020-21": RAW / "aishe_2020-21_final_report.xlsx",
     "2021-22": RAW / "aishe_2021-22_final_report.xlsx",
 }
 OUTTURN_YEAR = "2021-22"  # the state×level and programme×social cuts are 2021-22
+
+# Canonical source URLs — AISHE Final Report workbooks, he.nic.in (MoE). fetch.py
+# downloads these into raw/ so the source files are regenerable from scratch.
+_AISHE = "https://he.nic.in/aishereport/assets/excel"
+REPORT_URLS: dict[str, str] = {
+    "2019-20": f"{_AISHE}/AISHE%20Final%20Report%202019-20.xlsx",
+    "2020-21": f"{_AISHE}/AISHE%20Final%20Report%202020-21.xlsx",
+    "2021-22": f"{_AISHE}/AISHE%20Final%20Report%202021-22.xlsx",
+}
 
 # ─── GCS ──────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"

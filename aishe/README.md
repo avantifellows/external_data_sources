@@ -9,7 +9,7 @@ this is a heavier pipeline than `nirf/`, but it still stages parsed parquet
 through GCS.
 
 The table shape is driven by the analytical questions — see
-[`analyses/README.md`](analyses/README.md).
+[`analysis/README.md`](analysis/README.md).
 
 **Source:** AISHE Final Report workbooks from
 [aishe.gov.in](https://aishe.gov.in/) (Ministry of Education). One `.xlsx` per
@@ -18,6 +18,9 @@ academic year. Not redistributed in git — see *Raw data* below.
 ## Pipeline at a glance
 
 ```
+he.nic.in AISHE Final Reports               (canonical source URLs in sources.py)
+       │ scripts/fetch.py
+       ▼
 raw/aishe_<year>_final_report.xlsx          (local; gitignored)
        │ scripts/build_programme_map.py  → codemaps/programme_to_discipline.csv  (committed)
        │ scripts/clean_aishe.py
@@ -49,7 +52,7 @@ out carry the sentinel `"All"`:
 | UG discipline (2019-20 → 2021-22)   | Table 35  | level=`Under Graduate`, discipline | 342 |
 
 **Query by filtering to one slice — never `SUM(out_turn)` across rows of
-different grain.** Worked slices are in the schema and `analyses/README.md`.
+different grain.** Worked slices are in the schema and `analysis/README.md`.
 
 Schema: [`schemas/aishe_fact_outturn.yaml`](schemas/aishe_fact_outturn.yaml).
 
@@ -58,12 +61,12 @@ state slice and the discipline slice (Tables 33 and 35 reconcile exactly).
 
 ## Analyses (derived — not tables)
 
-Per the [`analyses/`](analyses/) convention, derived cuts are reproducible
+Per the [`analysis/`](analysis/) convention, derived cuts are reproducible
 scripts on top of the fact, not extra BQ tables:
 
-- [`analyses/rollup_discipline_social_category.py`](analyses/rollup_discipline_social_category.py)
+- [`analysis/rollup_discipline_social_category.py`](analysis/rollup_discipline_social_category.py)
   — rolls the programme×social slice up to discipline via the codemap.
-- [`analyses/project_discipline_2025_26.py`](analyses/project_discipline_2025_26.py)
+- [`analysis/project_discipline_2025_26.py`](analysis/project_discipline_2025_26.py)
   — OLS projection of the UG-discipline trend to 2024-25 / 2025-26 (model estimate).
 
 The programme→discipline **codemap stays a committed CSV**
@@ -79,8 +82,9 @@ gs://avantifellows-external-data/
 
 ## Raw data
 
-The Final Report `.xlsx` files are gitignored (`raw/*.xlsx`). Download from the
-AISHE portal and drop into `raw/` with these names before running:
+The Final Report `.xlsx` files are gitignored (`raw/*.xlsx`) and **fetched from
+source** by `scripts/fetch.py` (canonical URLs in `scripts/sources.py` →
+`REPORT_URLS`, on he.nic.in) — no manual download:
 
 | File | Year |
 |---|---|
@@ -102,6 +106,9 @@ gcloud auth application-default login   # for upload + load
 ## Running
 
 ```bash
+# 0. fetch the raw workbooks from source → raw/  (regenerable; no manual download)
+.venv/bin/python scripts/fetch.py            # --force to re-download, --year YYYY-YY for one
+
 # 1. (rarely) rebuild the programme->discipline codemap from the 2021-22 workbook
 .venv/bin/python scripts/build_programme_map.py
 
@@ -117,9 +124,9 @@ gcloud auth application-default login   # for upload + load
 .venv/bin/python scripts/load_bq.py --dry-run         # preview
 .venv/bin/python scripts/load_bq.py
 
-# (optional) derived analyses
-.venv/bin/python analyses/rollup_discipline_social_category.py --save
-.venv/bin/python analyses/project_discipline_2025_26.py --save
+# (optional) derived analysis
+.venv/bin/python analysis/rollup_discipline_social_category.py --save
+.venv/bin/python analysis/project_discipline_2025_26.py --save
 ```
 
 `load_bq.py` uses `WRITE_TRUNCATE`, so the load fully replaces the table. Only
@@ -129,7 +136,7 @@ the clean fact is loaded to BQ — the raw parquet on GCS is for traceability.
 
 - **The discipline × social-category rollup is degree-name based.** Tables 34a
   (degree programme) and 35 (subject-based discipline) use incompatible
-  classifications, so the rollup (in `analyses/`) cannot recover subject-based
+  classifications, so the rollup (in `analysis/`) cannot recover subject-based
   disciplines (Indian Language, Social Science, Foreign Language, …) — those
   students sit in B.A./M.A./B.Sc. and roll up to Arts/Science, which are
   over-counted. Reliable for disciplines served by named degrees (Engineering &

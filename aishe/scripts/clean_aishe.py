@@ -12,7 +12,7 @@ for dimensions a given cut doesn't break out:
 Grain: (aishe_year, level, state, discipline, programme, social_category, gender) → out_turn
 
 Query by filtering to one slice; never SUM across rows of different grain.
-See analyses/README.md for the questions and worked slices.
+See analysis/README.md for the questions and worked slices.
 
 Usage:
   python3 scripts/clean_aishe.py

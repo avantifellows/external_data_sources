@@ -8,10 +8,10 @@ forward. Estimates floored at 0.
 MODEL ESTIMATE, not AISHE-published data — use for directional planning only.
 
 Source: clean/outturn.parquet (discipline slice)
-Output: prints; writes analyses/out/discipline_projection_2025_26.csv if --save.
+Output: prints; writes outputs/discipline_projection_2025_26.csv if --save.
 
 Usage:
-  python3 analyses/project_discipline_2025_26.py [--save]
+  python3 analysis/project_discipline_2025_26.py [--save]
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def _fit(xs, ys):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--save", action="store_true", help="Write the projection CSV to analyses/out/")
+    ap.add_argument("--save", action="store_true", help="Write the projection CSV to outputs/")
     args = ap.parse_args()
 
     fact = pd.read_parquet(TABLES[0].local_path)
@@ -76,7 +76,7 @@ def main() -> None:
         print(f"  {r.discipline:<32} {r.out_turn_estimate:>10,}  ({r.growth_pct_total:+.0f}% vs 2021-22)")
 
     if args.save:
-        out_dir = ROOT / "analyses" / "out"
+        out_dir = ROOT / "outputs"
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / "discipline_projection_2025_26.csv"
         proj.to_csv(path, index=False)

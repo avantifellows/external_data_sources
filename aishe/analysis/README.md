@@ -3,7 +3,7 @@
 AISHE out-turn data exists to answer a handful of questions about India's
 higher-education graduate supply. Following the `plfs/` convention, the BigQuery
 shape is derived from these questions — a *small* number of wide, denormalized
-facts; per-question and derived logic lives here in `analyses/`, not as extra
+facts; per-question and derived logic lives here in `analysis/`, not as extra
 tables.
 
 ## The questions
@@ -27,7 +27,7 @@ tables.
    representation differ across B.Tech vs B.A. vs MBBS?
    *Cut:* programme × social_category × gender (national).
    → **`aishe_fact_outturn`** (programme × social_category slice);
-   discipline rollup → `analyses/rollup_discipline_social_category.py`.
+   discipline rollup → `analysis/rollup_discipline_social_category.py`.
 
 4. **Graduate output by state and level.**
    Which states produce the most graduates, and at what levels (PhD / PG / UG /
@@ -38,7 +38,7 @@ tables.
 5. **Projected graduate capacity (planning).**
    Given the trend, what is the expected annual UG supply by discipline in
    2024-25 / 2025-26, for sizing programmes against demand?
-   → `analyses/project_discipline_2025_26.py` on top of
+   → `analysis/project_discipline_2025_26.py` on top of
    `aishe_fact_ug_discipline_trend`. Model estimate, not published data.
 
 ## The table shape that falls out — 2 tables (was 7)
@@ -66,7 +66,7 @@ The time series behind Q1 and the input to the Q5 projection (AISHE Tables 12 +
 
 Grain: `(aishe_year, metric, discipline, gender)` → `value`  (metric ∈ enrolment | out_turn)
 
-## Not tables — derived logic lives here in `analyses/`
+## Not tables — derived logic lives here in `analysis/`
 
 - **`rollup_discipline_social_category.py`** — rolls Table 34a (programme ×
   social category) up to discipline using the heuristic
@@ -86,5 +86,5 @@ The original split mirrored the source PDF tables (one per published table +
 derived rollups). But the *questions* only need two shapes: a denormalized
 2021-22 cross-section you slice by any dimension, and a discipline time-series.
 The discipline×social rollup and the projection are **derivations** of those,
-so they belong in `analyses/` (reproducible, reviewable) — keeping BigQuery to
+so they belong in `analysis/` (reproducible, reviewable) — keeping BigQuery to
 two clean facts instead of seven overlapping ones.

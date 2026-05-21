@@ -16,13 +16,15 @@ loading.
 ```
 aishe/
 ├── scripts/
-│   ├── sources.py            # config + Table registry (single source of truth)
+│   ├── sources.py            # config + Table registry + REPORT_URLS (single source of truth)
+│   ├── fetch.py              # download raw workbooks from REPORT_URLS -> raw/ (regenerable)
 │   ├── build_programme_map.py# 34a programme names -> discipline (heuristic) -> codemaps/*.csv
 │   ├── clean_aishe.py        # parse raw/*.xlsx -> clean/outturn.parquet (one fact)
 │   ├── upload_to_gcs.py      # raw sheets + clean fact -> gs://…/aishe/{raw,clean}/ (both parquet)
 │   └── load_bq.py            # GCS clean/ -> avantifellows.external_data_sources.aishe_fact_outturn
 ├── schemas/                  # one YAML per BQ table (just aishe_fact_outturn)
-├── analyses/                 # question writeup + derived rollup/projection scripts
+├── analysis/                 # question writeup + derived rollup/projection scripts
+├── outputs/                  # analysis outputs (gitignored; regenerable via analysis/*.py --save)
 ├── codemaps/                 # programme_to_discipline.csv (committed, auditable)
 ├── raw/                      # source workbooks (gitignored)
 └── clean/                    # parsed parquet (gitignored)
@@ -31,8 +33,8 @@ aishe/
 **One denormalized fact**, `aishe_fact_outturn` — Tables 33 (state×level), 34a
 (programme×social) and 35 (UG discipline, 2019-22) unified with the `"All"`
 sentinel for dimensions a cut doesn't break out. Derived cuts (discipline×social
-rollup, 2025-26 projection) live in `analyses/`, not as tables. The questions
-that drive this shape are in `analyses/README.md`. Add/change tables in
+rollup, 2025-26 projection) live in `analysis/`, not as tables. The questions
+that drive this shape are in `analysis/README.md`. Add/change tables in
 `scripts/sources.py` (the `TABLES` registry) — every other script iterates over it.
 
 ## Parsing gotchas (carried over from the original extractors)
@@ -55,17 +57,18 @@ that drive this shape are in `analyses/README.md`. Add/change tables in
 
 ## Refreshing for a new AISHE release
 
-1. Download the new Final Report `.xlsx` into `raw/` (canonical filename).
+1. Add the new year's URL + path to `REPORT_URLS` / `REPORTS` in `sources.py`,
+   then `fetch.py` pulls the workbook into `raw/`.
 2. If the programme list changed, re-run `build_programme_map.py` and review the
    diff in `codemaps/programme_to_discipline.csv`.
-3. `clean_aishe.py` → `upload_to_gcs.py` → `load_bq.py`. Loads are
+3. `fetch.py` → `clean_aishe.py` → `upload_to_gcs.py` → `load_bq.py`. Loads are
    `WRITE_TRUNCATE` (idempotent). The fact keys on `aishe_year`, so adding a new
    report year appends naturally.
 
 ## Don't
 
-- Don't commit anything under `raw/` or `clean/` — they're gitignored data.
+- Don't commit anything under `raw/`, `clean/`, or `outputs/` — gitignored data.
 - Don't `SUM(out_turn)` across rows of different grain — filter to one slice
   (state, programme, or discipline) using the `"All"` sentinels first.
-- Don't sum across `social_category` (overlapping) or treat the `analyses/`
+- Don't sum across `social_category` (overlapping) or treat the `analysis/`
   rollup / projection as published AISHE figures (both are derived).

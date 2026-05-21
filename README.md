@@ -9,7 +9,7 @@ BigQuery for analysis. One folder per upstream source.
 |---|---|---|---|
 | PLFS (India) | [`plfs/`](plfs/) | Active | Periodic Labour Force Survey — MoSPI unit-level microdata across 11 releases (2018-19 → CY2025). Heavy local parsing → 6 `plfs_*` tables. |
 | NIRF (India) | [`nirf/`](nirf/) | Active | National Institutional Ranking Framework — rankings + admissions/placements/strength data, top-200 institutes across 9 disciplines, 2016-2025. Light pipeline (parquet → GCS → BQ) → 4 `nirf_fact_*` tables. |
-| AISHE (India) | [`aishe/`](aishe/) | Active | All India Survey on Higher Education — UG/PG/PhD out-turn (graduates), one denormalized fact sliceable by state×level, programme×social-category, and UG discipline (2019-22). Parse workbooks → GCS → BQ → 1 `aishe_fact_outturn` table (rollup + projection in `analyses/`). |
+| AISHE (India) | [`aishe/`](aishe/) | Active | All India Survey on Higher Education — UG/PG/PhD out-turn (graduates), one denormalized fact sliceable by state×level, programme×social-category, and UG discipline (2019-22). Parse workbooks → GCS → BQ → 1 `aishe_fact_outturn` table (rollup + projection in `analysis/`). |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables

@@ -14,10 +14,10 @@ are therefore over-counted. Reliable for disciplines served by named degrees
 Commerce, IT & Computer, …).
 
 Source: clean/outturn.parquet (programme cut) + codemaps/programme_to_discipline.csv
-Output: prints; writes analyses/out/discipline_social_category.csv if --save.
+Output: prints; writes outputs/discipline_social_category.csv if --save.
 
 Usage:
-  python3 analyses/rollup_discipline_social_category.py [--save]
+  python3 analysis/rollup_discipline_social_category.py [--save]
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from sources import CODEMAPS, SENTINEL, TABLES  # noqa: E402
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--save", action="store_true", help="Write the rollup CSV to analyses/out/")
+    ap.add_argument("--save", action="store_true", help="Write the rollup CSV to outputs/")
     args = ap.parse_args()
 
     fact = pd.read_parquet(TABLES[0].local_path)
@@ -58,7 +58,7 @@ def main() -> None:
         print(f"  {r.discipline:<32} {r.out_turn:>10,}")
 
     if args.save:
-        out_dir = ROOT / "analyses" / "out"
+        out_dir = ROOT / "outputs"
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / "discipline_social_category.csv"
         rollup.to_csv(path, index=False)
