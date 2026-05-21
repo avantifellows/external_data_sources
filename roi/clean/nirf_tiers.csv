@@ -1,0 +1,9 @@
+tier,common_field,ranking_year,n_institutes,annual_grads,annual_placed,placement_rate_pct,grad_wtd_median_salary
+IIT,Engineering,2022,17,5545,4269,77.0,1454840
+NIT,Engineering,2022,27,13433,9906,73.7,696735
+IIIT,Engineering,2022,4,884,569,64.4,1341911
+Other NIRF Top-200 Eng,Engineering,2022,142,145693,99500,68.3,563516
+Top NIRF Medical & Dental,Medical,2022,78,8718,4535,52.0,742594
+Top NIRF Architecture & Planning,Engineering,2022,30,2136,1436,67.2,616330
+Top NIRF Law,Law,2022,28,4025,2095,52.0,803875
+Top NIRF Pharmacy,Other Technical,2022,93,6672,2598,39.5,324906

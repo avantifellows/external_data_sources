@@ -1,0 +1,48 @@
+discipline,ug_outturn_2024_25,field
+Arts,2938592,Other
+Commerce,1414717,Commerce
+Science,1362413,Science
+Engineering & Technology,844955,Engineering
+Education,778944,Other
+IT & Computer,387149,IT & Computer
+Medical Science,370852,Medical
+Social Science,362057,Other
+Management,303531,Management
+Law,142566,Law
+Indian Language,90093,Other
+Agriculture,82205,Other Technical
+Foreign Language,70422,Other
+Physical Education,31880,Other
+Library & Information Science,24758,Other
+Home Science,21037,Other
+Paramedical Science,17101,Other Technical
+Hospitality and Tourism,14701,Other
+Journalism & Mass Communication,14654,Other
+Design,13877,Other Technical
+Fine Arts,10057,Other
+Oriental Learning,7893,Other
+Fashion Technology,7254,Other Technical
+Veterinary & Animal Sciences,4961,Other Technical
+Linguistics,2881,Other
+Fisheries Science,2044,Other Technical
+Marine Science / Oceanography,437,Other Technical
+Criminology & Forensic Science,406,Other
+Gandhian Studies,371,Other
+Defence Studies,350,Other
+Religious Studies,263,Other
+Footwear  Design,0,Other Technical
+Area Studies,0,Other
+Cultural Studies,0,Other
+Social Work,0,Other
+Women Studies,0,Other
+__FIELD_ENGINEERING__,844955,Engineering
+__FIELD_MEDICAL__,370852,Medical
+__FIELD_OTHER_TECHNICAL__,127879,Other Technical
+__FIELD_IT_COMPUTER__,387149,IT & Computer
+__FIELD_SCIENCE__,1362413,Science
+__FIELD_COMMERCE__,1414717,Commerce
+__FIELD_MANAGEMENT__,303531,Management
+__FIELD_LAW__,142566,Law
+__FIELD_OTHER__,4369359,Other
+__STEM_UG__,3093248,total_stem
+__ALL_UG__,9323421,total_all
