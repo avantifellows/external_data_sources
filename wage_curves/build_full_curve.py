@@ -17,21 +17,17 @@ Layout (top to tail):
 
 Inputs: NIRF (BQ), AISHE outturn (parquet), JoSAA seats + govt medical seats
 (CSVs here), PLFS young-cohort anchors (constants below, from
-../plfs/analyses/wage_by_discipline.py and PLFS NCO-occupation cuts).
+wage_by_discipline.py and PLFS NCO-occupation cuts).
 
 Output: wage_curves/wage_curve_full.csv      Run: python3 wage_curves/build_full_curve.py
 """
 
 import csv as csvmod
-import io
-import subprocess
-import sys
 from pathlib import Path
 
-import pandas as pd
+from datasource import bq, num as n, aishe_ug, aishe_grand_ug
 
 ROOT = Path(__file__).resolve().parent
-AISHE = ROOT.parent / "aishe" / "clean" / "outturn.parquet"
 ENG_SQL = ROOT / "nirf_engineering_tiers.sql"
 SEATS_CSV = ROOT / "josaa_2022_seats.csv"
 MED_CSV = ROOT / "govt_medical_seats.csv"
@@ -50,7 +46,7 @@ W_MBBS, W_BDS, W_NURS = 540_000, 240_000, 192_000   # occupation (NCO 221 doctor
 # In-field occupation wages — reference only (what those WORKING in the field earn, not all grads):
 OCC_LAW, OCC_AGRI = 300_000, 300_000                # NCO 261 legal; NCO 131+213 agri (see general_grad_occupations.csv)
 # PLFS young-cohort employment rate (WPR), % — the placement-rate anchor per discipline
-# (plfs/analyses/wage_by_discipline.py --age-min 22 --age-max 28). NIRF "placement" is a
+# (wage_by_discipline.py --age-min 22 --age-max 28). NIRF "placement" is a
 # campus-offer %, PLFS is observed employment %; mixed first-order, like the wages.
 # Law has no PLFS degree bucket → uses the general-graduate WPR (P_GEN).
 P_ENG, P_MED, P_AGRI, P_GEN = 55.9, 50.6, 34.3, 38.5
@@ -68,18 +64,6 @@ def growth_for(disc, tier):
     if disc == "Engineering" and not tier.startswith("Others"):
         return ELITE_MULT, f"elite {ELITE_CAGR:.0%} CAGR ×15y (above PLFS range)"
     return GROWTH_PLFS.get(disc, 1.79), f"PLFS {disc} 25→40"
-
-
-def bq(sql):
-    r = subprocess.run(["bq", "query", "--use_legacy_sql=false", "--format=csv"],
-                       input=sql, capture_output=True, text=True)
-    if r.returncode:
-        sys.exit(f"bq failed:\n{r.stderr}")
-    return list(csvmod.DictReader(io.StringIO(r.stdout)))
-
-
-def n(x):
-    return float(x) if x not in (None, "", "NULL") else None
 
 
 def nirf_rollup(categories, year):
@@ -102,22 +86,6 @@ def eng_tiers():
     return {r["tier"]: r for r in rows}
 
 
-def aishe_ug(disciplines):
-    df = pd.read_parquet(AISHE)
-    sl = df[(df.aishe_year == "2021-22") & (df.state == "All") & (df.social_category == "All")
-            & (df.programme == "All") & (df.gender == "Total") & (df.level == "Under Graduate")
-            & (df.discipline.isin(disciplines))]
-    return float(sl.out_turn.sum())
-
-
-def aishe_grand():
-    df = pd.read_parquet(AISHE)
-    sl = df[(df.aishe_year == "2021-22") & (df.state == "All") & (df.social_category == "All")
-            & (df.programme == "All") & (df.gender == "Total") & (df.level == "Under Graduate")
-            & (~df.discipline.isin(["All", "All India", "Grand"]))]
-    return float(sl.out_turn.sum())
-
-
 def seats():
     d = {r["tier"]: int(r["ug_seats_2022"]) for r in csvmod.DictReader(SEATS_CSV.open())}
     return d
@@ -132,7 +100,7 @@ def med_seats():
 
 def main():
     rows = []
-    grand = aishe_grand()   # all-India UG graduating class, all disciplines
+    grand = aishe_grand_ug()   # all-India UG graduating class, all disciplines
 
     def add(disc, tier, inst, grads, total, place, wage, src):
         mult, gbasis = growth_for(disc, tier)

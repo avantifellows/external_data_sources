@@ -21,7 +21,7 @@ Data sources at runtime:
            via the `bq` CLI and nirf_engineering_tiers.sql
   AISHE -> ../aishe/clean/outturn.parquet (local)
   PLFS  -> the engineering-graduate ANNUAL wage anchor. Until PLFS is loaded,
-           pass it with --plfs-annual-wage (see ../plfs/analyses/wage_by_discipline.py,
+           pass it with --plfs-annual-wage (see wage_by_discipline.py,
            which produces a monthly figure; annualise ×12). For a like-for-like
            fresh-graduate anchor, restrict that script to a young cohort
            (--age-min 22 --age-max 28).

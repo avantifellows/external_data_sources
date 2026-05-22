@@ -18,7 +18,7 @@ mbbs_govt_colleges_2024-25.csv exactly.
 NOTE: placement rate + wages for these are NOT here. Doctor outcomes don't work
 like engineering placements (internship → PG entrance / govt service), so they
 need an external source. PLFS "Medicine & Health" is the available population
-wage anchor (see ../plfs/analyses/wage_by_discipline.py).
+wage anchor (see wage_by_discipline.py).
 
 OUTPUT: wage_curves/govt_medical_seats.csv
 Run:    python3 wage_curves/extract_govt_medical_seats.py

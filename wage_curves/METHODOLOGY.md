@@ -188,7 +188,7 @@ AISHE/NIRF flow).
 | *Law in-field (reference)* | *300,000* | *occupation NCO-261 — NOT the curve anchor* |
 | *Agri in-field (reference)* | *300,000* | *occupation NCO-131+213 — reference only* |
 
-Source: `../plfs/analyses/wage_by_discipline.py` (degree buckets) and PLFS
+Source: `wage_by_discipline.py` (degree buckets) and PLFS
 NCO-occupation cuts. All annualised ×12.
 
 ---

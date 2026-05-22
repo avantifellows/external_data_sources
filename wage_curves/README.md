@@ -49,7 +49,9 @@ Agriculture; everything else collapses to "General graduate/PG"):
 
 | File | What |
 |---|---|
+| `datasource.py` | **Single data seam** — all source access (NIRF→BQ live; AISHE/NMC/PLFS→local parquet/CSV today, with the BQ-target table per source documented for when they load). The analysis scripts never touch sibling-repo internals. |
 | **`build_full_curve.py` → `wage_curve_full.csv`** | **Headline output** — every tier of every discipline, top to tail (NIRF elite + non-NIRF residuals), PLFS-anchored |
+| `wage_by_discipline.py` | PLFS wage + employment baseline by discipline (the anchors); supports `--age-min/--age-max` for the young-cohort fresh-grad view |
 | `build_wage_curve.py` + `nirf_engineering_tiers.sql` | Engineering tiered curve (IIT/NIT/IIIT/Other-NIRF/tail), seat-corrected publics |
 | `build_discipline_summary.py` → `discipline_summary.csv` | Cross-discipline summary (NIRF elite vs AISHE vs PLFS, one row/discipline) |
 | `general_grad_occupations.py` → `general_grad_occupations.csv` | Occupation profile of general (non-technical) grads — decomposes the flat "Others (general)" row by NCO occupation (share + wage) |
@@ -74,7 +76,7 @@ python3 wage_curves/extract_avanti_college_db.py
 python3 wage_curves/extract_govt_medical_seats.py
 ```
 
-PLFS wage anchors come from [`../plfs/analyses/wage_by_discipline.py`](../plfs/analyses/wage_by_discipline.py)
+PLFS wage anchors come from [`wage_by_discipline.py`](wage_by_discipline.py)
 (degree-based) or PLFS NCO-occupation cuts (doctors NCO-221, lawyers NCO-261).
 
 ## Runtime data dependencies (not committed — gitignored / external)

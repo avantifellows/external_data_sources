@@ -1,8 +1,8 @@
 discipline,nirf_year,nirf_n_inst,nirf_grads,nirf_placement_pct,nirf_median_inr,aishe_total_ug,other_share_pct,plfs_anchor_inr,plfs_basis,implied_other_inr,note
-Engineering,2022,196,162252.0,70.7,617086.0,829627.0,80.4,360000.0,"degree (Eng, 22-28)",297497.0,
-Law,2022,28,3695.0,61.7,783159.0,107945.0,96.6,510000.0,"occupation (legal prof NCO-261, 25-34)",,
-Agriculture & Allied,2023,36,14052.0,29.6,492448.0,68677.0,79.5,252000.0,"degree (Agri, 22-28; small n)",190146.0,
-Medical cluster,2022,176,15185.0,46.9,601069.0,301480.0,95.0,389000.0,"degree (Medicine&Health, all ages); MBBS docs ₹64k",,govt MBBS/BDS detailed in govt_medical_seats.csv + medical_salaries.csv
+Engineering,2022,196,162252.0,70.7,617086.0,829627,80.4,360000,"degree (Eng, 22-28)",297497,
+Law,2022,28,3695.0,61.7,783159.0,107945,96.6,510000,"occupation (legal prof NCO-261, 25-34)",,
+Agriculture & Allied,2023,36,14052.0,29.6,492448.0,68677,79.5,252000,"degree (Agri, 22-28; small n)",190146,
+Medical cluster,2022,176,15185.0,46.9,601069.0,301480,95.0,389000,"degree (Medicine&Health, all ages); MBBS docs ₹64k",,govt MBBS/BDS detailed in govt_medical_seats.csv + medical_salaries.csv
 Pharmacy (NIRF-only),2022,93,6350.0,41.3,320524.0,,,,,,AISHE total subsumed in another discipline
 Dental (NIRF-only),2022,39,2601.0,50.1,537110.0,,,,,,AISHE total subsumed in another discipline
 Architecture & Planning (NIRF-only),2022,30,2052.0,69.8,589235.0,,,,,,AISHE total subsumed in another discipline

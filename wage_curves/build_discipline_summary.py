@@ -13,21 +13,18 @@ Engineering's detailed IIT/NIT/IIIT tiering lives in build_wage_curve.py; here
 it appears at discipline level for comparability.
 
 Sources: NIRF (BQ nirf_fact_aggregate), AISHE (../aishe/clean/outturn.parquet),
-PLFS anchors (../plfs/analyses/wage_by_discipline.py — degree-based; or PLFS NCO
+PLFS anchors (wage_by_discipline.py — degree-based; or PLFS NCO
 occupation cuts for doctors/lawyers). All PLFS figures annualised (×12).
 
 Run: python3 wage_curves/build_discipline_summary.py
 """
 
-import io
-import subprocess
-import sys
+import csv
 from pathlib import Path
 
-import pandas as pd
+from datasource import bq, aishe_ug
 
 ROOT = Path(__file__).resolve().parent
-AISHE_PARQUET = ROOT.parent / "aishe" / "clean" / "outturn.parquet"
 
 # discipline -> config
 DISCIPLINES = [
@@ -70,24 +67,11 @@ def nirf_rollup(categories, year):
            ROUND(SUM(median_salary*students_placed)/NULLIF(SUM(students_placed),0)) wtd_median
     FROM grad WHERE rn = 1
     """
-    out = subprocess.run(["bq", "query", "--use_legacy_sql=false", "--format=csv"],
-                         input=sql, capture_output=True, text=True)
-    if out.returncode != 0:
-        sys.exit(f"bq failed for {categories} {year}:\n{out.stderr}")
-    return list(csv_dicts(out.stdout))[0]
-
-
-def csv_dicts(text):
-    import csv as _csv
-    return _csv.DictReader(io.StringIO(text))
+    return bq(sql)[0]
 
 
 def aishe_total(disciplines):
-    df = pd.read_parquet(AISHE_PARQUET)
-    sl = df[(df.aishe_year == "2021-22") & (df.state == "All") & (df.social_category == "All")
-            & (df.programme == "All") & (df.gender == "Total") & (df.level == "Under Graduate")
-            & (df.discipline.isin(disciplines))]
-    return float(sl.out_turn.sum())
+    return aishe_ug(disciplines)
 
 
 def f0(x):
@@ -136,7 +120,10 @@ def main():
                          plfs_anchor_inr=None, plfs_basis="", implied_other_inr=None,
                          note="AISHE total subsumed in another discipline"))
 
-    pd.DataFrame(rows).to_csv(ROOT / "discipline_summary.csv", index=False)
+    out = ROOT / "discipline_summary.csv"
+    with out.open("w", newline="") as f:
+        wtr = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        wtr.writeheader(); wtr.writerows(rows)
     print(f"\nWrote {ROOT.name}/discipline_summary.csv")
     print("Notes: Law/Medical not reconciled (occupation anchor / shared AISHE cluster). "
           "Engineering detailed tiers in build_wage_curve.py; medical detail in "

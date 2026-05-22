@@ -35,11 +35,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-PLFS = ROOT.parent / "plfs"
-SRC = PLFS / "clean" / "annual_2022_23" / "perv1.csv"
 FULL = ROOT / "wage_curve_full.csv"
-sys.path.insert(0, str(PLFS / "scripts"))
-from weights import get_weight_fn          # noqa: E402
+
+from datasource import plfs_persons, wmedian          # noqa: E402
 
 BANDS = ["25-29", "30-34", "35-39", "40-44"]
 
@@ -60,36 +58,25 @@ def bucket(tedu, gedu):
     return None
 
 
-def wmedian(vw):
-    if not vw: return None
-    s = sorted(vw); tw = sum(w for _, w in s); c = 0.0
-    for v, w in s:
-        c += w
-        if c >= tw / 2: return v
-    return s[-1][0]
-
-
 def plfs_profile():
-    wf = get_weight_fn("annual_2022_23")
     agg = collections.defaultdict(list)
-    with SRC.open(encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            b = bucket((r.get("tedu_lvl") or "").strip(), (r.get("gedu_lvl") or "").strip())
-            if not b:
-                continue
-            try:
-                a = int(r["age"])
-            except (ValueError, KeyError):
-                continue
-            bd = band(a)
-            if not bd or r.get("pas") != "31":
-                continue
-            try:
-                e = int(r.get("ern_reg", "0") or "0")
-            except ValueError:
-                e = 0
-            if e > 0:
-                agg[(b, bd)].append((e, wf(r)))
+    for r, w in plfs_persons():
+        b = bucket((r.get("tedu_lvl") or "").strip(), (r.get("gedu_lvl") or "").strip())
+        if not b:
+            continue
+        try:
+            a = int(r["age"])
+        except (ValueError, KeyError):
+            continue
+        bd = band(a)
+        if not bd or r.get("pas") != "31":
+            continue
+        try:
+            e = int(r.get("ern_reg", "0") or "0")
+        except ValueError:
+            e = 0
+        if e > 0:
+            agg[(b, bd)].append((e, w))
     return agg
 
 
