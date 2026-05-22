@@ -1,0 +1,108 @@
+# aishe_fact_higher_ed
+#
+# ── What AISHE is ────────────────────────────────────────────────────────────
+# AISHE = All India Survey on Higher Education, run annually by the Ministry of
+# Education (MoE). It is India's official census of higher-education institutions
+# (universities, colleges, standalone institutions) and is THE source for how
+# many students are enrolled, how many graduate, in which subjects, where, and
+# from which social groups. This table is the slice of AISHE about students:
+# enrolment and graduates.
+#
+# ── Two metrics: enrolment vs graduates ──────────────────────────────────────
+#   enrolment = students CURRENTLY studying in a programme (the stock).
+#   graduates = students who QUALIFIED / passed out that year (the annual flow,
+#               what AISHE calls "out-turn").
+# A B.Tech. cohort might have ~X enrolled but only ~X/4 graduating in a year.
+#
+# ── How the table is shaped (cuts) ───────────────────────────────────────────
+# AISHE publishes these numbers in separate cross-tabs that break out different
+# dimensions. We stack them into ONE fact and tag each row with `cut` = which
+# published table it came from. The cuts OVERLAP (each is a different view of the
+# same students), so you must ALWAYS filter to one cut and NEVER SUM across cuts:
+#   cut='state_level'      Table 33      graduates by state x level (2021-22)
+#   cut='programme_social' Table 34a     graduates by programme x social category (2021-22, all levels)
+#   cut='ug_discipline'    Tables 12 + 35  UG enrolment (T12) + graduates (T35) by
+#                                        discipline, 2019-20 -> 2021-22 (the trend)
+# `metric` in {enrolment, graduates}; enrolment exists ONLY on the ug_discipline
+# cut. Dimensions a cut doesn't break out carry the sentinel "All" (mirroring
+# AISHE's own "Total" / "All Categories" rows).
+#
+# ── discipline vs programme vs level (don't confuse them) ─────────────────────
+#   level      = stage of study: Ph.D. / Post Graduate / Under Graduate / Diploma…
+#   programme  = the named degree: B.A., B.Tech., MBBS, M.Sc.…
+#   discipline = the broad SUBJECT area: Arts, Science, Engineering & Technology,
+#                Commerce… (Table 35/12 group UG students by subject, not degree.)
+#
+# Source parquet: gs://avantifellows-external-data/aishe/clean/higher_ed.parquet
+# BQ table:       avantifellows.external_data_sources.aishe_fact_higher_ed
+#
+# Validation: 2021-22 UG graduates (metric='graduates', gender='Total') = 7,754,223
+# via BOTH the state_level cut and the ug_discipline cut (they must reconcile).
+#
+# Cross-source: the `discipline` values group into wage-curve buckets (Engineering
+# & Tech, Medical, IT/Computer, Management, other-STEM, general/non-tech) that map
+# to PLFS earnings categories — graduate volume per bucket x PLFS wage-by-age-band
+# is the RoI / wage-curve analysis. That bucket codemap lives with the analysis,
+# not in this table.
+
+description: AISHE higher-ed enrolment + graduates, one wide fact tagged by `cut` (state×level | programme×social | UG-discipline) and `metric` (enrolment | graduates). "All" sentinels for un-broken-out dims.
+rows: 6999
+grain: (cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)
+
+columns:
+  - name: cut
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Published slice this row belongs to: 'state_level' (Table 33), 'programme_social'
+      (Table 34a), or 'ug_discipline' (Tables 12+35). ALWAYS filter on cut; never SUM across cuts.
+
+  - name: metric
+    type: STRING
+    mode: REQUIRED
+    description: "'enrolment' (students currently enrolled) or 'graduates' (out-turn / qualifiers that year). enrolment only on the ug_discipline cut."
+
+  - name: aishe_year
+    type: STRING
+    mode: REQUIRED
+    description: AISHE survey year. "2021-22" for all cuts; the ug_discipline cut also has "2019-20" and "2020-21" for trend.
+
+  - name: level
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Programme level (Ph.D., Post Graduate, Under Graduate, …) on state_level;
+      "Under Graduate" on ug_discipline; "All" (all levels) on programme_social.
+
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State/UT on the state_level cut; "All" elsewhere.
+
+  - name: discipline
+    type: STRING
+    mode: REQUIRED
+    description: AISHE major discipline (subject-based, Table 35) on the ug_discipline cut; "All" elsewhere.
+
+  - name: programme
+    type: STRING
+    mode: REQUIRED
+    description: Degree programme (B.A., B.Tech., MBBS, …) on the programme_social cut; "All" elsewhere.
+
+  - name: social_category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      On the programme_social cut: All Categories, Scheduled Caste, Scheduled Tribe,
+      OBC, Persons with Disability, Muslim, Other Minority, EWS (overlap — don't sum
+      across them). "All" elsewhere.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: Male, Female, or Total.
+
+  - name: value
+    type: INTEGER
+    mode: REQUIRED
+    description: Student count for the cell — enrolment or graduates per `metric`. 0 where the report is blank.

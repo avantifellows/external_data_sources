@@ -1,0 +1,228 @@
+programme,discipline,matched_pattern,confidence,notes
+Mechatronics,Engineering & Technology,^Mechatronics,high,
+A.N.M.-Auxiliary Nurse & Midwife,Paramedical Science,^A\.N\.M\.,high,Auxiliary Nurse & Midwife
+Acharya-Acharya,Oriental Learning,^Acharya-Acharya,high,Sanskrit-system PG
+Alankar-Alankar,Oriental Learning,^Alankar-Alankar,high,
+Art Education,Education,^Art Education,high,
+Automotive Mechatronics Captive(Anand Group),Engineering & Technology,^Automotive Mechatronics,high,
+Ayurveda Vachaspati-Ph.D in Ayurveda,Medical Science,^Ayurveda Vachaspati,high,PhD in Ayurveda
+Ayurvedacharya-Ayurvedacharya,Medical Science,^Ayurvedacharya,high,Ayurveda Acharya
+"B.A. B.Ed.-Bachelor of Arts, Bachelor of Education",Education,^B\.A\. B\.Ed\.,medium,Joint BA-BEd; AISHE classifies under Education
+"B.A. L.L.B.-Bachelor of Arts, Bachelor of Law or Laws",Law,L\.L\.B,high,
+B.A.(Hons)-Bachelor of Arts (Honors),Arts,^B\.A\.\(Hons\),high,
+B.A.-Bachelor of Arts,Arts,^B\.A\.-Bachelor,high,
+B.A.M.-Bachelor of Ayurved Medicine,Medical Science,^B\.A\.M\.,high,Bachelor of Ayurved Medicine
+B.A.M.S.-Bachelor of Ayurved Medicine & Surgery,Medical Science,^B\.A\.M\.S\.,high,Ayurved Medicine & Surgery
+B.A.S.L.P.-Bachelor of Audiology and Speech Language Pathology,Paramedical Science,^B\.A\.S\.L\.P\.,high,Audiology & Speech Lang Pathology
+B.Agri.-Bachelor of Agriculture,Agriculture,^B\.Agri\.,high,
+B.Architecture-Bachelor of Architecture,Engineering & Technology,^B\.Architecture,medium,Architecture grouped with E&T per AISHE
+"B.B.A. L.L.B.-Bachelor of Business Administration, Bachelor of Law or Laws",Law,L\.L\.B,high,
+B.B.A.-Bachelor of Business Administration,Management,^B\.B\.A\.,high,
+B.B.M.-Bachelor of Business Management,Management,^B\.B\.M\.,high,
+B.B.S.-Bachelor of Business Studies,Management,^B\.B\.S\.,medium,Bachelor of Business Studies
+B.C.A.-Bachelor of Computer Applications,IT & Computer,^B\.C\.A\.,high,Bachelor of Computer Apps
+B.C.E.-Bachelor of Civil Engineering,Engineering & Technology,^B\.C\.E\.,high,Civil Engg
+B.Ch.E.-Bachelor of Chemical Engineering,Engineering & Technology,^B\.Ch\.E\.,high,Chemical Engg
+B.Chem.Tech.-Bachelor of Chemical Technology,Engineering & Technology,^B\.Chem\.Tech\.,high,Chemical Tech
+"B.Com. B.Ed.-Bachelor of Commerce, Bachelor of Education",Education,^B\.Com\. B\.Ed\.,medium,Joint BCom-BEd; AISHE classifies under Education
+"B.Com. L.L.B.-Bachelor of Commerce, Bachelor of Law",Law,L\.L\.B,high,
+B.Com.(Hons)-Bachelor of Commerce (Honors),Commerce,^B\.Com\.,high,
+B.Com.-Bachelor of Commerce,Commerce,^B\.Com\.,high,
+B.D.S.-Bachelor of Dental Surgery,Medical Science,^B\.D\.S\.,high,Dental Surgery
+B.Dance-Bachelor of Dance,Fine Arts,^B\.Dance,high,
+B.DES. (Communication Design),Design,^B\.Des\.,high,
+B.Des.-Bachelor of Design,Design,^B\.Des\.,high,
+B.E.-Bachelor of Engineering,Engineering & Technology,^B\.E\.-Bachelor,high,Bachelor of Engineering
+"B.Ed. M.Ed-Bachelor of Education,Master of Education",Education,^B\.Ed\. M\.Ed,high,Combined BEd-MEd
+B.Ed.-Bachelor of Education,Education,^B\.Ed\.,high,
+B.El.Ed.-Bachelor in Elementary Education,Education,^B\.El\.Ed\.,high,Bachelor of Elementary Education
+B.F.A.-Bachelor of Fine Arts,Fine Arts,^B\.F\.A\.,high,
+B.F.Sc.-Bachelor of Fisheries Science,Fisheries Science,^B\.F\.Sc\.,high,
+B.F.Tech.-Bachelor of Fashion Technology,Fashion Technology,^B\.F\.Tech\.,high,
+B.G.L.-Bachelor of General Law,Law,^B\.G\.L\.,high,Bachelor of General Law
+B.H.A.-Bachelor of Hospital Administration,Medical Science,^B\.H\.A\.,medium,Hospital Admin; AISHE convention groups with Med Sci
+B.H.M.-Bachelor of Hotel Management,Hospitality and Tourism,^B\.H\.M\.,high,Bachelor of Hotel Management
+B.H.M.C.T.-Bachelor of Hotel Management and Catering Technology,Hospitality and Tourism,^B\.H\.M\.C\.T\.,high,Hotel Mgt & Catering Tech
+B.H.M.S.-Bachelor of Homeopathic Medicine and Surgery,Medical Science,^B\.H\.M\.S\.,high,Homeopathic Medicine & Surgery
+"B.H.M.T.T.-Bachelor of Hotel Management, Travel and Tourism",Hospitality and Tourism,^B\.H\.M\.T\.T\.,high,
+B.H.T.M.-Bachelor of Hotel and Tourism Management,Hospitality and Tourism,^B\.H\.T\.M\.,high,
+B.I.B.F.-Bachelor of International Business and Finance,Management,^B\.I\.B\.F\.,medium,International Business & Finance
+B.I.M.-Bachelor of Indian Medicine,Medical Science,^B\.I\.M\.,high,Bachelor of Indian Medicine
+B.J.-Bachelor of Journalism,Journalism & Mass Communication,^B\.J\.-Bachelor,high,
+B.J.M.C.-Bachelor of Journalism and Mass Communication,Journalism & Mass Communication,^B\.J\.M\.C\.,high,
+B.L.-Bachelor of Law or Laws,Law,^B\.L\.,high,Bachelor of Law
+B.Lib.I.Sc.-Bachelor of Library & Information Science,Library & Information Science,^B\.Lib\.I\.Sc\.,high,
+B.Lib.Sc.-Bachelor of Library Science,Library & Information Science,^B\.Lib\.Sc\.,high,
+B.Litt.-Bachelor of Literature,Arts,^B\.Litt\.,high,
+B.M.L.T- Bachelor in Medical Lab Technology,Paramedical Science,^B\.M\.L\.T,high,Medical Lab Tech
+B.M.M.-Bachelor of Multi Media,Journalism & Mass Communication,^B\.M\.M\.,high,Bachelor of Multi Media
+B.M.S.-Bachelor of Management Studies,Management,^B\.M\.S\.,medium,Bachelor of Management Studies
+B.Mus.-Bachelor of Music,Fine Arts,^B\.Mus\.,high,
+B.N.Y.S.-Bachelor of Naturopathy and Yogic Sciences,Medical Science,^B\.N\.Y\.S\.,high,Naturopathy & Yogic Sciences
+B.Nat.(Yogic Sciences)-Bachelor of Naturopathy and Yogic Sciences,Medical Science,^B\.Nat\.,high,Bachelor of Naturopathy
+B.O.L.-Bachelor of Oriental Learning,Oriental Learning,^B\.O\.L\.,high,
+B.O.T.-Bachelor of Occupational Therapy,Paramedical Science,^B\.O\.T\.,high,Occupational Therapy
+B.Optom.-Bachelor of Clinical Optometry,Paramedical Science,^B\.Optom\.,high,Optometry
+B.P.A.-Bachelor of Performing Arts,Fine Arts,^B\.P\.A\.,high,Performing Arts
+B.P.E.-Bachelor of Physical Education,Physical Education,^B\.P\.E\.,high,
+B.P.Ed.-Bachelor of Physical Education,Physical Education,^B\.P\.Ed\.,high,
+B.P.O-Bachelor of Prosthetics and Orthotics,Paramedical Science,^B\.P\.O,high,Prosthetics & Orthotics
+B.P.S.-Bachelor of Professional Studies,Science,^B\.P\.S\.,low,"Bachelor of Professional Studies, ambiguous; default Science"
+B.P.T.-Bachelor of Physiotherapy,Paramedical Science,^B\.P\.T\.,high,Physiotherapy
+B.Pharm.(Ayu.) -Bachelor of Ayurved in Pharmacy,Medical Science,^B\.Pharm\.\(Ayu\.\),high,Ayurved Pharmacy
+B.Pharm.-Bachelor of Pharmacy,Medical Science,^B\.Pharm\.,high,Pharmacy under Medical Science (no separate AISHE discipline)
+B.Plan.-Bachelor of Planning,Engineering & Technology,^B\.Plan\.,medium,Planning grouped with E&T
+"B.S. M.S.-Bachelor of Science, Master of Science",Medical Science,^B\.S\. M\.S\.,medium,"Joint BSc-MS, medical sciences context"
+B.S.Course-Bachelor of Science (Physician Assistant and Emergency & Trauma Care Management),Medical Science,^B\.S\.Course,medium,Physician Assistant & Trauma Care
+B.S.M.S.-Bachelor of Sridhar Medicine and Surgery,Medical Science,^B\.S\.M\.S\.,high,Sridhar/Siddha Medicine & Surgery
+B.S.S.-Bachelor in Social Sciences,Social Science,^B\.S\.S\.,high,Bachelor in Social Sciences
+B.S.W.-Bachelor of Social Work,Social Work,^B\.S\.W\.,high,
+B.SC. (IT) M.Sc. (IT),IT & Computer,^B\.SC\. \(IT\) M\.Sc\. \(IT\),high,Joint BSc-MSc in IT
+"B.Sc. B.Ed.-Bachelor of Science, Bachelor of Education",Education,^B\.Sc\. B\.Ed\.,medium,Joint BSc-BEd; AISHE classifies under Education
+"B.Sc. L.L.B.-Bachelor of Science, Bachelor of Law or Laws",Law,L\.L\.B,high,
+B.Sc.(FDP)-Bachelor of Science in Footwear Design and Production,Footwear  Design,^B\.Sc\.\(FDP\),high,Footwear Design and Production
+B.Sc.(Hons)-Bachelor of Science (Honors),Science,^B\.Sc\.\(Hons\),high,
+B.Sc.(Nursing)-Bachelor of Science in Nursing,Paramedical Science,^B\.Sc\.\(Nursing\),high,
+B.Sc.(Post Basic)-B.Sc (Post Basic),Paramedical Science,^B\.Sc\.\(Post Basic\),high,Post-basic nursing
+B.Sc.(Sericulture)-Bachelor of Science in Sericulture,Agriculture,^B\.Sc\.\(Sericulture\),medium,Sericulture grouped with Agriculture
+B.Sc.-Bachelor of Science,Science,^B\.Sc\.-Bachelor,high,
+B.Stat.-Bachelor of Statistics,Science,^B\.Stat\.,high,
+"B.Tech M.Tech-Bachelor of Technology, Master of Technology",Engineering & Technology,^B\.Tech M\.Tech,high,Joint BTech-MTech
+B.Tech.-Bachelor of Technology,Engineering & Technology,^B\.Tech\.,high,
+B.U.M.S.-Bachelor of Unani Medicine and Surgery,Medical Science,^B\.U\.M\.S\.,high,Unani Medicine & Surgery
+B.V.A.-Bachelor of Visual Arts,Fine Arts,^B\.V\.A\.,high,Visual Arts
+B.V.Sc.&A.H.-Bachelor of Veterinary Science & Animal Husbandry,Veterinary & Animal Sciences,^B\.V\.Sc\.,high,
+B.V.Sc.-Bachelor of Veterinary Science,Veterinary & Animal Sciences,^B\.V\.Sc\.,high,
+B.Voc.-Bachelor of Vocational,Others,^B\.Voc\.,high,Vocational; no separate AISHE discipline
+B.X.R.T- Bachelor in X-Ray Radiographer Technician,Paramedical Science,^B\.X\.R\.T,high,X-Ray Radiographer Tech
+Bachelor in Astrology,Oriental Learning,^Bachelor in Astrology,medium,No strict AISHE category; Oriental Learning best fit
+BBA-LLB(Hons),Law,^BBA-LLB,high,Joint BBA-LLB; periodless variant
+BTTM MTTM,Hospitality and Tourism,^BTTM MTTM,high,
+Certificate-Certificate,Others,^Certificate-Certificate,high,Generic Certificate
+D.Ed.-Diploma in Education,Education,^D\.Ed\.,high,
+D.El.Ed.-Diploma in Elementary Education,Education,^D\.El\.Ed\.,high,
+D.Litt.-Doctor of Literature,Arts,^D\.Litt\.,high,
+D.M.-Doctor of Medicine,Medical Science,^D\.M\.-Doctor of Medicine,high,
+D.M.L.T - Diploma in Medical Laboratory Technician,Paramedical Science,^D\.M\.L\.T,high,Diploma Med Lab Tech
+D.Mus.-Doctor of Music,Fine Arts,^D\.Mus\.,high,
+D.O.T.A- Diploma in Operation Theater Assistant,Paramedical Science,^D\.O\.T\.A,high,Operation Theater Assistant
+D.Pharma-Diploma in Pharmacy,Medical Science,^D\.Pharma,high,Diploma in Pharmacy
+D.Phil.-Doctor of Philosophy,Others,^D\.Phil\.,high,PhD discipline-agnostic
+D.Sc.-Doctor of Science,Science,^D\.Sc\.,high,Doctor of Science
+D.Voc.-Diploma in Vocational Education,Others,^D\.Voc\.,high,Vocational
+D.X-ray - Diploma in X-Ray Technician,Paramedical Science,^D\.X-ray,high,
+Diploma-Diploma,Others,^Diploma-Diploma,high,Generic Diploma
+EMBA - Executive MBA,Management,^EMBA,high,
+Entrepreneurship,Others,^Entrepreneurship,medium,Could be Management; AISHE often groups under Others
+Fashion and Apparel Design,Fashion Technology,^Fashion and Apparel Design,high,
+Fashion Art,Fashion Technology,^Fashion Art,high,
+G.N.M.-General Nursing & Midwifery,Paramedical Science,^G\.N\.M\.,high,General Nursing
+Hindi Shiksha Visharad-Hindi Shiksha Visharad,Indian Language,^Hindi Shiksha Visharad,high,Hindi-language teacher cert
+Integrated M.A.-Integrated Master of Arts,Arts,^Integrated M\.A\.,high,
+Integrated M.B.A.-Integrated Master of Business Administration,Management,^Integrated M\.B\.A\.,high,
+Integrated M.C.A.-Integrated Master of Computer Applications,IT & Computer,^Integrated M\.C\.A\.,high,
+Integrated M.Sc.-Integrated Master of Science,Science,^Integrated M\.Sc\.,high,
+Integrated Ph.D-Integrated Doctor of Philosophy,Others,^Integrated Ph\.D,high,PhD discipline-agnostic
+Interior Design and Decoration,Design,^Interior Design,high,
+L.L.B.-Bachelor of Law or Laws,Law,L\.L\.B,high,
+L.L.D.-Doctor of Laws,Law,^L\.L\.D\.,high,
+L.L.M.-Master of Law or Laws,Law,^L\.L\.M\.,high,
+"M.A. B.Ed.-Master of Arts, Bachelor of Education",Education,^M\.A\. B\.Ed\.,medium,Joint MA-BEd; AISHE classifies under Education
+M.A.M.S.-Master of Ayurved in Medicine and Surgery,Medical Science,^M\.A\.M\.S\.,high,Master of Ayurved Med & Surgery
+M.A.-Master of Arts,Arts,^M\.A\.-Master,high,
+M.Arch.-Master of Architecture,Engineering & Technology,^M\.Arch\.,medium,Architecture grouped with E&T per AISHE
+M.B.A.- Master of Business Administration,Management,^M\.B\.A\.,high,
+M.B.A.(Pharma. Tech.)-Master of Business Administration in Pharmaceutical Technology,Management,^M\.B\.A\.\(Pharma\. Tech\.\),medium,MBA in Pharma Tech - mgmt-leaning
+M.B.A.(Tech.)-Master of Business Administration in Technology,Management,^M\.B\.A\.\(Tech\.\),medium,MBA in Tech - mgmt-leaning
+M.B.B.S.-Bachelor of Medicine and Bachelor of Surgery,Medical Science,^M\.B\.B\.S\.,high,
+M.C.A. -Master of Computer Applications,IT & Computer,^M\.C\.A\.,high,
+M.Ch.-Master of Chirurgiae,Medical Science,^M\.Ch\.,high,Master of Chirurgiae (surgery)
+"M.Com. B.Ed.-Master of Commerce, Bachelor of Education",Education,^M\.Com\. B\.Ed\.,medium,Joint MCom-BEd; AISHE classifies under Education
+M.Com.-Master of Commerce,Commerce,^M\.Com\.,high,
+M.D.-Doctor of Medicine,Medical Science,^M\.D\.,high,Doctor of Medicine
+M.D.S.-Master of Dental Surgery,Medical Science,^M\.D\.S\.,high,Master of Dental Surgery
+M.Dance-Master of Dance,Fine Arts,^M\.Dance,high,
+M.Des.-Master of Design,Design,^M\.Des\.,high,
+M.E.-Master of Engineering,Engineering & Technology,^M\.E\.-Master,high,Master of Engineering
+M.Ed. -Master of Education,Education,^M\.Ed\.,high,
+M.F.A. -Master of Fine Arts,Fine Arts,^M\.F\.A\.,high,
+M.F.M. -Master of Financial Management,Management,^M\.F\.M\. -Master of Financial,high,Disambig MFM (financial vs fashion)
+M.F.M.-Master of Fashion Management,Fashion Technology,^M\.F\.M\.-Master of Fashion Management,high,Disambig MFM (fashion vs financial)
+M.F.Sc. -Master of Fishery Science,Fisheries Science,^M\.F\.Sc\.,high,
+M.F.T. -Master of Foreign Trade,Management,^M\.F\.T\.,medium,Foreign Trade
+M.F.Tech.-Master of Fashion Technology,Fashion Technology,^M\.F\.Tech\.,high,
+M.H.A. -Master of Hospital Administration,Medical Science,^M\.H\.A\.,medium,Master Hospital Admin; AISHE groups with Med Sci
+M.H.M.S.-Master of Homeopathic Medicine and Science,Medical Science,^M\.H\.M\.S\.,high,Master of Homeopathy
+M.H.R.D. -Master of Human Resource Development,Management,^M\.H\.R\.D\.,high,Master of HRD
+M.I.B.-Master of International Business,Management,^M\.I\.B\.,medium,Master of International Business
+M.J.M.C.-Master of Journalism and Mass Communication,Journalism & Mass Communication,^M\.J\.M\.C\.,high,
+M.J.-Master of Journalism,Journalism & Mass Communication,^M\.J\.-Master,high,
+M.L. -Master of Laws,Law,^M\.L\.,high,Master of Laws
+M.L.I.Sc.-Master of Library & Information Science,Law,^M\.L\.,high,Master of Laws
+M.Lib.Sc. -Master of Library Science,Library & Information Science,^M\.Lib\.Sc\.,high,
+M.Litt.-Master of Literature or Master of Letters,Arts,^M\.Litt\.,high,
+M.M.C.-Master in Mass Communication,Journalism & Mass Communication,^M\.M\.C\.,high,Master of Mass Comm
+M.Mgt.-Master of Management,Management,^M\.Mgt\.,high,
+M.Mkt.M. -Master of Marketing Management,Management,^M\.Mkt\.M\.,high,Master of Marketing Mgt
+M.Mus. -Master of Music,Fine Arts,^M\.Mus\.,high,
+M.O.L. -Master of Oriental Learning,Oriental Learning,^M\.O\.L\.,high,
+M.O.T. -Master of Occupational Therapy,Paramedical Science,^M\.O\.T\.,high,Master of Occupational Therapy
+M.Optom. -Master of Optometry,Paramedical Science,^M\.Optom\.,high,Master of Optometry
+M.P.A.-Master of Performing Arts,Fine Arts,^M\.P\.A\.,high,
+M.P.E.-Master of Physical Education,Physical Education,^M\.P\.E\.,high,
+M.P.Ed.-Master of Physical Education,Physical Education,^M\.P\.Ed\.,high,
+M.P.H. -Master of Public Health,Medical Science,^M\.P\.H\.,medium,Master of Public Health
+M.P.O-Master in Prosthetics and Orthotics,Paramedical Science,^M\.P\.O,high,Master Prosthetics
+M.P.S. -Master of Population Studies,Management,^M\.P\.S\. ,low,Master of Population Studies; weak fit
+M.P.T.-Master of Physiotherapy,Paramedical Science,^M\.P\.T\.,high,Master of Physiotherapy
+M.Pharm. -Master of Pharmacy,Medical Science,^M\.Pharm\.,high,Pharmacy under Medical Science (no separate AISHE discipline)
+M.Phil.-Master of Philosophy,Others,^M\.Phil\.,high,M.Phil. discipline-agnostic
+M.Plan.-Master of Planning,Engineering & Technology,^M\.Plan\.,medium,
+M.S.-Master of Science,Science,^M\.S\.-Master of Science,high,
+M.S.-Master of Surgery,Medical Science,^M\.S\.-Master of Surgery,high,
+M.S.W.-Master of Social Work,Social Work,^M\.S\.W\.,high,
+"M.Sc. B.Ed.-Master of Science, Bachelor of Education",Education,^M\.Sc\. B\.Ed\.,medium,Joint MSc-BEd; AISHE classifies under Education
+M.Sc. in Biosciences and Bioinformatics,Science,^M\.Sc\. in Biosciences,high,
+M.Sc. -Master of Science and M.Tech. -Master of Technology,Engineering & Technology,^M\.Sc\. -Master of Science and M\.Tech,high,Joint MSc-MTech
+M.Sc. Nursing-Master of Science in Nursing,Paramedical Science,^M\.Sc\. Nursing,high,
+M.Sc. Tech. -Master of Science in Technology,Engineering & Technology,^M\.Sc\. Tech\.,high,MSc in Technology
+M.Sc. Tech.(Applied Geo-Physics)-Master of Science in Technology (Applied Geo-Physics),Engineering & Technology,^M\.Sc\. Tech\.,high,MSc in Technology
+M.Sc.(Medical Anatomy) -Master of Science in Medical Anatomy,Medical Science,^M\.Sc\.\(Medical,high,Medical sub-disciplines
+M.Sc.(Medical Bio-Chemistry)-Master of Science in Medical Bio-Chemistry,Medical Science,^M\.Sc\.\(Medical,high,Medical sub-disciplines
+M.Sc.(Medical Microbiology)-Master of Science in Medical Microbiology,Medical Science,^M\.Sc\.\(Medical,high,Medical sub-disciplines
+M.Sc.(Medical Pharmacology)-Master of Science in Medical Pharmacology,Medical Science,^M\.Sc\.\(Medical,high,Medical sub-disciplines
+M.Sc.(Medical Physiology)-Master of Science in Medical Physiology,Medical Science,^M\.Sc\.\(Medical,high,Medical sub-disciplines
+M.Sc.M.Ed.-Master of Science and Master of Education,Education,^M\.Sc\.M\.Ed\.,medium,Joint MSc-MEd
+M.Sc.-Master of Science,Science,^M\.Sc\.-Master of Science,high,
+M.Stat. -Master of Statistics,Science,^M\.Stat\.,high,
+M.Tech. -Master of Technology,Engineering & Technology,^M\.Tech\.,high,
+M.U.P.-Master of Urban Planning,Engineering & Technology,^M\.U\.P\.,medium,Master of Urban Planning
+M.V.A.-Master of Visual Arts,Fine Arts,^M\.V\.A\.,high,Master of Visual Arts
+M.V.Sc. -Master of Veterinary Sciences,Veterinary & Animal Sciences,^M\.V\.Sc\.,high,
+Management Financial Services,Management,^Management Financial Services,medium,
+Management HRM,Management,^Management HRM,medium,
+Master of Travel & Tourism Management (MTTM),Hospitality and Tourism,^Master of Travel & Tourism,high,
+Master of Vocational (M Voc),Others,^Master of Vocational,high,Vocational
+MBA in Travel and Tourism Management,Hospitality and Tourism,^MBA in Travel and Tourism,high,
+Medical Laboratory Technician,Paramedical Science,^Medical Laboratory Technician,high,
+MSc. -Master of Science and Ph.D.-Doctor of Philosophy,Science,^MSc\. -Master of Science and Ph\.D,high,Joint MSc-PhD
+P.G.D.M.-Post-Graduate Diploma in Management,Management,^P\.G\.D\.M\.,high,PG Diploma in Management
+P.G.P.-Post-Graduate Programme in Management,Management,^P\.G\.P\.,high,PG Programme in Management
+PG Diploma-Post Graduate Diploma,Others,^PG Diploma,high,Generic PG Diploma
+PGDBA,Management,^PGDBA,high,
+Ph.D.-Doctor of Philosophy,Others,^Ph\.D\.,high,PhD discipline-agnostic; AISHE tracks elsewhere
+Pharm.D.-Doctor of Pharmacy,Medical Science,^Pharm\.D\.,high,Doctor of Pharmacy
+Public Services,Social Science,^Public Services,low,ambiguous; Social Science best fit
+Robotics and Automation,Engineering & Technology,^Robotics and Automation,high,
+Samaj Karya Parangat-Samaj Karya Parangat,Social Work,^Samaj Karya Parangat,high,Sanskrit-system Social Work
+Samaj Vidya Parangat-Samaj Vidya Parangat,Social Science,^Samaj Vidya Parangat,medium,Sanskrit-system Social Science
+Samaj Vidya Visharad-Samaj Vidya Visharad,Social Science,^Samaj Vidya Visharad,medium,Sanskrit-system Social Science
+Shastri-Shastri,Oriental Learning,^Shastri-Shastri,high,Sanskrit-system UG
+Shiksha Acharya-Shiksha Acharya,Education,^Shiksha Acharya,high,Sanskrit-system education degree
+Shiksha Shastri-Shiksha Shastri,Education,^Shiksha Shastri,high,Sanskrit-system education degree
+Textile Design,Design,^Textile Design,high,
+Vachaspati-Vachaspati,Oriental Learning,^Vachaspati-Vachaspati,high,Sanskrit-system PhD
+Vidhyalankar-Vidhyalankar,Oriental Learning,^Vidhyalankar,high,
+Vidya Vachaspati-Vidya Vachaspati,Oriental Learning,^Vidya Vachaspati,high,
+Vidya Varidhi-Vidya Varidhi,Oriental Learning,^Vidya Varidhi,high,
+Visharad-Visharad,Oriental Learning,^Visharad-Visharad,high,
