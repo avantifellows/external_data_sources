@@ -1,4 +1,4 @@
-table: plfs.dim_nco
+table: avantifellows.external_data_sources.plfs_dim_nco
 description: |
   Full NCO 2015 (National Classification of Occupations) hierarchy in one
   wide table — ~2,700 rows. Each row is one 8-digit detailed occupation
@@ -9,9 +9,9 @@ description: |
   with the '.' stripped; each higher level is a prefix of the next.
 
   Joins:
-    - plfs.persons.ocu_pas  → code_group       (3-digit, in principal activity)
-    - plfs.persons.ocu_sas  → code_group       (3-digit, in subsidiary activity)
-    - plfs.persons.ocu_cws  → code_group       (3-digit, in CWS)
+    - plfs_fact_persons.ocu_pas  → code_group       (3-digit, in principal activity)
+    - plfs_fact_persons.ocu_sas  → code_group       (3-digit, in subsidiary activity)
+    - plfs_fact_persons.ocu_cws  → code_group       (3-digit, in CWS)
 columns:
   - { name: code_full,         type: STRING, mode: REQUIRED,
       description: "8-digit detailed NCO 2015 code with '.' separator, e.g. '2512.0100'." }

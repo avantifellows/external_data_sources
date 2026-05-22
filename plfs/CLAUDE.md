@@ -73,10 +73,15 @@ python3 scripts/weights.py
 .venv/bin/python scripts/load_bq.py --release calendar_2025  # one release only
 .venv/bin/python scripts/load_bq.py --dims-only           # just dims + registry
 .venv/bin/python scripts/load_bq.py --dry-run             # parquet to /tmp/plfs_bq, no upload
+
+# Stage raw + joined parquets to gs://avantifellows-external-data/plfs/ (BQ deferred)
+python3 scripts/upload_to_gcs.py --raw-dir <raw> --parquet-dir /tmp/plfs_bq
 ```
 
 `bq mk plfs` must be run once before the first real load — the loader does
-not auto-create the dataset.
+not auto-create the dataset. Per the `external_data_sources` model, the current
+flow stages to GCS first (`load_bq.py --dry-run` → `upload_to_gcs.py`) and loads
+to BigQuery only post-approval; see README §12.
 
 ## How releases differ (this matters)
 

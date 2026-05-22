@@ -1,11 +1,11 @@
-table: plfs.releases
+table: avantifellows.external_data_sources.plfs_releases
 description: |
   Release registry — one row per PLFS release loaded into BQ. Acts as
   human-readable metadata + the source-of-truth for catalog URLs and
   per-release weight rules. Derived from scripts/releases.py.
 columns:
   - { name: release_id,   type: STRING, mode: REQUIRED,
-      description: "Release identifier, e.g. 'calendar_2025'. Primary key. Joins to plfs.persons / plfs.households on release_id." }
+      description: "Release identifier, e.g. 'calendar_2025'. Primary key. Joins to plfs_fact_persons / plfs_fact_households on release_id." }
   - { name: label,        type: STRING, mode: REQUIRED,
       description: "Full human-readable release name, e.g. 'PLFS Calendar Year 2025'." }
   - { name: format,       type: STRING, mode: REQUIRED,

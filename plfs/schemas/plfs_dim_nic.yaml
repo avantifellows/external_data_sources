@@ -1,4 +1,4 @@
-table: plfs.dim_nic
+table: avantifellows.external_data_sources.plfs_dim_nic
 description: |
   Full NIC 2008 (National Industrial Classification) hierarchy in one wide
   table — ~1,300 rows. Each row is one 5-digit detailed industry with all
@@ -8,10 +8,10 @@ description: |
   Code structure is positional: each higher level is a prefix of the next.
 
   Joins:
-    - plfs.persons.ind_pas       → code_subclass (5-digit, principal activity)
-    - plfs.persons.ind_pas_div   → code_division (2-digit; pre-derived prefix)
-    - plfs.persons.ind_sas       → code_subclass (5-digit, subsidiary)
-    - plfs.persons.aind_cws      → code_division (2-digit, CWS)
+    - plfs_fact_persons.ind_pas       → code_subclass (5-digit, principal activity)
+    - plfs_fact_persons.ind_pas_div   → code_division (2-digit; pre-derived prefix)
+    - plfs_fact_persons.ind_sas       → code_subclass (5-digit, subsidiary)
+    - plfs_fact_persons.aind_cws      → code_division (2-digit, CWS)
 
   Note: '62' and '63' (Computer programming / Information services) are
   the standard "IT services" filter used in several analyses.

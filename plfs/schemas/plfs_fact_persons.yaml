@@ -1,13 +1,13 @@
-table: plfs.persons
+table: avantifellows.external_data_sources.plfs_fact_persons
 description: |
   Person-level facts unioned across all 11 PLFS releases (~10.5M rows).
   One row per person-record per visit. Filter by release_id for any
-  cross-year analysis; join to plfs.households on hh_id for income proxy
+  cross-year analysis; join to plfs_fact_households on hh_id for income proxy
   and household characteristics.
 
   Labels for the small common enums (sex, sector, marital_status, …) are
   denormalized inline as *_label columns. Hierarchical lookups (NCO / NIC)
-  live in plfs.dim_nco / plfs.dim_nic.
+  live in plfs_dim_nco / plfs_dim_nic.
 clustering: [release_id, st]
 columns:
   # ── Release metadata ───────────────────────────────────────────────────
@@ -24,7 +24,7 @@ columns:
 
   # ── Household join key + survey design ─────────────────────────────────
   - { name: hh_id,          type: STRING, mode: REQUIRED,
-      description: "Stable 16-char SHA1 prefix of (release_id, qtr, month, visit, sec, st, dc, mfsu, sss, ssu). Joins to plfs.households.hh_id." }
+      description: "Stable 16-char SHA1 prefix of (release_id, qtr, month, visit, sec, st, dc, mfsu, sss, ssu). Joins to plfs_fact_households.hh_id." }
   - { name: srl_no,         type: STRING,
       description: "Person serial number within household." }
   - { name: qtr,             type: STRING, description: "Quarter code (annual / pre-CY2025 releases)." }
@@ -42,9 +42,9 @@ columns:
   # ── Geography ──────────────────────────────────────────────────────────
   - { name: sec,         type: STRING, description: "Sector code. '1'=Rural, '2'=Urban." }
   - { name: sec_label,   type: STRING, description: "Denormalized: 'Rural' or 'Urban'." }
-  - { name: st,          type: STRING, description: "State/UT code (2-digit, zero-padded). Joins to plfs.dim_geo.state_code." }
+  - { name: st,          type: STRING, description: "State/UT code (2-digit, zero-padded). Joins to plfs_dim_geo.state_code." }
   - { name: state_name,  type: STRING, description: "Denormalized state name." }
-  - { name: dc,          type: STRING, description: "District code (2-digit, scoped to state). Use with st to join plfs.dim_geo." }
+  - { name: dc,          type: STRING, description: "District code (2-digit, scoped to state). Use with st to join plfs_dim_geo." }
 
   # ── Demographics ───────────────────────────────────────────────────────
   - { name: rel,         type: STRING, description: "Relation to household head code. '1' = head of household." }
@@ -66,9 +66,9 @@ columns:
   # ── Usual Principal Activity Status (Block 5.1) ────────────────────────
   - { name: pas,             type: STRING, description: "Usual principal activity status. '11'/'12' self-employed, '21' unpaid family, '31'=regular salaried, '41'/'42' casual, '51' didn't work but had work, '8x' unemployed, '9x' out of labour force." }
   - { name: pas_label,       type: STRING, description: "Denormalized PAS label." }
-  - { name: ind_pas,         type: STRING, description: "Industry (NIC 2008, 5-digit) in principal status. Joins to plfs.dim_nic.code_subclass." }
-  - { name: ind_pas_div,     type: STRING, description: "Derived: 2-digit prefix of ind_pas. '62'/'63' = IT services. Joins to plfs.dim_nic.code_division." }
-  - { name: ocu_pas,         type: STRING, description: "Occupation (NCO 2015, 3-digit) in principal status. Joins to plfs.dim_nco.code_group." }
+  - { name: ind_pas,         type: STRING, description: "Industry (NIC 2008, 5-digit) in principal status. Joins to plfs_dim_nic.code_subclass." }
+  - { name: ind_pas_div,     type: STRING, description: "Derived: 2-digit prefix of ind_pas. '62'/'63' = IT services. Joins to plfs_dim_nic.code_division." }
+  - { name: ocu_pas,         type: STRING, description: "Occupation (NCO 2015, 3-digit) in principal status. Joins to plfs_dim_nco.code_group." }
   - { name: etyp_pas,        type: STRING, description: "Enterprise type code in principal status." }
   - { name: etyp_pas_label,  type: STRING, description: "Denormalized enterprise type label." }
   - { name: ssec_pas,        type: STRING, description: "Social security benefits code in principal status." }

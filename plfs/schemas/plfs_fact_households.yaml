@@ -1,7 +1,7 @@
-table: plfs.households
+table: avantifellows.external_data_sources.plfs_fact_households
 description: |
   Household-level facts unioned across all 11 PLFS releases (~2.5M rows).
-  One row per surveyed household per visit. Join to plfs.persons on hh_id.
+  One row per surveyed household per visit. Join to plfs_fact_persons on hh_id.
 
   PLFS does not collect income directly; HCE (Household Consumer
   Expenditure) is the standard income proxy. The derived mpce column
@@ -23,7 +23,7 @@ columns:
 
   # ── Join key + survey design ───────────────────────────────────────────
   - { name: hh_id,          type: STRING, mode: REQUIRED,
-      description: "Stable 16-char SHA1 prefix; same derivation as plfs.persons.hh_id. Joins to plfs.persons." }
+      description: "Stable 16-char SHA1 prefix; same derivation as plfs_fact_persons.hh_id. Joins to plfs_fact_persons." }
   - { name: qtr,            type: STRING, description: "Quarter code." }
   - { name: month,          type: STRING, description: "Month code (CY2025)." }
   - { name: visit,          type: STRING, description: "Visit code." }
