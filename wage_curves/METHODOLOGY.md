@@ -80,7 +80,7 @@ Medicine is handled differently (§7).
 
 ## 5. Engineering decomposition
 
-Tiers, top to tail (`build_wage_curve.py`, `build_full_curve.py`):
+Tiers, top to tail (`build_full_curve.py`):
 
 | Tier | Sizing | Wage | Placement |
 |---|---|---|---|
@@ -282,14 +282,19 @@ genuinely selective seats — and **"Others"** = everyone else. The gap is the
 headline: the selective 4% start ~3.3× higher and pull away further with age
 (₹6.3L→₹21.9L vs ₹1.9L→₹3.4L).
 
+**NIRF-only disciplines** (AISHE folds these into Medical Science / Engineering,
+so they have no clean AISHE total or residual — NIRF figures only, ranking_year
+2022): Pharmacy 93 inst, 6,350 grads, 41.3% placed, ₹3.21L · Dental 39 inst,
+2,601 grads, 50.1%, ₹5.37L · Architecture & Planning 30 inst, 2,052 grads,
+69.8%, ₹5.89L.
+
 ---
 
 ## 13. Reproduce
 
 ```bash
-python3 wage_curves/build_full_curve.py            # → wage_curve_full.csv (headline)
-python3 wage_curves/build_discipline_summary.py    # → discipline_summary.csv
-python3 wage_curves/build_wage_curve.py --plfs-annual-wage 360000 --plfs-placement-rate 55.9
+python3 wage_curves/build_full_curve.py             # → wage_curve_full.csv (headline)
+python3 wage_curves/wage_by_discipline.py [--age-min 22 --age-max 28]   # PLFS anchors
 python3 wage_curves/general_grad_occupations.py     # → general_grad_occupations.csv
 python3 wage_curves/wage_growth.py [--elite-cagr 0.09]   # → wage_growth.csv
 python3 wage_curves/extract_avanti_college_db.py    # refresh institute reference

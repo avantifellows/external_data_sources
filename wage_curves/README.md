@@ -52,8 +52,7 @@ Agriculture; everything else collapses to "General graduate/PG"):
 | `datasource.py` | **Single data seam** — all source access (NIRF→BQ live; AISHE/NMC/PLFS→local parquet/CSV today, with the BQ-target table per source documented for when they load). The analysis scripts never touch sibling-repo internals. |
 | **`build_full_curve.py` → `wage_curve_full.csv`** | **Headline output** — every tier of every discipline, top to tail (NIRF elite + non-NIRF residuals), PLFS-anchored |
 | `wage_by_discipline.py` | PLFS wage + employment baseline by discipline (the anchors); supports `--age-min/--age-max` for the young-cohort fresh-grad view |
-| `build_wage_curve.py` + `nirf_engineering_tiers.sql` | Engineering tiered curve (IIT/NIT/IIIT/Other-NIRF/tail), seat-corrected publics |
-| `build_discipline_summary.py` → `discipline_summary.csv` | Cross-discipline summary (NIRF elite vs AISHE vs PLFS, one row/discipline) |
+| `nirf_engineering_tiers.sql` | NIRF engineering tier query (IIT/NIT/IIIT split) — used by `build_full_curve.py` |
 | `general_grad_occupations.py` → `general_grad_occupations.csv` | Occupation profile of general (non-technical) grads — decomposes the flat "Others (general)" row by NCO occupation (share + wage) |
 | `wage_growth.py` → `wage_growth.csv` | Age 25→40 wage growth: PLFS age-wage profile per discipline + NIRF-elite projection (PLFS-rate ×1.7 floor vs 9% elite CAGR) |
 | `josaa_2022_seats.csv` + `extract_*`† | Public-tier UG seat counts (JoSAA 2022) |
@@ -65,11 +64,13 @@ Agriculture; everything else collapses to "General graduate/PG"):
 ## Running
 
 ```bash
-# Engineering tiered curve (PLFS anchor = young-cohort engineering wage, annual ₹)
-python3 wage_curves/build_wage_curve.py --plfs-annual-wage 360000 --plfs-placement-rate 55.9
+# Headline: full top-to-tail curve, all tiers + Top-3L/Others roll-ups
+python3 wage_curves/build_full_curve.py
 
-# Cross-discipline summary
-python3 wage_curves/build_discipline_summary.py
+# Supporting analyses
+python3 wage_curves/wage_by_discipline.py [--age-min 22 --age-max 28]  # PLFS anchors
+python3 wage_curves/general_grad_occupations.py
+python3 wage_curves/wage_growth.py [--elite-cagr 0.09]
 
 # Refresh the pulled reference CSVs
 python3 wage_curves/extract_avanti_college_db.py
