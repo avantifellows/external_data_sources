@@ -65,7 +65,7 @@ python3 scripts/parse_data.py             # all 11, ~90s
 # Validate weight calibration (Σ weight_annual should be ~1.1B per release)
 python3 scripts/weights.py
 
-# Load everything to BigQuery (dataset `plfs` in your gcloud-default project)
+# Load everything to BigQuery (dataset `external_data_sources` in your gcloud-default project)
 .venv/bin/python scripts/load_bq.py                       # full load
 .venv/bin/python scripts/load_bq.py --project <gcp> --dataset plfs_dev
 .venv/bin/python scripts/load_bq.py --release calendar_2025  # one release only
@@ -111,17 +111,17 @@ all three:
 
 ## BQ schema (what `load_bq.py` produces)
 
-Six tables in the `plfs` dataset. Authoritative column-level docs in
-[`schemas/*.yaml`](schemas/).
+Six tables in the `avantifellows.external_data_sources` dataset. Authoritative
+column-level docs in [`schemas/*.yaml`](schemas/).
 
 | Table | Rows | Notes |
 |---|---:|---|
-| `persons` | ~10.5M | Fact. `weight_annual`, `hh_id`, `ind_pas_div` (2-digit NIC prefix), and `*_label` columns for the small enums are pre-computed/denormalized at load time. |
-| `households` | ~2.5M | Fact. `weight_annual`, `hh_id`, `mpce = hce_tot/hh_size` pre-computed. |
-| `releases` | 11 | Registry derived from `scripts/releases.py`. |
-| `dim_nco` | ~2.7k | Full NCO 2015 occupation hierarchy in one wide table (division → subdivision → group → family → full). |
-| `dim_nic` | ~1.3k | Full NIC 2008 industry hierarchy in one wide table (division → group → class → subclass). |
-| `dim_geo` | ~700 | State + district. |
+| `plfs_fact_persons` | ~10.5M | Fact. `weight_annual`, `hh_id`, `ind_pas_div` (2-digit NIC prefix), and `*_label` columns for the small enums are pre-computed/denormalized at load time. |
+| `plfs_fact_households` | ~2.5M | Fact. `weight_annual`, `hh_id`, `mpce = hce_tot/hh_size` pre-computed. |
+| `plfs_releases` | 11 | Registry derived from `scripts/releases.py`. |
+| `plfs_dim_nco` | ~2.7k | Full NCO 2015 occupation hierarchy in one wide table (division → subdivision → group → family → full). |
+| `plfs_dim_nic` | ~1.3k | Full NIC 2008 industry hierarchy in one wide table (division → group → class → subclass). |
+| `plfs_dim_geo` | ~700 | State + district. |
 
 **Design calls worth knowing before you change them:**
 

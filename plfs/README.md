@@ -141,13 +141,13 @@ Total one-time cost: ~₹100. Extracted TSVs and original catalog URLs are in
                  │ scripts/load_bq.py  — one-shot ETL into BigQuery
                  ▼
         ┌─────────────────┐
-        │   BigQuery       │  6 tables in `avantifellows.external_data_sources` (plfs_* tables):
-        │                  │    persons     (~10.5M rows, fact)
-        │                  │    households  (~2.5M rows, fact)
-        │                  │    releases    (11 rows, registry)
-        │                  │    dim_nco     (~2.7k, full occupation hierarchy)
-        │                  │    dim_nic     (~1.3k, full industry hierarchy)
-        │                  │    dim_geo     (~700, state + district)
+        │   BigQuery       │  6 tables in `avantifellows.external_data_sources`:
+        │                  │    plfs_fact_persons     (~10.5M rows, fact)
+        │                  │    plfs_fact_households  (~2.5M rows, fact)
+        │                  │    plfs_releases         (11 rows, registry)
+        │                  │    plfs_dim_nco          (~2.7k, occupation hierarchy)
+        │                  │    plfs_dim_nic          (~1.3k, industry hierarchy)
+        │                  │    plfs_dim_geo          (~700, state + district)
         └─────────────────┘
 ```
 
@@ -213,7 +213,7 @@ python3 scripts/parse_data.py calendar_2025
 python3 scripts/parse_data.py
 
 # Load everything into BigQuery (idempotent; ~5-10 min for full dataset)
-python3 scripts/load_bq.py                       # to dataset `plfs`
+python3 scripts/load_bq.py                       # to dataset `external_data_sources`
 python3 scripts/load_bq.py --dataset plfs_dev    # to a dev dataset
 python3 scripts/load_bq.py --release calendar_2025  # one release only
 python3 scripts/load_bq.py --dims-only           # just dims + registry
@@ -308,7 +308,7 @@ Typical query:
 SELECT release_year,
        SUM(weight_annual) / 1e6 AS engg_grads_millions,
        APPROX_QUANTILES(ern_reg, 100)[OFFSET(50)] AS median_wage
-FROM plfs.persons
+FROM `avantifellows.external_data_sources`.plfs_fact_persons
 WHERE tedu_lvl IN ('03','13')   -- engineering degree
   AND age BETWEEN 20 AND 24
   AND pas = '31'                -- regular salaried
