@@ -2,8 +2,8 @@ discipline,tier,institutes,graduates,share_in_disc_pct,share_all_pct,placement_p
 Engineering,IIT,23,15436,1.9,0.2,78.7,1303865,264,4746069,elite 9% CAGR ×15y (above PLFS range),"NIRF 2022 median; grads = JoSAA 16,598 seats × 93%"
 Engineering,IIIT,26,6627,0.8,0.09,64.4,1319861,264,4804294,elite 9% CAGR ×15y (above PLFS range),"NIRF 2022 median; grads = JoSAA 7,126 seats × 93%"
 Engineering,NIT,31,22314,2.7,0.29,78.3,717327,264,2611070,elite 9% CAGR ×15y (above PLFS range),"NIRF 2022 median; grads = JoSAA 23,994 seats × 93%"
-Engineering,Top Colleges (rest of top-200 NIRF),144,143015,17.2,1.84,69.7,571998,264,2082073,elite 9% CAGR ×15y (above PLFS range),NIRF 2022 median + graduating_on_time
-Engineering,Others (non-NIRF),,642234,77.4,8.28,51.4,267786,72,460591,PLFS Engineering 25→40,"PLFS back-solve (Eng degree ₹360,000, WPR 55.9%)"
+Engineering,Top Colleges (top-200 NIRF + similar),,205622,24.8,2.65,69.7,571998,264,2082073,elite 9% CAGR ×15y (above PLFS range),"NIRF 2022 median; expanded from 143,015 NIRF grads to fill the 250,000 JEE-qualifier pool (top of Engg-Others, assumed ~Top Colleges)"
+Engineering,Others (non-NIRF),,579627,69.9,7.47,49.4,234927,72,404074,PLFS Engineering 25→40,"PLFS back-solve (Eng degree ₹360,000, WPR 55.9%)"
 Medical,Govt Medical (MBBS+BDS),,59864,19.9,0.77,50.6,521143,175,1433144,PLFS Medical 25→40,"PLFS doctor ₹540,000/dentist ₹240,000; WPR 50.6% (Medicine&Health; doctor occ. higher); seats MBBS 60,324+BDS 4,046×93%"
 Medical,Pvt Medical (MBBS+BDS),,76107,25.2,0.98,50.6,452129,175,1243355,PLFS Medical 25→40,"PLFS doctor ₹540,000/dentist ₹240,000; WPR 50.6% (Medicine&Health; doctor occ. higher); seats MBBS 57,866+BDS 23,970×93%"
 Medical,Others (AYUSH/Nursing/allied),,165508,54.9,2.13,50.6,192000,175,528000,PLFS Medical 25→40,PLFS NCO-222 nursing/allied; WPR 50.6%; residual of AISHE Medical Science

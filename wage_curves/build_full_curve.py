@@ -38,6 +38,10 @@ MED_CSV = ROOT / "govt_medical_seats.csv"
 OUT = ROOT / "wage_curve_full.csv"
 
 COMPLETION = 0.93                  # UG seats → graduates
+# Elite engineering pool = JEE Main qualifiers eligible for JEE Advanced (~2.5 lakh).
+# IIT+IIIT+NIT+Top Colleges are anchored to sum to this; Top Colleges expands to fill it
+# by absorbing the TOP of the Engg-Others tail (assumed to perform like Top Colleges).
+ELITE_POOL = 250_000
 # PLFS ANNUAL wage anchors, ₹/yr — DEGREE buckets (rate + wage on the same population).
 # Eng & Agri are separable in PLFS (own tedu codes); Law is not → it falls in the general
 # graduate bucket (A_GEN). Medicine uses occupation wages because MBBS→doctor is a tight pipeline.
@@ -155,11 +159,16 @@ def main():
         eng_rows.append((tier, se_count(tier), g, pl, w,
                          f"NIRF 2022 median; grads = JoSAA {se[tier]:,} seats × {COMPLETION:.0%}"))
         ranked_grads += g; wage_mass += g * w; place_mass += g * pl
-    # Top Colleges = rest of top-200 NIRF (the Other-NIRF tier, NIRF counts kept)
+    # Top Colleges — expanded so IIT+IIIT+NIT+Top Colleges = the JEE-qualifier pool
+    # (ELITE_POOL). The expansion over NIRF's ~143k is the TOP of the Engg-Others tail,
+    # assumed to perform like Top Colleges (NIRF wage + placement). See METHODOLOGY §5.
     tc = et["Other NIRF"]
-    g_tc, w_tc, pl_tc = n(tc["graduates"]), n(tc["wtd_median_salary"]), n(tc["placement_rate"])
-    eng_rows.append(("Top Colleges (rest of top-200 NIRF)", int(float(tc["n_inst"])), g_tc,
-                     pl_tc, w_tc, "NIRF 2022 median + graduating_on_time"))
+    w_tc, pl_tc = n(tc["wtd_median_salary"]), n(tc["placement_rate"])
+    nirf_tc = n(tc["graduates"])
+    g_tc = ELITE_POOL - ranked_grads          # ranked_grads here = IIT+IIIT+NIT
+    eng_rows.append(("Top Colleges (top-200 NIRF + similar)", None, g_tc, pl_tc, w_tc,
+                     f"NIRF 2022 median; expanded from {nirf_tc:,.0f} NIRF grads to fill the "
+                     f"{ELITE_POOL:,} JEE-qualifier pool (top of Engg-Others, assumed ~Top Colleges)"))
     ranked_grads += g_tc; wage_mass += g_tc * w_tc; place_mass += g_tc * pl_tc
     # Others (non-NIRF) — back-solve wage AND placement from the PLFS engineering anchors
     g_oth = eng_total - ranked_grads

@@ -100,6 +100,16 @@ NIRF didn't rank, so no separate "un-ranked publics" step is needed.
   GFTI 6,759 (sum = 54,477, the cited JoSAA total).
 - **Completion rate 0.93** (UG seats → graduates) — tunable (`--completion-rate`).
 
+**ASSUMPTION — elite pool anchored to 2.5 lakh (`ELITE_POOL`).** IIT + IIIT + NIT +
+Top Colleges are made to sum to **250,000**, the count of JEE Main qualifiers
+eligible for JEE Advanced — a clean, well-known anchor for "the elite engineering
+pool." IIT/IIIT/NIT are fixed by seats (~44.4k); **Top Colleges is then expanded
+from its NIRF count (143,015) to 205,622** by absorbing the **top ~62.6k of the
+Engg-Others tail**, assumed to perform like Top Colleges (NIRF wage ₹5.7L,
+placement 69.7%). The Engg-Others residual shrinks to **579,627** (= AISHE eng −
+250,000) and its back-solved wage/placement fall accordingly (₹2.68L→₹2.35L,
+51.4%→49.4%) since more high earners moved up. Tune via `ELITE_POOL`.
+
 ---
 
 ## 6. Medical decomposition
@@ -251,8 +261,8 @@ Tier                   Grads   Place%   Start ₹   Grow%    @40 ₹
 IIT                   15,436    78.7%    13.0L     264%    47.5L     ← 0.2% of all UG grads
 IIIT                   6,627    64.4%    13.2L     264%    48.0L
 NIT                   22,314    78.3%     7.2L     264%    26.1L
-Top Colleges         143,015    69.7%     5.7L     264%    20.8L
-Eng Others (non-NIRF) 642,234   51.4%     2.7L      72%     4.6L     ← 77% of engineering grads
+Top Colleges         205,622    69.7%     5.7L     264%    20.8L     ← expanded to fill the 250k JEE pool
+Eng Others (non-NIRF) 579,627   49.4%     2.3L      72%     4.0L     ← 70% of engineering grads
 Govt Medical          59,864    50.6%     5.2L     175%    14.3L
 Pvt Medical           76,107    50.6%     4.5L     175%    12.4L
 Medical Others       165,508    50.6%     1.9L     175%     5.3L
@@ -299,6 +309,10 @@ python3 wage_curves/extract_govt_medical_seats.py   # refresh medical seats
 10. **MBA dropped** (PG; AISHE parquet is UG-only, NIRF mgmt placement only 2025).
     Pharmacy/Dental/Architecture are NIRF-only (AISHE folds them into Medical
     Science / Engineering).
+11. **Elite pool anchored to 250k JEE qualifiers** (`ELITE_POOL`): Top Colleges is
+    expanded from its NIRF count (143k → 206k) by reclassifying the top ~62.6k of
+    the Engg-Others tail as "similar to Top Colleges" (§5). A modelling choice for
+    a clean elite-pool size, not a measured boundary.
 
 ---
 
