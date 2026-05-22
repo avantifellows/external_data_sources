@@ -271,7 +271,16 @@ Agriculture Others    54,625    35.5%     1.9L     103%     3.9L
 Law NIRF               3,695    61.7%     7.8L      79%    14.0L
 Law Others           104,250    37.7%     1.6L      79%     2.8L
 Others (general)   6,446,494    38.5%     1.8L      79%     3.2L     ← 83% of ALL UG grads
+── aggregates (graduate-weighted) ──
+Top 3L seats         309,863    67.0%     6.3L     250%    21.9L     ← 4% of grads: JEE-elite engg + govt medical
+Others             7,444,358    39.7%     1.9L      83%     3.4L     ← the other 96%
 ```
+
+The two bottom rows are graduate-weighted roll-ups: **"Top 3L seats"** =
+IIT + IIIT + NIT + Top Colleges + Govt Medical (MBBS+BDS) — the ~3.1 lakh
+genuinely selective seats — and **"Others"** = everyone else. The gap is the
+headline: the selective 4% start ~3.3× higher and pull away further with age
+(₹6.3L→₹21.9L vs ₹1.9L→₹3.4L).
 
 ---
 

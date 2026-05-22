@@ -192,6 +192,29 @@ def main():
     add("Others (general)", "All non-NIRF disciplines", None, g_gen, g_gen, P_GEN, A_GEN,
         f"PLFS General graduate/PG (wage ₹{A_GEN:,}, WPR {P_GEN}%); Arts/Commerce/Science/IT/Mgmt/…")
 
+    # ---- bottom-line aggregations ----
+    # "Top 3L seats" = the genuinely selective pool — JEE-elite engineering (IIT/IIIT/NIT/
+    # Top Colleges) + govt medical (MBBS+BDS); ~3.1 lakh grads. "Others" = everyone else.
+    TOP3L = {("Engineering", "IIT"), ("Engineering", "IIIT"), ("Engineering", "NIT"),
+             ("Engineering", "Top Colleges (top-200 NIRF + similar)"),
+             ("Medical", "Govt Medical (MBBS+BDS)")}
+
+    def agg_row(label, subset, src):
+        g = sum(r["graduates"] for r in subset)
+        gw = lambda k: sum(r["graduates"] * r[k] for r in subset) / g
+        start, w40, place = gw("start_wage_inr"), gw("wage_at_40_inr"), gw("placement_pct")
+        return dict(discipline="Aggregate", tier=label, institutes=None, graduates=g,
+                    share_in_disc_pct="", share_all_pct=round(g / grand * 100, 1),
+                    placement_pct=round(place, 1), start_wage_inr=round(start),
+                    wage_growth_pct_to40=round((w40 / start - 1) * 100),
+                    wage_at_40_inr=round(w40), growth_basis="graduate-weighted aggregate",
+                    source=src)
+
+    top3l = [r for r in rows if (r["discipline"], r["tier"]) in TOP3L]
+    other = [r for r in rows if (r["discipline"], r["tier"]) not in TOP3L]
+    rows.append(agg_row("Top 3L seats", top3l, "IIT+IIIT+NIT+Top Colleges+Govt Medical"))
+    rows.append(agg_row("Others", other, "all tiers except Top 3L"))
+
     # ---- write + print ----
     cols = ["discipline", "tier", "institutes", "graduates", "share_in_disc_pct",
             "share_all_pct", "placement_pct", "start_wage_inr",

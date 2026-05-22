@@ -12,3 +12,5 @@ Agriculture,Others (non-NIRF),,54625,79.5,0.7,35.5,190146,103,385996,PLFS Agricu
 Law,NIRF ranked,28,3695,3.4,0.05,61.7,783159,79,1401855,PLFS Law 25→40,NIRF 2022 median
 Law,Others (non-NIRF),,104250,96.6,1.34,37.7,158622,79,283933,PLFS Law 25→40,"PLFS general-graduate ₹180,000, WPR 38.5% (law not separable; practising lawyers in-field earn ~₹300,000)"
 Others (general),All non-NIRF disciplines,,6446494,100.0,83.14,38.5,180000,79,322200,PLFS Others (general) 25→40,"PLFS General graduate/PG (wage ₹180,000, WPR 38.5%); Arts/Commerce/Science/IT/Mgmt/…"
+Aggregate,Top 3L seats,,309863,,4.0,67.0,625091,250,2185726,graduate-weighted aggregate,IIT+IIIT+NIT+Top Colleges+Govt Medical
+Aggregate,Others,,7444358,,96.0,39.7,187990,83,344315,graduate-weighted aggregate,all tiers except Top 3L
