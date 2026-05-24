@@ -1,0 +1,5 @@
+# Source NMC seat-matrix PDF — re-downloadable; staged to GCS, not git.
+raw/*.pdf
+raw/*.PDF
+# Parsed parquet — regenerable via clean_nmc.py.
+clean/*.parquet
