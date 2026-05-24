@@ -36,12 +36,13 @@ REPORTS: dict[int, Path] = {
 # Canonical source URLs — MoE "Result of Secondary & Higher Secondary
 # Examination" (RSHSE) annual reports, education.gov.in. fetch.py downloads
 # these into raw/ so the source files are regenerable from scratch.
-_MOE = "https://www.education.gov.in/sites/upload_files/mhrd/files/statistics-new"
+# MoE moved these PDFs to the DSEL portal; the old statistics-new/ path now 404s.
+_MOE = "https://dsel.education.gov.in/sites/default/files/statistics/report_in_PDF"
 REPORT_URLS: dict[int, str] = {
-    2020: f"{_MOE}/Result_Secondary_Higher_Secondary_Examination_2020.pdf",
-    2021: f"{_MOE}/RSHSE2021.pdf",
+    2020: f"{_MOE}/Result_Secondary_Higher_Secondary_Examination_2020_compressed.pdf",
+    2021: f"{_MOE}/RSHSE2021_compressed.pdf",
     2022: f"{_MOE}/RSHSE2022.pdf",
-    2024: f"{_MOE}/result-2024.pdf",
+    2024: f"{_MOE}/Result_2024.pdf",
 }
 
 # ─── GCS ──────────────────────────────────────────────────────────────────────
