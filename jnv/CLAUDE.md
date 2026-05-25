@@ -7,14 +7,19 @@ All paths in this file are relative to `jnv/` unless otherwise noted.
 
 ## What this folder is
 
-A transform + ingestion pipeline for JEE Mains, JEE Advanced, and NEET results
-of JNV (Jawahar Navodaya Vidyalaya) students. Source data is raw Excel files
-received from NTA / internal JNV tracking, one file per year per exam.
+A transform + ingestion pipeline for JEE Mains, JEE Advanced, NEET, JNVST
+selection test, and EI Asset Test results of JNV (Jawahar Navodaya Vidyalaya)
+students. Source data is raw Excel files received from NTA / internal JNV
+tracking, one file per year per exam.
 
 - **JEE pipeline** — 2021 through 2026. Schema aligned with production dbt
   model `fact_student_jee_main_results`.
 - **NEET pipeline** — 2021 through 2025. Schema aligned with production dbt
   model `fact_student_neet_results`.
+- **JNVST pipeline** — 2018 selection test results. Raw load with minimal
+  cleaning (column renames, area/gender value mapping).
+- **EI Asset Test pipeline** — EI ASSET assessment scores by student and
+  subject. Raw load with column renames only.
 
 This is the **heavy transform** template — contrast with
 [`nirf/`](../nirf/CLAUDE.md) which is a thin pass-through. The clean step
@@ -62,9 +67,48 @@ gs://avantifellows-external-data/
 avantifellows.external_data_sources.jnv_fact_neet_results  (asia-south1)
 ```
 
+**JNVST pipeline:**
+```
+raw/jnvst/*.xlsx              (local Excel file, gitignored)
+       │
+       │  scripts/clean_jnvst.py  (column renames, area/gender value mapping)
+       ▼
+clean/jnvst_clean.csv
+       │
+       │  scripts/upload_to_gcs.py --jnvst-only  (CSV/Excel → parquet → GCS)
+       ▼
+gs://avantifellows-external-data/
+  jnv/raw/jnvst/<stem>.parquet
+  jnv/clean/jnv_fact_selection_test_results.parquet
+       │
+       │  scripts/load_bq.py --jnvst-only  (load_table_from_uri, PARQUET)
+       ▼
+avantifellows.external_data_sources.jnv_fact_selection_test_results  (asia-south1)
+```
+
+**EI Asset Test pipeline:**
+```
+raw/ei_asset_test/*.xlsx      (local Excel file, gitignored)
+       │
+       │  scripts/clean_ei_asset_test.py  (column renames only)
+       ▼
+clean/ei_asset_test_clean.csv
+       │
+       │  scripts/upload_to_gcs.py --ei-asset-test-only  (CSV/Excel → parquet → GCS)
+       ▼
+gs://avantifellows-external-data/
+  jnv/raw/ei_asset_test/<stem>.parquet
+  jnv/clean/jnv_fact_ei_asset_test_results.parquet
+       │
+       │  scripts/load_bq.py --ei-asset-test-only  (load_table_from_uri, PARQUET)
+       ▼
+avantifellows.external_data_sources.jnv_fact_ei_asset_test_results  (asia-south1)
+```
+
 **Single source of truth for pipeline config: [`scripts/sources.py`](scripts/sources.py).**
-It declares the GCS bucket/prefix, BQ destination, the clean table
-definition, and the list of raw Excel files + primary sheets.
+It declares the GCS bucket/prefix, BQ destination, all clean table
+definitions, and the list of raw Excel files + primary sheets for every
+pipeline.
 
 **Single source of truth for schema: [`codemaps/mains/shared.py`](codemaps/mains/shared.py).**
 It declares `CANONICAL_COLS`, `COLUMN_TYPES`, and all normalisation helpers.
@@ -98,9 +142,29 @@ python3 -m venv .venv
 # 3. Load clean parquet from GCS → BigQuery
 .venv/bin/python scripts/load_bq.py --neet-only
 
-# ── Both pipelines at once ────────────────────────────────────────────────────
-.venv/bin/python scripts/upload_to_gcs.py   # upload everything
-.venv/bin/python scripts/load_bq.py         # load both tables
+# ── JNVST pipeline ────────────────────────────────────────────────────────────
+# 1. Clean raw Excel → CSV (column renames, area/gender value mapping)
+.venv/bin/python scripts/clean_jnvst.py
+
+# 2. Upload raw Excel (as parquet) + clean CSV (as parquet) to GCS
+.venv/bin/python scripts/upload_to_gcs.py --jnvst-only
+
+# 3. Load clean parquet from GCS → BigQuery
+.venv/bin/python scripts/load_bq.py --jnvst-only
+
+# ── EI Asset Test pipeline ────────────────────────────────────────────────────
+# 1. Clean raw Excel → CSV (column renames only)
+.venv/bin/python scripts/clean_ei_asset_test.py
+
+# 2. Upload raw Excel (as parquet) + clean CSV (as parquet) to GCS
+.venv/bin/python scripts/upload_to_gcs.py --ei-asset-test-only
+
+# 3. Load clean parquet from GCS → BigQuery
+.venv/bin/python scripts/load_bq.py --ei-asset-test-only
+
+# ── JEE + NEET at once ────────────────────────────────────────────────────────
+.venv/bin/python scripts/upload_to_gcs.py   # upload JEE + NEET raw + clean
+.venv/bin/python scripts/load_bq.py         # load JEE + NEET tables
 ```
 
 One-time GCP prerequisites:
@@ -117,8 +181,12 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 | `raw/jee_mains/*.xlsx` | No | Source mains Excel files per year. Gitignored. |
 | `raw/jee_advanced/*.xlsx` | No | Source advanced Excel files per year. Gitignored. |
 | `raw/neet/*.xlsx` | No | Source NEET Excel files per year. Gitignored. |
+| `raw/jnvst/*.xlsx` | No | Source JNVST Excel file. Gitignored. |
+| `raw/ei_asset_test/*.xlsx` | No | Source EI Asset Test Excel file. Gitignored. |
 | `clean/jee_clean.csv` | No | Output of `clean_jee.py`. Gitignored. |
 | `clean/neet_clean.csv` | No | Output of `clean_neet.py`. Gitignored. |
+| `clean/jnvst_clean.csv` | No | Output of `clean_jnvst.py`. Gitignored. |
+| `clean/ei_asset_test_clean.csv` | No | Output of `clean_ei_asset_test.py`. Gitignored. |
 | `codemaps/mains/shared.py` | Yes | JEE canonical column list, column types, normalisation functions. |
 | `codemaps/mains/y20XX.py` | Yes | Per-year mains column mapping config. |
 | `codemaps/mains/__init__.py` | Yes | Registry — `ALL_CODEMAPS` list. |
@@ -128,21 +196,27 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 | `codemaps/neet/shared.py` | Yes | NEET canonical column list, column types, normalisation functions. |
 | `codemaps/neet/y20XX.py` | Yes | Per-year NEET column mapping config. |
 | `codemaps/neet/__init__.py` | Yes | Registry — `ALL_NEET_CODEMAPS` list. Add new years here. |
+| `codemaps/jnvst/shared.py` | Yes | JNVST column types and `apply_dtypes`. |
+| `codemaps/ei_asset_test/shared.py` | Yes | EI Asset Test column types and `apply_dtypes`. |
 | `scripts/sources.py` | Yes | GCS bucket, BQ destination, raw file lists, clean table definitions. |
 | `scripts/clean_jee.py` | Yes | JEE transform engine: mains + advanced → merged clean CSV. |
 | `scripts/clean_neet.py` | Yes | NEET transform engine: codemap-driven → clean CSV. |
-| `scripts/upload_to_gcs.py` | Yes | Converts Excel + CSV → parquet, uploads to GCS (JEE + NEET). |
-| `scripts/load_bq.py` | Yes | Loads clean parquet from GCS → BQ (WRITE_TRUNCATE). JEE + NEET. |
+| `scripts/clean_jnvst.py` | Yes | JNVST clean: column renames + area/gender value mapping → CSV. |
+| `scripts/clean_ei_asset_test.py` | Yes | EI Asset Test clean: column renames → CSV. |
+| `scripts/upload_to_gcs.py` | Yes | Converts Excel + CSV → parquet, uploads to GCS (all pipelines). |
+| `scripts/load_bq.py` | Yes | Loads clean parquet from GCS → BQ (WRITE_TRUNCATE). All pipelines. |
 | `schemas/` | Yes | YAML column documentation for BQ tables. |
 
 ## BQ schema
 
-Two tables in `avantifellows.external_data_sources`:
+Four tables in `avantifellows.external_data_sources`:
 
 | Table | Grain | ~Rows |
 |---|---|---:|
 | `jnv_fact_jee_results` | (test_year, application_no) | ~64k |
 | `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
+| `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
+| `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
 
 Key column groups (full list in [`codemaps/mains/shared.py`](codemaps/mains/shared.py)):
 

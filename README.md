@@ -9,7 +9,7 @@ BigQuery for analysis. One folder per upstream source.
 |---|---|---|---|
 | PLFS (India) | [`plfs/`](plfs/) | Active | Periodic Labour Force Survey — MoSPI unit-level microdata across 11 releases (2018-19 → CY2025). Heavy local parsing → 6 `plfs_*` tables. |
 | NIRF (India) | [`nirf/`](nirf/) | Active | National Institutional Ranking Framework — rankings + admissions/placements/strength data, top-200 institutes across 9 disciplines, 2016-2025. Light pipeline (parquet → GCS → BQ) → 4 `nirf_fact_*` tables. |
-| JNV JEE + NEET | [`jnv/`](jnv/) | Active | JEE Mains + Advanced and NEET results for Jawahar Navodaya Vidyalaya students, 2021–2026. Heavy transform with codemap-driven schema normalisation → 2 tables: `jnv_fact_jee_results`, `jnv_fact_neet_results`. |
+| JNV JEE + NEET + JNVST + EI Asset | [`jnv/`](jnv/) | Active | JEE Mains + Advanced, NEET, JNVST selection test (2018), and EI Asset Test results for Jawahar Navodaya Vidyalaya students. → 4 tables: `jnv_fact_jee_results`, `jnv_fact_neet_results`, `jnv_fact_selection_test_results`, `jnv_fact_ei_asset_test_results`. |
 | UDISE+ (India) | [`udise/`](udise/) | Active | Unified District Information System for Education — school enrolment by state × management × category × location × class × gender, AY 2024-25 (dashboard export, reshaped wide→long). Parse → GCS → BQ → 1 `udise_fact_enrolment` table. |
 
 All sources write into a single BigQuery dataset

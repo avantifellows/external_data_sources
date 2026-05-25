@@ -34,11 +34,13 @@ from pathlib import Path
 import pandas as pd
 from google.cloud import storage
 
-from sources import GCS_BUCKET, JEE_CLEAN, NEET_CLEAN, RAW_ADV_FILES, RAW_MAINS_FILES, RAW_NEET_FILES
+from sources import EI_ASSET_TEST_CLEAN, GCS_BUCKET, JEE_CLEAN, JNVST_CLEAN, NEET_CLEAN, RAW_ADV_FILES, RAW_EI_ASSET_TEST_FILES, RAW_JNVST_FILES, RAW_MAINS_FILES, RAW_NEET_FILES
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from codemaps.neet.shared import apply_dtypes as apply_dtypes_neet
+from codemaps.ei_asset_test.shared import apply_dtypes as apply_dtypes_ei_asset_test
+from codemaps.jnvst.shared import apply_dtypes as apply_dtypes_jnvst
 from codemaps.mains.shared import apply_dtypes as apply_dtypes_jee
+from codemaps.neet.shared import apply_dtypes as apply_dtypes_neet
 
 
 def _upload(client, df: pd.DataFrame, gcs_path: str) -> None:
@@ -50,48 +52,23 @@ def _upload(client, df: pd.DataFrame, gcs_path: str) -> None:
     print(f"  ✓ gs://{GCS_BUCKET}/{gcs_path}  ({len(df):,} rows)")
 
 
-def upload_raw_jee(client: storage.Client) -> None:
-    print("Uploading raw mains files ...")
-    for raw in RAW_MAINS_FILES:
-        print(f"  Reading {raw.file} ...")
-        df = pd.read_excel(raw.local_path, sheet_name=raw.sheet, dtype=str)
-        _upload(client, df, raw.gcs_path)
-
-    print("Uploading raw advanced files ...")
-    for raw in RAW_ADV_FILES:
+def _upload_raw_files(client: storage.Client, files, label: str) -> None:
+    print(f"Uploading raw {label} files ...")
+    for raw in files:
         print(f"  Reading {raw.file} ...")
         df = pd.read_excel(raw.local_path, sheet_name=raw.sheet, dtype=str)
         _upload(client, df, raw.gcs_path)
 
 
-def upload_raw_neet(client: storage.Client) -> None:
-    print("Uploading raw NEET files ...")
-    for raw in RAW_NEET_FILES:
-        print(f"  Reading {raw.file} ...")
-        df = pd.read_excel(raw.local_path, sheet_name=raw.sheet, dtype=str)
-        _upload(client, df, raw.gcs_path)
-
-
-def upload_clean_jee(client: storage.Client) -> None:
-    print("Uploading clean JEE file ...")
-    if not JEE_CLEAN.local_path.exists():
-        print(f"  ERROR: {JEE_CLEAN.local_path} not found.")
-        print("  Run clean_jee.py first.")
+def _upload_clean_table(client: storage.Client, table, apply_dtypes=None, clean_script: str = "") -> None:
+    print(f"Uploading clean {table.name} ...")
+    if not table.local_path.exists():
+        print(f"  ERROR: {table.local_path} not found. Run {clean_script or 'the clean script'} first.")
         sys.exit(1)
-    df = pd.read_csv(JEE_CLEAN.local_path, low_memory=False)
-    df = apply_dtypes_jee(df)
-    _upload(client, df, JEE_CLEAN.gcs_path)
-
-
-def upload_clean_neet(client: storage.Client) -> None:
-    print("Uploading clean NEET file ...")
-    if not NEET_CLEAN.local_path.exists():
-        print(f"  ERROR: {NEET_CLEAN.local_path} not found.")
-        print("  Run clean_neet.py first.")
-        sys.exit(1)
-    df = pd.read_csv(NEET_CLEAN.local_path, low_memory=False)
-    df = apply_dtypes_neet(df)
-    _upload(client, df, NEET_CLEAN.gcs_path)
+    df = pd.read_csv(table.local_path, low_memory=False, dtype=None if apply_dtypes else str)
+    if apply_dtypes:
+        df = apply_dtypes(df)
+    _upload(client, df, table.gcs_path)
 
 
 def main() -> None:
@@ -101,27 +78,38 @@ def main() -> None:
     group.add_argument("--clean-only", action="store_true", help="Upload clean files only (JEE + NEET)")
     group.add_argument("--jee-only",   action="store_true", help="Upload JEE raw + clean")
     group.add_argument("--neet-only",  action="store_true", help="Upload NEET raw + clean")
+    group.add_argument("--jnvst-only",         action="store_true", help="Upload JNVST raw + clean")
+    group.add_argument("--ei-asset-test-only", action="store_true", help="Upload EI Asset Test raw + clean")
     args = parser.parse_args()
 
     client = storage.Client()
 
     if args.raw_only:
-        upload_raw_jee(client)
-        upload_raw_neet(client)
+        _upload_raw_files(client, RAW_MAINS_FILES, "mains")
+        _upload_raw_files(client, RAW_ADV_FILES, "advanced")
+        _upload_raw_files(client, RAW_NEET_FILES, "NEET")
     elif args.clean_only:
-        upload_clean_jee(client)
-        upload_clean_neet(client)
+        _upload_clean_table(client, JEE_CLEAN,   apply_dtypes_jee,  "clean_jee.py")
+        _upload_clean_table(client, NEET_CLEAN,  apply_dtypes_neet, "clean_neet.py")
     elif args.jee_only:
-        upload_raw_jee(client)
-        upload_clean_jee(client)
+        _upload_raw_files(client, RAW_MAINS_FILES, "mains")
+        _upload_raw_files(client, RAW_ADV_FILES, "advanced")
+        _upload_clean_table(client, JEE_CLEAN,  apply_dtypes_jee, "clean_jee.py")
     elif args.neet_only:
-        upload_raw_neet(client)
-        upload_clean_neet(client)
+        _upload_raw_files(client, RAW_NEET_FILES, "NEET")
+        _upload_clean_table(client, NEET_CLEAN, apply_dtypes_neet, "clean_neet.py")
+    elif args.jnvst_only:
+        _upload_raw_files(client, RAW_JNVST_FILES, "JNVST")
+        _upload_clean_table(client, JNVST_CLEAN, apply_dtypes_jnvst, "clean_jnvst.py")
+    elif args.ei_asset_test_only:
+        _upload_raw_files(client, RAW_EI_ASSET_TEST_FILES, "EI Asset Test")
+        _upload_clean_table(client, EI_ASSET_TEST_CLEAN, apply_dtypes_ei_asset_test, "clean_ei_asset_test.py")
     else:
-        upload_raw_jee(client)
-        upload_raw_neet(client)
-        upload_clean_jee(client)
-        upload_clean_neet(client)
+        _upload_raw_files(client, RAW_MAINS_FILES, "mains")
+        _upload_raw_files(client, RAW_ADV_FILES, "advanced")
+        _upload_raw_files(client, RAW_NEET_FILES, "NEET")
+        _upload_clean_table(client, JEE_CLEAN,  apply_dtypes_jee,  "clean_jee.py")
+        _upload_clean_table(client, NEET_CLEAN, apply_dtypes_neet, "clean_neet.py")
 
     print("\nDone.")
 

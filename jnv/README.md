@@ -1,10 +1,13 @@
-# jnv — JNV JEE + NEET Results Pipelines
+# jnv — JNV Results Pipelines
 
-JEE Mains/Advanced and NEET results for Jawahar Navodaya Vidyalaya (JNV) students.
+JEE Mains/Advanced, NEET, JNVST selection test, and EI Asset Test results for
+Jawahar Navodaya Vidyalaya (JNV) students.
 
-Produces two BigQuery tables:
+Produces four BigQuery tables:
 - `avantifellows.external_data_sources.jnv_fact_jee_results` (2021–2026)
 - `avantifellows.external_data_sources.jnv_fact_neet_results` (2021–2025)
+- `avantifellows.external_data_sources.jnv_fact_selection_test_results` (2018)
+- `avantifellows.external_data_sources.jnv_fact_ei_asset_test_results`
 
 See [`CLAUDE.md`](CLAUDE.md) for full pipeline orientation, design decisions, and pitfalls.
 
@@ -46,12 +49,44 @@ python3 -m venv .venv
 .venv/bin/python scripts/load_bq.py --neet-only
 ```
 
+## Quick start — JNVST Selection Test
+
+```bash
+# 1. Drop raw Excel into raw/jnvst/ (filename must match sources.py → RAW_JNVST_FILES)
+
+# 2. Clean → CSV (lowercase columns, rename to descriptive names, map area/gender values)
+.venv/bin/python scripts/clean_jnvst.py
+
+# 3. Upload raw (as parquet) + clean (as parquet) to GCS
+.venv/bin/python scripts/upload_to_gcs.py --jnvst-only
+
+# 4. Load clean parquet from GCS → BigQuery
+.venv/bin/python scripts/load_bq.py --jnvst-only
+```
+
+## Quick start — EI Asset Test
+
+```bash
+# 1. Drop raw Excel into raw/ei_asset_test/ (filename must match sources.py → RAW_EI_ASSET_TEST_FILES)
+
+# 2. Clean → CSV (lowercase columns, rename firstname/lastname/subjectno)
+.venv/bin/python scripts/clean_ei_asset_test.py
+
+# 3. Upload raw (as parquet) + clean (as parquet) to GCS
+.venv/bin/python scripts/upload_to_gcs.py --ei-asset-test-only
+
+# 4. Load clean parquet from GCS → BigQuery
+.venv/bin/python scripts/load_bq.py --ei-asset-test-only
+```
+
 ## Output
 
 | Table | Grain | ~Rows |
 |---|---|---:|
 | `jnv_fact_jee_results` | (test_year, application_no) | ~64k |
 | `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
+| `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
+| `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
 
 ## Adding a new JEE year
 
@@ -71,9 +106,13 @@ python3 -m venv .venv
 
 ```
 gs://avantifellows-external-data/
-  jnv/raw/jee_mains/<stem>.parquet       ← one per raw JEE Mains Excel
-  jnv/raw/jee_advanced/<stem>.parquet    ← one per raw JEE Advanced Excel
-  jnv/raw/neet/<stem>.parquet            ← one per raw NEET Excel
+  jnv/raw/jee_mains/<stem>.parquet            ← one per raw JEE Mains Excel
+  jnv/raw/jee_advanced/<stem>.parquet         ← one per raw JEE Advanced Excel
+  jnv/raw/neet/<stem>.parquet                 ← one per raw NEET Excel
+  jnv/raw/jnvst/<stem>.parquet                ← raw JNVST Excel
+  jnv/raw/ei_asset_test/<stem>.parquet        ← raw EI Asset Test Excel
   jnv/clean/jnv_fact_jee_results.parquet
   jnv/clean/jnv_fact_neet_results.parquet
+  jnv/clean/jnv_fact_selection_test_results.parquet
+  jnv/clean/jnv_fact_ei_asset_test_results.parquet
 ```

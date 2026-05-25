@@ -50,6 +50,16 @@ NEET_CLEAN = Table(
     local_path=JNV_DIR / "clean" / "neet_clean.csv",
 )
 
+JNVST_CLEAN = Table(
+    name="jnv_fact_selection_test_results",
+    local_path=JNV_DIR / "clean" / "jnvst_clean.csv",
+)
+
+EI_ASSET_TEST_CLEAN = Table(
+    name="jnv_fact_ei_asset_test_results",
+    local_path=JNV_DIR / "clean" / "ei_asset_test_clean.csv",
+)
+
 # ── Raw file definitions (Excel → parquet on GCS) ─────────────────────────────
 
 @dataclass
@@ -90,6 +100,14 @@ RAW_NEET_FILES = [
     RawFile("NEET 2023.xlsx",  "Sheet1",                 subdir="neet"),
     RawFile("NEET 2024.xlsx",  "Sheet1",                 subdir="neet"),
     RawFile("NEET 2025.xlsx",  "Sheet1",                 subdir="neet"),
+]
+
+RAW_JNVST_FILES = [
+    RawFile("JNVST 2018 11-09-2025.xlsx", "JNVST 2018", subdir="jnvst"),
+]
+
+RAW_EI_ASSET_TEST_FILES = [
+    RawFile("EI_Asset_Test.xlsx", "student_scores", subdir="ei_asset_test"),
 ]
 
 # Legacy alias kept so upload_to_gcs.py and load_bq.py continue to work
