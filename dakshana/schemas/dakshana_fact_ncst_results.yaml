@@ -1,0 +1,141 @@
+description: >
+  Navodaya CoE Selection Test (NCST) results for students across 2022–2025.
+  NCST is conducted jointly by Dakshana Foundation, Ex-Navodaya Foundation (ENF),
+  and Avanti Foundation to select JNV students for coaching programmes.
+  Includes effective scores (after penalty), demographic details, and coaching
+  preferences. Contact columns (mobile, email) are excluded.
+
+grain: (test_year, roll_no)
+
+source_files:
+  2022: "NCST 2022.xlsx  (sheet: NCST2022 Full Data)"
+  2023: "NCST 2023.xlsx  (sheet: NCST 2023)"
+  2024: "NCST 2024.xlsx  (sheet: Result)"
+  2025: "NCST 2025.xlsx  (sheet: All)"
+
+columns:
+  - name: test_year
+    type: constant
+    description: Year the NCST was conducted (STRING — cast to INT64 in SQL if needed).
+
+  - name: roll_no
+    type: str
+    description: >
+      Student identifier. Dakshana ID (2022), NCST Roll No (2023),
+      Dakshana Roll Number (2024), or Unique Code (2025).
+
+  - name: student_full_name
+    type: str
+
+  - name: student_gender
+    type: str
+    description: Normalised to Male / Female.
+
+  - name: category
+    type: str
+    description: Normalised to Gen / Gen-EWS / OBC / SC / ST.
+
+  - name: physically_disabled
+    type: bool
+    description: Whether the student has a physical disability.
+
+  - name: stream
+    type: str
+    description: Normalised to Engineering / Medical.
+
+  - name: dob
+    type: str
+    description: Date of birth as YYYY-MM-DD string. Available in 2022 only.
+
+  - name: school_name
+    type: str
+    description: JNV school name.
+
+  - name: school_code
+    type: int
+    description: NVS school code. Available in 2025 only.
+
+  - name: nvs_region
+    type: str
+    description: NVS administrative region (e.g. Jaipur, Bhopal). Null for 2024.
+
+  - name: state
+    type: str
+    description: Student's state. Available in 2024 only.
+
+  - name: annual_family_income
+    type: float
+    description: Total annual family income in INR.
+
+  - name: father_annual_income
+    type: str
+    description: >
+      Father's income. Stored as an income-bracket label in 2022
+      (e.g. "Less than 1 lakh") and as a numeric value in 2024.
+
+  - name: mother_annual_income
+    type: str
+    description: >
+      Mother's income. Same encoding note as father_annual_income.
+      Available in 2022 and 2024 only.
+
+  - name: staff_ward
+    type: str
+    description: Whether the student is a ward of NVS/government staff.
+
+  - name: is_father_late
+    type: bool
+    description: Whether the student's father is deceased.
+
+  - name: coaching_preference_1
+    type: str
+    description: >
+      First coaching-partner choice, normalised to one of:
+      Dakshana Foundation / Ex-Navodaya Foundation / Avanti Foundation.
+
+  - name: coaching_preference_2
+    type: str
+    description: Second coaching-partner choice (same normalisation).
+
+  - name: coaching_preference_3
+    type: str
+    description: Third coaching-partner choice (same normalisation).
+
+  - name: physics_effective_score
+    type: float
+    description: >
+      Physics effective score after applying the negative-marking penalty.
+      For 2025, taken from whichever exam sitting (March or December) had
+      the higher total_effective_score.
+
+  - name: chemistry_effective_score
+    type: float
+    description: Chemistry effective score (same derivation note as physics).
+
+  - name: math_bio_effective_score
+    type: float
+    description: >
+      Maths (Engineering stream) or Biology (Medical stream) effective score.
+
+  - name: reasoning_effective_score
+    type: float
+    description: Logical reasoning effective score.
+
+  - name: total_effective_score
+    type: float
+    description: >
+      Sum of all subject effective scores. For 2025, the higher of the two
+      sitting totals. Max possible: 500 (Engineering) / 625 (Medical) in 2025;
+      earlier years used a different scale.
+
+  - name: march_total_effective_score
+    type: float
+    description: >
+      Total effective score from the March 2025 sitting.
+      Non-null for 2025 only.
+
+  - name: dec_total_effective_score
+    type: float
+    description: >
+      Total effective score from the December 2024 sitting.
+      Non-null for 2025 only.

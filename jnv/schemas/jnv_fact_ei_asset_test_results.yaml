@@ -1,0 +1,70 @@
+description: >
+  EI ASSET Test scores for JNV students by subject.
+  ASSET (Assessment of Scholastic Skills through Educational Testing) is a
+  diagnostic assessment tool by Educational Initiatives (EI). Each row is
+  one student × one subject sitting.
+
+grain: (id)
+source_files:
+  single: EI_Asset_Test.xlsx  (sheet: student_scores)
+
+columns:
+  - name: id
+    type: int
+    description: Unique row identifier from the source file.
+
+  - name: school_identifier
+    type: int
+    description: Numeric school identifier assigned by EI.
+
+  - name: assetd_assessment_id
+    type: int
+    description: EI assessment ID for this sitting.
+
+  - name: first_name
+    type: str
+
+  - name: last_name
+    type: str
+
+  - name: gender
+    type: str
+    description: As recorded in the source file (not normalised).
+
+  - name: school
+    type: str
+    description: School name.
+
+  - name: city
+    type: str
+
+  - name: state
+    type: str
+
+  - name: caste
+    type: str
+    description: Caste/category as recorded in the source file (not normalised).
+
+  - name: class
+    type: int
+    description: Class/grade of the student at time of assessment.
+
+  - name: subject_no
+    type: int
+    description: Numeric subject identifier used by EI.
+
+  - name: subject
+    type: str
+    description: Subject name (e.g. English, Maths, Science).
+
+  - name: raw_score
+    type: int
+    description: Number of questions answered correctly.
+
+  - name: scale_score
+    type: int
+    description: EI scaled score (comparable across years and cohorts).
+
+  - name: percentile
+    type: int
+    description: Percentile rank within the EI national reference population.

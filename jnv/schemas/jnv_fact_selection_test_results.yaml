@@ -1,0 +1,141 @@
+description: >
+  JNVST (Jawahar Navodaya Vidyalaya Selection Test) 2018 results.
+  The JNVST is the Class 6 entrance test used to admit students into JNVs.
+  Source is a single Excel file covering all districts.
+
+grain: (district_rank, roll_no)
+source_files:
+  2018: JNVST 2018 11-09-2025.xlsx  (sheet: JNVST 2018)
+
+columns:
+  - name: test_year
+    type: constant
+    description: Year the JNVST was conducted (always "2018" in this table).
+
+  - name: area
+    type: str
+    description: Rural or urban. Normalised from R → rural, U → urban.
+
+  - name: block
+    type: int
+    description: Administrative block code within the district.
+
+  - name: centre_no
+    type: int
+    description: Exam centre number. Hierarchy: state → district → block → centre.
+
+  - name: roll_no
+    type: str
+    description: Student roll number.
+
+  - name: district_rank
+    type: int
+    description: Rank of the student within their district.
+
+  - name: gender
+    type: str
+    description: Normalised from B → Male, G → Female.
+
+  - name: category
+    type: str
+    description: Normalised from G → Gen, C → SC, O → OBC, T → ST.
+
+  - name: language
+    type: str
+    description: Language medium in which the student appeared.
+
+  - name: sel
+    type: str
+    description: Selection status code from the source file.
+
+  - name: total_marks
+    type: int
+    description: Total marks scored across all sections.
+
+  - name: mental_ability_marks
+    type: int
+    description: Marks in the Mental Ability Test (MAT) section.
+
+  - name: arithmetic_marks
+    type: int
+    description: Marks in the Arithmetic section.
+
+  - name: language_marks
+    type: int
+    description: Marks in the Language Test section.
+
+  - name: qualified
+    type: float
+    description: Qualification flag as present in the source file.
+
+  - name: name
+    type: str
+    description: Student name.
+
+  - name: medium_of_education
+    type: str
+    description: Medium of instruction at the student's school.
+
+  - name: absent_flag
+    type: float
+    description: Non-null when the student was absent.
+
+  - name: win
+    type: str
+    description: Win-list code from the source file.
+
+  - name: osel
+    type: str
+    description: Open selection code from the source file.
+
+  - name: handicapped
+    type: str
+    description: Whether the student has a disability (as recorded in source).
+
+  - name: selqt
+    type: str
+    description: Selection quota indicator.
+
+  - name: open_code
+    type: float
+    description: Open merit code.
+
+  - name: serial
+    type: int
+    description: Serial number within the result list.
+
+  - name: waitlist
+    type: int
+    description: Waitlist rank (0 if not on waitlist).
+
+  - name: state_district_code
+    type: int
+    description: Combined state–district code.
+
+  - name: state
+    type: str
+    description: State name.
+
+  - name: district
+    type: str
+    description: District name.
+
+  - name: standardized_scores
+    type: float
+    description: Standardized total score (used for inter-district comparison).
+
+  - name: total_marks_bucket_10
+    type: int
+    description: Total marks rounded/bucketed to the nearest 10.
+
+  - name: mental_ability_marks_bucket_10
+    type: int
+    description: MAT marks bucketed to the nearest 10.
+
+  - name: arithmetic_marks_bucket_10
+    type: int
+    description: Arithmetic marks bucketed to the nearest 10.
+
+  - name: language_marks_bucket_10
+    type: int
+    description: Language marks bucketed to the nearest 10.

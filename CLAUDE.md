@@ -29,12 +29,24 @@ external_data_sources/
 │   ├── clean/
 │   ├── analyses/
 │   └── .gitignore       # source-specific
-└── nirf/                # …another source
+├── nirf/                # …another source
+│   ├── README.md
+│   ├── CLAUDE.md
+│   ├── scripts/
+│   ├── schemas/
+│   ├── raw/             # source artifacts before upload (gitignored)
+│   └── .gitignore
+└── jnv/                 # JNV JEE + NEET results pipeline
     ├── README.md
     ├── CLAUDE.md
+    ├── codemaps/        # per-year column mapping configs (Python)
+    │   ├── mains/       # JEE Mains (2021–2026)
+    │   ├── advanced/    # JEE Advanced (2024–2025)
+    │   └── neet/        # NEET (2021–2025)
     ├── scripts/
     ├── schemas/
-    ├── raw/             # source artifacts before upload (gitignored)
+    ├── raw/             # source Excel files (gitignored)
+    ├── clean/           # transformed CSV output (gitignored)
     └── .gitignore
 ```
 
@@ -54,9 +66,6 @@ only covers cross-cutting conventions.
   into `avantifellows.external_data_sources.*`, with tables named
   `<source>_<kind>_<name>` — e.g. `plfs_fact_persons`, `nirf_fact_rankings`,
   `udise_dim_school` (when those exist). The dataset is in `asia-south1`.
-  > Historical note: PLFS was originally targeted at a per-source `plfs`
-  > dataset and its current `CLAUDE.md` still says so. PLFS hasn't been
-  > loaded to BQ yet — it'll move to the shared dataset on first load.
 - **GCS as the raw staging layer (when applicable).** For sources whose
   upstream is already analyst-clean (parquet/CSV/NDJSON), the raw files
   live at `gs://avantifellows-external-data/<source>/`, and the loader
@@ -113,5 +122,12 @@ Two patterns, two examples:
   pandas DataFrame → BQ. Use when upstream isn't analyst-ready.
 - [`nirf/`](nirf/) — light pass-through. Already-clean parquet → GCS →
   BQ via `load_table_from_uri`. Use when upstream is analyst-ready.
+- [`jnv/`](jnv/) — heavy transform with codemap-driven config. Raw Excel
+  files → schema-normalised CSV → parquet → GCS → BQ. Introduces the
+  codemap pattern: all year-specific column mappings live outside the
+  engine script, making it zero-config for new years. Covers JEE Mains,
+  JEE Advanced, NEET, JNVST selection test, and EI Asset Test — four output
+  tables: `jnv_fact_jee_results`, `jnv_fact_neet_results`,
+  `jnv_fact_selection_test_results`, `jnv_fact_ei_asset_test_results`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.

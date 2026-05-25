@@ -1,0 +1,14 @@
+# Raw source files and clean outputs — not for version control.
+# Authoritative copies live in GCS under
+# gs://avantifellows-external-data/dakshana/
+
+raw/
+clean/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
