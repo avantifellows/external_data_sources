@@ -1,0 +1,487 @@
+# aishe_directory.yaml
+#
+# Schema documentation for ALL five AISHE HE Directory tables produced by
+# this pipeline. Each section below describes one BQ table. The tables are
+# populated from the five Excel exports available on the AISHE dashboard
+# at https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
+#
+# Source export date: 12-Jun-2026 (the dashboard exports a live snapshot;
+#   re-running build_clean.py against a newer download will update the data).
+#
+# BQ dataset: avantifellows.external_data_sources (asia-south1)
+# GCS staging: gs://avantifellows-external-data/aishe/clean/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 1 — aishe_fact_colleges
+# ─────────────────────────────────────────────────────────────────────────────
+
+- table: aishe_fact_colleges
+  description: |
+    ── What this table is ───────────────────────────────────────────────────
+    Directory of all affiliated/constituent colleges registered in AISHE
+    (All India Survey on Higher Education), sourced from the "Colleges" tab of
+    the AISHE HE Directory (dashboard.aishe.gov.in/hedirectory). One row =
+    one college. The export as of June 2026 contains ~53,500 colleges.
+
+    AISHE is the Ministry of Education's official annual census of every
+    higher-education institution in India. The HE Directory is its live
+    public registry — updated continuously as institutions are registered
+    or de-registered — and is distinct from the annual survey microdata
+    (which freezes a point-in-time snapshot per academic year).
+
+    ── What counts as a "college" here ────────────────────────────────────
+    A college in the AISHE sense is an institution that delivers UG/PG
+    programmes but is NOT itself a degree-awarding body — it operates under
+    the academic umbrella of a parent university (affiliation) or is a
+    constituent unit of one. This is the largest category in the directory.
+
+    ── College-type taxonomy ────────────────────────────────────────────────
+    • Affiliated College — independent institution affiliated to a university;
+      the university grants the degree, the college delivers the teaching.
+    • Constituent College — organisationally part of the parent university
+      (like a faculty or campus).
+    • Autonomous College — affiliated but granted academic autonomy to set
+      its own syllabus and conduct internal exams; degree still awarded by
+      the affiliating university.
+
+    ── Management (who funds/runs it) ──────────────────────────────────────
+    • State Government / Central Government — fully government-owned.
+    • Private Aided — privately managed but receives government grants
+      (common in Maharashtra, Tamil Nadu, Kerala).
+    • Private Un-Aided — self-financing; no government grants.
+    • Local Body — run by a municipal corporation or panchayat.
+
+    ── Geography ────────────────────────────────────────────────────────────
+    State and district are as registered with AISHE. District names follow
+    the Census 2011 spelling (some districts have since been renamed/split).
+    Location = Rural/Urban per Census 2011 block classification of the
+    institution's address.
+
+    ── Using the data ───────────────────────────────────────────────────────
+    • Use aishe_code as the join key across tables and to the annual AISHE
+      survey microdata.
+    • university_aishe_code joins to aishe_fact_universities.aishe_code to
+      get parent-university attributes.
+    • This directory reflects the CURRENT registration state; institutions
+      that have been de-registered will have disappeared from the export.
+      For historical snapshots use the annual AISHE survey datasets.
+
+  source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
+  source_file: College-ALL COLLEGE (1).xlsx
+  rows: ~53500
+  grain: aishe_code (one row per college)
+
+  columns:
+    - name: aishe_code
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Permanent AISHE registry identifier for the college (format: 'C-NNNNN',
+        e.g. 'C-59634'). The 'C-' prefix denotes a college. Stable across
+        renames and re-affiliations — use this as the primary join key.
+
+    - name: name
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Full registered name of the college as recorded in AISHE. Often
+        includes a numeric prefix that is part of the institution's official
+        code within its affiliating university system (e.g.
+        '061-PT. SRI JAGANNATH PRASAD MAHAVIDHYALAYA'). Names have
+        inconsistent casing and punctuation across institutions — use
+        UPPER() + LIKE/REGEXP matching rather than exact equality.
+
+    - name: state
+      type: STRING
+      description: >
+        State (or Union Territory) where the college is located, e.g.
+        'Maharashtra', 'Tamil Nadu', 'Delhi'. Uses Census 2011 state names.
+
+    - name: district
+      type: STRING
+      description: >
+        District where the college is located (Census 2011 spelling).
+        District boundaries have changed since 2011; some names may reflect
+        the old pre-bifurcation district.
+
+    - name: website
+      type: STRING
+      description: >
+        Official website URL as registered by the institution. May be NULL,
+        outdated, or malformed. Not validated.
+
+    - name: year_of_establishment
+      type: STRING
+      description: >
+        Year the college was formally established/registered. Stored as STRING
+        because some records contain '-' (unknown). Cast to INT64 with
+        SAFE_CAST when doing numeric comparisons.
+
+    - name: location
+      type: STRING
+      description: >
+        'Rural' or 'Urban', based on Census 2011 classification of the
+        institution's address block.
+
+    - name: college_type
+      type: STRING
+      description: >
+        The college's relationship to its parent university:
+        'Affiliated College', 'Constituent College', or 'Autonomous College'.
+        See schemas/README.md for definitions.
+
+    - name: management
+      type: STRING
+      description: >
+        Who runs and funds the institution: 'State Government',
+        'Central Government', 'Private Aided (Government Aided)',
+        'Private Un-Aided', 'Local Body'. Note: the source spells this
+        column "Manegement" (sic); the pipeline renames it.
+
+    - name: university_aishe_code
+      type: STRING
+      description: >
+        AISHE code of the parent/affiliating university (format: 'U-NNNN',
+        e.g. 'U-0509'). Join to aishe_fact_universities.aishe_code for
+        university-level attributes (state, type, year of establishment).
+
+    - name: university_name
+      type: STRING
+      description: >
+        Full registered name of the parent/affiliating university. Denormalized
+        here for convenience; use university_aishe_code for joins.
+
+    - name: university_type
+      type: STRING
+      description: >
+        Type of the parent university, e.g. 'State Public University',
+        'Central University', 'Deemed University', 'Private University'.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 2 — aishe_fact_universities
+# ─────────────────────────────────────────────────────────────────────────────
+
+- table: aishe_fact_universities
+  description: |
+    ── What this table is ───────────────────────────────────────────────────
+    Directory of all universities registered in AISHE, sourced from the
+    "University" tab of the AISHE HE Directory. One row = one university.
+    ~1,400 universities as of June 2026.
+
+    A "university" in the AISHE sense is any institution empowered to award
+    degrees — whether central, state, deemed-to-be, or private. This includes
+    both teaching universities (with students on campus) and affiliating
+    universities (whose primary role is to affiliate and examine colleges).
+
+    ── University-type taxonomy ─────────────────────────────────────────────
+    • Central University — established by an Act of Parliament; funded by UGC.
+      Examples: JNU, Hyderabad University, Jamia Millia.
+    • State Public University — established by a State Legislature Act; funded
+      by the state government. The most numerous category.
+    • Deemed University — a non-affiliating institution granted university
+      status by UGC under Section 3 of the UGC Act. Can award its own degrees.
+    • Private University — established by a State Legislature Act but
+      self-financing with no state grants.
+    • Institute of National Importance — Institutions of National Importance
+      (IITs, NITs, IISc, AIIMS) established by a specific Act of Parliament.
+
+    ── Using the data ───────────────────────────────────────────────────────
+    • aishe_code ('U-NNNN') joins to university_aishe_code in
+      aishe_fact_colleges to enumerate all affiliated colleges.
+    • Universities in this table may also appear in aishe_fact_pm_vidyalaxmi
+      if they are PM Vidyalaxmi-eligible.
+
+  source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
+  source_file: University-ALL UNIVERSITIES (1).xlsx
+  rows: ~1400
+  grain: aishe_code (one row per university)
+
+  columns:
+    - name: aishe_code
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Permanent AISHE registry identifier for the university (format:
+        'U-NNNN', e.g. 'U-0509'). The 'U-' prefix denotes a university.
+        Use as the primary join key.
+
+    - name: name
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Full registered name of the university as recorded in AISHE (e.g.
+        'Dr. B. R. Ambedkar University, Agra'). Use UPPER() + LIKE/REGEXP
+        for matching — names vary across datasets.
+
+    - name: state
+      type: STRING
+      description: >
+        State or Union Territory where the university is located,
+        e.g. 'Uttar Pradesh', 'Tamil Nadu'.
+
+    - name: district
+      type: STRING
+      description: >
+        District where the university headquarters is located
+        (Census 2011 spelling).
+
+    - name: website
+      type: STRING
+      description: >
+        Official website URL. May be NULL, outdated, or malformed.
+
+    - name: year_of_establishment
+      type: STRING
+      description: >
+        Year the university was formally established. Stored as STRING
+        because some records contain '-' (unknown). Use SAFE_CAST(year_of_establishment AS INT64)
+        when computing age or filtering by era.
+
+    - name: location
+      type: STRING
+      description: >
+        'Rural' or 'Urban', based on Census 2011 classification of the
+        university's main campus address.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 3 — aishe_fact_standalone
+# ─────────────────────────────────────────────────────────────────────────────
+
+- table: aishe_fact_standalone
+  description: |
+    ── What this table is ───────────────────────────────────────────────────
+    Directory of all standalone institutions registered in AISHE, sourced from
+    the "Standalone" tab of the AISHE HE Directory. One row = one institution.
+    ~16,700 institutions as of June 2026.
+
+    A standalone institution in the AISHE sense is one that offers
+    post-secondary programmes (diploma, certificate, B.Ed., nursing, etc.)
+    but is NOT affiliated to a university — it operates under a standalone
+    recognition from a statutory body (e.g. AICTE for polytechnics, NCTE for
+    teacher-training, INC for nursing). They cannot award degrees independently
+    (except pharmacy board qualifications etc.).
+
+    ── Standalone-type taxonomy ─────────────────────────────────────────────
+    • Technical/Polytechnic — diploma-level engineering/technology programmes
+      under AICTE recognition. The largest subcategory.
+    • Teacher Training (B.Ed./D.El.Ed.) — teacher preparation programmes
+      under NCTE recognition.
+    • Nursing — GNM/B.Sc. Nursing under Indian Nursing Council recognition.
+    • Pharmacy — D.Pharm under the Pharmacy Council of India.
+    • Management — diploma-level management programmes.
+    • Others — fine arts, performing arts, design, etc.
+
+    ── Management ───────────────────────────────────────────────────────────
+    Same taxonomy as colleges: State Government, Central Government,
+    Private Aided, Private Un-Aided, Local Body.
+
+    ── Using the data ───────────────────────────────────────────────────────
+    Standalone institutions are NOT in aishe_fact_colleges — they are a
+    separate registry. Use the 'S-' prefix on aishe_code to distinguish
+    them. They do NOT have a parent university column.
+
+  source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
+  source_file: Standalone-ALL STANDALONE.xlsx
+  rows: ~16700
+  grain: aishe_code (one row per standalone institution)
+
+  columns:
+    - name: aishe_code
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Permanent AISHE registry identifier for the standalone institution
+        (format: 'S-NNNN', e.g. 'S-1802'). The 'S-' prefix denotes a
+        standalone. Use as the primary join key.
+
+    - name: name
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Full registered name of the institution. Often prefixed by a numeric
+        code used by the state's technical education board (e.g.
+        '1006-Government Polytechnic, Murtijapur').
+
+    - name: state
+      type: STRING
+      description: State or Union Territory where the institution is located.
+
+    - name: district
+      type: STRING
+      description: District (Census 2011 spelling).
+
+    - name: year_of_establishment
+      type: STRING
+      description: >
+        Year formally established. STRING because some records show '-'.
+        Use SAFE_CAST(year_of_establishment AS INT64) for numeric operations.
+
+    - name: location
+      type: STRING
+      description: "'Rural' or 'Urban' (Census 2011 block classification)."
+
+    - name: standalone_type
+      type: STRING
+      description: >
+        Programme type / regulatory framework: 'Technical/Polytechnic',
+        'Teacher Training', 'Nursing', 'Pharmacy', 'Management', 'Others'.
+
+    - name: management
+      type: STRING
+      description: >
+        Who runs and funds the institution: 'State Government',
+        'Central Government', 'Private Aided (Government Aided)',
+        'Private Un-Aided', 'Local Body'.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 4 — aishe_fact_rd
+# ─────────────────────────────────────────────────────────────────────────────
+
+- table: aishe_fact_rd
+  description: |
+    ── What this table is ───────────────────────────────────────────────────
+    Directory of Research & Development (R&D) institutes registered in AISHE,
+    sourced from the "R&D" tab of the AISHE HE Directory. One row = one R&D
+    institute. ~280 institutes as of June 2026.
+
+    R&D institutes are organisations primarily engaged in scientific research
+    (not teaching) that are formally registered under the AISHE framework.
+    They include ISRO facilities, CSIR labs, ICAR institutes, ICMR institutes,
+    defence R&D establishments, and Ministries of Education research bodies.
+    They are NOT colleges, universities, or standalone institutions.
+
+    ── AISHE code prefix ────────────────────────────────────────────────────
+    R&D institutes use the 'R-' prefix (e.g. 'R-10001' for ISRO Headquarters).
+
+    ── Administrative Ministry ──────────────────────────────────────────────
+    The ministry or department under which the institute operates, e.g.
+    'Dept of Space', 'Ministry of Education', 'CSIR', 'ICAR', 'ICMR',
+    'Ministry of Defence'. Useful for grouping institutes by scientific domain.
+
+    ── Using the data ───────────────────────────────────────────────────────
+    This is a small, specialist table (~280 rows). Useful for understanding
+    which R&D organisations are part of the higher-education ecosystem and for
+    linking AISHE enrollment/research output data to institute type.
+
+  source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
+  source_file: R & D Institutes.xlsx
+  rows: ~280
+  grain: aishe_code (one row per R&D institute)
+
+  columns:
+    - name: sno
+      type: INTEGER
+      description: >
+        Serial number in the source export. Not a stable identifier — may
+        change across exports as institutes are added/removed. Use aishe_code
+        as the stable key.
+
+    - name: aishe_code
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Permanent AISHE registry identifier (format: 'R-NNNNN', e.g.
+        'R-10001'). The 'R-' prefix denotes an R&D institute.
+
+    - name: institute_name
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Full name of the R&D institute as registered in AISHE (e.g.
+        'ISRO HEADQUARTERS', 'Vaidika Samshodhana Mandala').
+
+    - name: state_name
+      type: STRING
+      description: State or Union Territory where the institute is located.
+
+    - name: district_name
+      type: STRING
+      description: District (Census 2011 spelling).
+
+    - name: administrative_ministry
+      type: STRING
+      description: >
+        The central government ministry or department that administers the
+        institute (e.g. 'Dept of Space', 'Ministry of Education', 'CSIR',
+        'ICAR', 'ICMR', 'Ministry of Defence'). Use to group institutes by
+        scientific / policy domain.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 5 — aishe_fact_pm_vidyalaxmi
+# ─────────────────────────────────────────────────────────────────────────────
+
+- table: aishe_fact_pm_vidyalaxmi
+  description: |
+    ── What this table is ───────────────────────────────────────────────────
+    List of institutions eligible under the PM Vidyalaxmi scholarship scheme,
+    sourced from the "PM Vidyalaxmi" tab of the AISHE HE Directory. One row =
+    one eligible institution. ~1,050 institutions as of June 2026.
+
+    ── What PM Vidyalaxmi is ────────────────────────────────────────────────
+    Launched in November 2024, PM Vidyalaxmi is a central-government scheme
+    that provides financial assistance (loans with government interest subsidy)
+    to meritorious students from households with annual income up to ₹8 lakh
+    who gain admission to quality higher-education institutions. It is distinct
+    from PM Scholarship schemes for defence/CAPF personnel.
+
+    Eligibility for an institution to be listed under PM Vidyalaxmi is based on
+    quality accreditation:
+    • NAAC grade A, A+, or A++ accreditation, OR
+    • NIRF rank within the top-200 in any discipline, OR
+    • Institutions of National Importance (IITs, NITs, IISc, AIIMS, etc.)
+
+    ── What this table is NOT ───────────────────────────────────────────────
+    This is an ELIGIBILITY LIST, not a list of institutions where students have
+    applied or received scholarships. It tells you WHICH institutions qualify
+    their students for the scheme; actual disbursement data is with the National
+    Scholarship Portal (NSP) and is not included here.
+
+    Institutions in this table also appear in aishe_fact_colleges or
+    aishe_fact_universities — this table is a filtered subset. Use aishe_code
+    to join for additional attributes (district, year of establishment, etc.).
+
+    ── Management context ───────────────────────────────────────────────────
+    The management_type column here uses a slightly different vocabulary from
+    the colleges/universities tables (e.g. 'State Government' rather than
+    the longer management labels). Normalize before joining.
+
+  source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
+  source_file: vidya_lakshmiAll.xlsx
+  rows: ~1050
+  grain: aishe_code (one row per eligible institution)
+
+  columns:
+    - name: sno
+      type: INTEGER
+      description: >
+        Serial number in the source export. Not a stable identifier.
+
+    - name: aishe_code
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Permanent AISHE registry identifier. May be a college ('C-') or
+        university ('U-') code. Join to aishe_fact_colleges or
+        aishe_fact_universities for full institution details.
+
+    - name: institute_name
+      type: STRING
+      mode: REQUIRED
+      description: >
+        Full registered name of the eligible institution.
+
+    - name: state_name
+      type: STRING
+      description: State or Union Territory where the institution is located.
+
+    - name: management_type
+      type: STRING
+      description: >
+        Who runs the institution: 'State Government', 'Central Government',
+        'Private', etc. Note: this column uses a condensed vocabulary
+        compared to the management column in the colleges/universities tables.
+        Normalize if joining across tables.

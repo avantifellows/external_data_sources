@@ -1,0 +1,16 @@
+# AISHE-specific ignores. Paths are relative to aishe/.
+
+# Raw Excel downloads from the AISHE dashboard — these are the source files
+# downloaded from dashboard.aishe.gov.in/hedirectory. Not committed; the
+# authoritative copy is the upstream dashboard + GCS.
+raw/
+*.xlsx
+*.xls
+*.csv
+
+# Clean parquet files produced by build_clean.py before GCS upload.
+clean/
+outputs/
+
+# Local Python env
+.venv/
