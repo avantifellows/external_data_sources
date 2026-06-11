@@ -1,0 +1,137 @@
+# josaa_fact_cutoffs
+#
+# Source parquet: gs://avantifellows-external-data/josaa/clean/josaa_fact_cutoffs.parquet
+# BQ table:       avantifellows.external_data_sources.josaa_fact_cutoffs
+
+description: |
+  JoSAA seat-allotment cutoffs — the opening and closing rank for every
+  (institute, program, quota, category, gender) seat bucket, in every
+  counselling round, every year.
+
+  WHAT JoSAA IS. JoSAA (Joint Seat Allocation Authority) runs the single
+  centralized admission counselling for India's 100+ centrally-funded
+  engineering institutes: the IITs, NITs, IIITs and GFTIs (Government Funded
+  Technical Institutes). Candidates qualify via JEE (Main and/or Advanced),
+  enter their ranked program preferences, and JoSAA allots seats over several
+  sequential ROUNDS. After each round it publishes, for every seat bucket,
+  the rank of the first candidate allotted (OPENING rank) and the last
+  candidate allotted (CLOSING rank). The closing rank is the cutoff — the
+  worst rank that still got a seat in that bucket that round.
+
+  HOW ROUNDS WORK. A cycle has ~5–7 rounds (the count varies by year). Cutoffs
+  drift round to round as candidates upgrade or withdraw. Each (year, round)
+  is its own complete snapshot here; this table is the UNION of all rounds.
+  The "final closing rank" people usually quote is the closing rank in the
+  LAST round of that year — get it with a per-(institute, program, quota,
+  seat_type, gender, year) argmax on `round`, NOT by mixing rounds.
+
+  RANK SPACE. Two different JEE rank spaces appear and must not be mixed:
+  IITs admit on the JEE *Advanced* rank; NITs/IIITs/GFTIs admit on the JEE
+  *Main* rank. A "closing rank of 5000" means something completely different
+  at an IIT (Advanced) than at an NIT (Main). The institute determines which
+  rank space applies — see `josaa_dim_institute` (planned) or the College DB
+  institute classification for institute_type.
+
+  PREPARATORY RANKS. A rank flagged preparatory (see *_is_preparatory) comes
+  from JoSAA's separate *preparatory* merit list (for certain SC/ST/PwD
+  candidates), not the main Common Rank List. Its numeric scale is not
+  comparable to a main-list rank — never sort or threshold prep and main
+  ranks together. Filter `WHERE NOT closing_is_preparatory` for main-list
+  analysis.
+
+  NEUTRAL FACT, NO AVANTI OPINION. This table carries only what JoSAA
+  publishes. Avanti's enrichment (salary tier, college_type, NIRF salary,
+  top-200 flags, canonical college_id/state) lives in the College DB repo,
+  NOT here.
+
+rows: ~523000
+grain: (institute, academic_program_name, quota, seat_type, gender, year, round)
+
+columns:
+  - name: institute
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Institute name exactly as JoSAA publishes it (e.g. "Indian Institute
+      of Technology Bombay", "National Institute of Technology, Tiruchirappalli").
+      Spelling/punctuation varies across years — use multi-keyword LIKE /
+      REGEXP matching, not full-name equality. Not yet mapped to a canonical
+      college id in this source.
+
+  - name: academic_program_name
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Full program description as published, including degree + duration,
+      e.g. "Computer Science and Engineering (4 Years, Bachelor of
+      Technology)". Dual/integrated degrees carry their own text.
+
+  - name: quota
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Seat quota / domicile pool. AI = All India (NITs/IIITs/GFTIs national
+      pool, and the only pool for IITs); HS = Home State; OS = Other State
+      (HS/OS apply to state-located NITs); GO = Goa; JK = Jammu & Kashmir;
+      LA = Ladakh. See codemaps/quota.csv.
+
+  - name: seat_type
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Reservation category for the seat: OPEN, EWS, OBC-NCL, SC, ST, and the
+      PwD variants "OPEN (PwD)", "EWS (PwD)", "OBC-NCL (PwD)", "SC (PwD)",
+      "ST (PwD)". This is JoSAA's category dimension. See codemaps/seat_type.csv.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Gender pool: "Gender-Neutral" (open to all) or "Female-only (including
+      Supernumerary)" (female supernumerary seats added to improve gender
+      balance). There are no male-only seats.
+
+  - name: opening_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: |
+      Rank of the FIRST (best-ranked) candidate allotted this bucket in this
+      round — the integer part of JoSAA's value. In the institute's rank
+      space (Advanced for IITs, Main otherwise). NULL if the bucket had no
+      published rank.
+
+  - name: closing_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: |
+      Rank of the LAST (worst-ranked) candidate allotted this bucket in this
+      round — i.e. the CUTOFF. The headline number for "could a rank X get
+      in". Integer part only; see closing_is_preparatory for scale caveat.
+
+  - name: opening_is_preparatory
+    type: BOOLEAN
+    mode: REQUIRED
+    description: |
+      TRUE if opening_rank came from the preparatory merit list (JoSAA marks
+      these with a trailing 'P'). Prep ranks are NOT comparable to main-list
+      ranks — exclude them from main-list cutoff analysis.
+
+  - name: closing_is_preparatory
+    type: BOOLEAN
+    mode: REQUIRED
+    description: |
+      TRUE if closing_rank came from the preparatory merit list. Filter
+      `WHERE NOT closing_is_preparatory` for standard cutoff queries.
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: JoSAA counselling year (2016 → latest). One cycle per year.
+
+  - name: round
+    type: INTEGER
+    mode: REQUIRED
+    description: |
+      Counselling round number within the year (1 = first allotment). The
+      max round per year is the final allotment; round count varies by year
+      (~5–7). Each (year, round) is a full snapshot — don't sum across rounds.

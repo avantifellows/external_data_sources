@@ -1,0 +1,22 @@
+# JoSAA-specific ignores. Paths are relative to josaa/.
+
+# Raw per-(year, round) CSVs — landed locally before being pushed to GCS.
+# Produced upstream by the JoSAA scraper in the College DB repo
+# (josaa-ranks/scripts/01_scrape_archive.py + 02_scrape_current.py).
+# The authoritative copy lives at gs://avantifellows-external-data/josaa/raw/.
+raw/
+
+# Clean parquet — the bytes BQ loads. Rebuilt by scripts/build_clean.py.
+# Authoritative copy lives at gs://avantifellows-external-data/josaa/clean/.
+clean/
+
+# Local Python env
+.venv/
+__pycache__/
+
+# Upstream scraper (copied from College DB). The scraper SCRIPTS under
+# scrape/scripts/ are committed (code); the raw source PDFs/HTML under
+# scrape/source/ are large raw bytes — gitignored, ride in the handoff bundle
+# and belong in GCS, never git.
+scrape/source/
+scrape/**/__pycache__/
