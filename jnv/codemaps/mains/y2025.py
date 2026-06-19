@@ -84,6 +84,7 @@ CODEMAP = {
     #   Excel file during the merge step in clean_jee.py.
     "columns": {
         "application_no":           ["JEEApplicationNumber", "APPNO"],
+        "avanti_student_id":        ["avanti_studentid"],
         "student_full_name":        ["CNAME", "Student Name"],
         "dob":                      ["DOB", "DoB"],
         "student_gender":           ["Gender", "GENDER"],
