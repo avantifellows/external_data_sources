@@ -12,15 +12,15 @@ CANONICAL_COLS = [
     # core
     "test_year", "test_name", "application_no", "avanti_student_id", "student_full_name",
     "dob", "student_gender", "category",
-    "school_code",
+    "school_code", "program",
     # location
-    "student_state", "district_12", "place_of_school",
+    "student_state", "district_12", "district_10", "place_of_school",
     "jnv_name", "jnv_region",
     # 12th board
-    "year_of_passing_12", "board_12",
+    "year_of_passing_12", "board_12", "roll_no_12",
     "marks_12_obtained", "marks_12_total", "marks_12_pct",
     # 10th board
-    "year_of_passing_10", "board_10",
+    "year_of_passing_10", "board_10", "roll_no_10",
     "marks_10_obtained", "marks_10_total", "marks_10_pct",
     # JEE Mains scores
     "roll_no_s1", "roll_no_s2",
@@ -68,10 +68,14 @@ COLUMN_TYPES = {
     "student_gender":               "gender",
     "category":                     "category",
     "school_code":                  "str",
+    "program":                      "str",
     "roll_no_s1":                   "str",
     "roll_no_s2":                   "str",
+    "roll_no_10":                   "str",
+    "roll_no_12":                   "str",
     "student_state":                "str",
     "district_12":                  "str",
+    "district_10":                  "str",
     "place_of_school":              "str",
     "jnv_name":                     "str",
     "jnv_region":                   "str",
@@ -252,7 +256,7 @@ def apply_dtypes(df: "pd.DataFrame") -> "pd.DataFrame":
             df[col] = df[col].replace({"nan": None, "None": None, "<NA>": None})
 
     # ID columns: strip trailing .0 from numeric reads (e.g. "4411109202.0" → "4411109202")
-    for col in ("application_no", "roll_no_s1", "roll_no_s2", "school_code"):
+    for col in ("application_no", "roll_no_s1", "roll_no_s2", "roll_no_10", "roll_no_12", "school_code"):
         if col not in df.columns:
             continue
         def _clean_id(v):
