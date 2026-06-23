@@ -464,9 +464,10 @@
       type: STRING
       mode: REQUIRED
       description: >
-        Permanent AISHE registry identifier. May be a college ('C-') or
-        university ('U-') code. Join to aishe_fact_colleges or
-        aishe_fact_universities for full institution details.
+        Permanent AISHE registry identifier. May be a college ('C-'),
+        university ('U-'), or standalone ('S-') code (all three appear in the
+        eligibility list). Join to aishe_fact_colleges, aishe_fact_universities,
+        or aishe_fact_standalone_institutions for full institution details.
 
     - name: institute_name
       type: STRING

@@ -113,5 +113,6 @@ instead of `"Management"`. `sources.py` handles this in the rename map.
   Excel files into `raw/` and re-run the full pipeline. `WRITE_TRUNCATE`
   makes BQ loads idempotent.
 - **PM Vidyalaxmi is a subset, not a new institution type.** Its
-  `aishe_code` values also appear in `aishe_fact_colleges` or
-  `aishe_fact_universities`. Use `aishe_code` to join for full attributes.
+  `aishe_code` values also appear in `aishe_fact_colleges`,
+  `aishe_fact_universities`, or `aishe_fact_standalone_institutions` (all three
+  kinds are eligible). Use `aishe_code` to join for full attributes.
