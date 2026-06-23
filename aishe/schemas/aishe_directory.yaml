@@ -67,7 +67,7 @@
       For historical snapshots use the annual AISHE survey datasets.
 
   source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
-  source_file: College-ALL COLLEGE (1).xlsx
+  source_file: College-ALL COLLEGE.xlsx
   rows: ~53500
   grain: aishe_code (one row per college)
 
@@ -189,11 +189,11 @@
     ── Using the data ───────────────────────────────────────────────────────
     • aishe_code ('U-NNNN') joins to university_aishe_code in
       aishe_fact_colleges to enumerate all affiliated colleges.
-    • Universities in this table may also appear in aishe_fact_pm_vidyalaxmi
+    • Universities in this table may also appear in aishe_fact_pm_vidyalaxmi_eligible_institutions
       if they are PM Vidyalaxmi-eligible.
 
   source: https://dashboard.aishe.gov.in/hedirectory/#/hedirectory
-  source_file: University-ALL UNIVERSITIES (1).xlsx
+  source_file: University-ALL UNIVERSITIES.xlsx
   rows: ~1400
   grain: aishe_code (one row per university)
 
@@ -246,10 +246,10 @@
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TABLE 3 — aishe_fact_standalone
+# TABLE 3 — aishe_fact_standalone_institutions
 # ─────────────────────────────────────────────────────────────────────────────
 
-- table: aishe_fact_standalone
+- table: aishe_fact_standalone_institutions
   description: |
     ── What this table is ───────────────────────────────────────────────────
     Directory of all standalone institutions registered in AISHE, sourced from
@@ -337,10 +337,10 @@
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TABLE 4 — aishe_fact_rd
+# TABLE 4 — aishe_fact_research_institutions
 # ─────────────────────────────────────────────────────────────────────────────
 
-- table: aishe_fact_rd
+- table: aishe_fact_research_institutions
   description: |
     ── What this table is ───────────────────────────────────────────────────
     Directory of Research & Development (R&D) institutes registered in AISHE,
@@ -411,10 +411,10 @@
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TABLE 5 — aishe_fact_pm_vidyalaxmi
+# TABLE 5 — aishe_fact_pm_vidyalaxmi_eligible_institutions
 # ─────────────────────────────────────────────────────────────────────────────
 
-- table: aishe_fact_pm_vidyalaxmi
+- table: aishe_fact_pm_vidyalaxmi_eligible_institutions
   description: |
     ── What this table is ───────────────────────────────────────────────────
     List of institutions eligible under the PM Vidyalaxmi scholarship scheme,

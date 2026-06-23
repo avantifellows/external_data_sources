@@ -13,3 +13,10 @@ __pycache__/
 
 # Local Claude harness state — not for the repo
 .claude/
+
+# GCP service-account keys — never commit credentials
+avantifellows-*.json
+*-service-account.json
+service-account.json
+*-creds.json
+google_secret.json

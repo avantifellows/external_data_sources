@@ -13,8 +13,8 @@ India, published at https://dashboard.aishe.gov.in/hedirectory/#/hedirectory.
 
 The directory has five tabs (Colleges, Universities, Standalone, R&D, PM
 Vidyalaxmi), each exported as an Excel file. This pipeline reads those five
-files, cleans and classifies them, and loads them into BigQuery as five
-`aishe_fact_*` tables.
+files, cleans them (rename + whitespace-trim only — no derived columns), and
+loads them into BigQuery as five `aishe_fact_*` tables.
 
 This is the **heavy-transform** pattern (like `plfs/`) — raw Excel files need
 real parsing before they are BQ-loadable. The pipeline is not a production
@@ -28,7 +28,7 @@ dashboard.aishe.gov.in/hedirectory   (manual Excel export, one per tab)
         ▼
 aishe/raw/*.xlsx                     (gitignored — place here after download)
         │
-        │  scripts/build_clean.py    (parse + normalise + classify → parquet)
+        │  scripts/build_clean.py    (parse + normalise → parquet)
         ▼
 aishe/clean/*.parquet                (gitignored — regenerable from raw)
         │
@@ -49,19 +49,19 @@ Single source of truth for filenames, GCS URIs, and BQ destinations:
 ```bash
 # Local Python env
 python3 -m venv .venv
-.venv/bin/pip install pandas openpyxl pyarrow rapidfuzz google-cloud-bigquery google-cloud-storage
+.venv/bin/pip install pandas openpyxl pyarrow google-cloud-bigquery google-cloud-storage
 
 # 1. Download the five Excel files from the dashboard and drop into raw/:
-#    raw/College-ALL COLLEGE (1).xlsx
-#    raw/University-ALL UNIVERSITIES (1).xlsx
+#    raw/College-ALL COLLEGE.xlsx
+#    raw/University-ALL UNIVERSITIES.xlsx
 #    raw/Standalone-ALL STANDALONE.xlsx
 #    raw/R & D Institutes.xlsx
 #    raw/vidya_lakshmiAll.xlsx
 
-# 2. Build clean parquets (parse + classify)
+# 2. Build clean parquets (parse + normalise)
 .venv/bin/python scripts/build_clean.py               # all five
 .venv/bin/python scripts/build_clean.py --table aishe_fact_colleges  # one only
-.venv/bin/python scripts/build_clean.py --dry-run     # validate + stats, no write
+.venv/bin/python scripts/build_clean.py --dry-run     # validate + row counts, no write
 
 # 3. Upload to GCS
 .venv/bin/python scripts/upload_to_gcs.py
@@ -79,30 +79,16 @@ docs in [`schemas/aishe_directory.yaml`](schemas/aishe_directory.yaml).
 
 | Table | Rows | Source file |
 |---|---:|---|
-| `aishe_fact_colleges` | ~53,500 | College-ALL COLLEGE (1).xlsx |
-| `aishe_fact_universities` | ~1,400 | University-ALL UNIVERSITIES (1).xlsx |
-| `aishe_fact_standalone` | ~16,700 | Standalone-ALL STANDALONE.xlsx |
-| `aishe_fact_rd` | ~280 | R & D Institutes.xlsx |
-| `aishe_fact_pm_vidyalaxmi` | ~1,050 | vidya_lakshmiAll.xlsx |
+| `aishe_fact_colleges` | ~53,500 | College-ALL COLLEGE.xlsx |
+| `aishe_fact_universities` | ~1,400 | University-ALL UNIVERSITIES.xlsx |
+| `aishe_fact_standalone_institutions` | ~16,700 | Standalone-ALL STANDALONE.xlsx |
+| `aishe_fact_research_institutions` | ~280 | R & D Institutes.xlsx |
+| `aishe_fact_pm_vidyalaxmi_eligible_institutions` | ~1,050 | vidya_lakshmiAll.xlsx |
 
-All five tables have an `institution_types` column — a comma-separated list
-of matched types from the 17-type controlled vocabulary (Engineering, Medical,
-Polytechnic, …). NULL if no keyword matched.
-
-## Institution-type classification
-
-`build_clean.py` classifies each institution name using:
-- **Exact substring match** for multi-word keywords (e.g. "hotel management")
-- **Fuzzy token match** (rapidfuzz ratio ≥ 95) for single-word keywords —
-  handles variants like "ayurved/ayurveda", Hindi/Sanskrit terms like
-  "krishi" (agriculture), "vidhi" (law), "takniki" (technical), etc.
-
-Multi-type institutions get comma-separated output (e.g. `"Engineering, Research"`).
-Unmatched institutions get NULL. The 17 types are:
-
-> Engineering, Polytechnic, Medical, Architecture, Law, Arts/Commerce/Science,
-> Teaching, Journalism, Hotel Management, Pharmacy, Nursing, Agriculture,
-> Ayurveda, Paramedical, Veterinary, Research, Design
+Every column is a raw passthrough from the source export — `build_clean.py`
+only renames columns to snake_case and trims whitespace. No derived or
+computed columns are added; any classification/enrichment is the
+responsibility of downstream analysis.
 
 ## Excel parsing notes
 

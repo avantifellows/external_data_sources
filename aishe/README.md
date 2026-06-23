@@ -32,14 +32,12 @@ avantifellows.external_data_sources.aishe_fact_*   (asia-south1, 5 tables)
 |---|---:|---|
 | `aishe_fact_colleges` | 53,500 | Affiliated/constituent colleges with state, district, type, management, and parent university |
 | `aishe_fact_universities` | 1,400 | All degree-awarding universities (central, state, deemed, private) |
-| `aishe_fact_standalone` | 16,700 | Standalone institutions — polytechnics, nursing, teacher-training, etc. |
-| `aishe_fact_rd` | 280 | R&D institutes (ISRO, CSIR, ICAR, ICMR, etc.) with administrative ministry |
-| `aishe_fact_pm_vidyalaxmi` | 1,050 | Institutions eligible under the PM Vidyalaxmi scholarship scheme |
+| `aishe_fact_standalone_institutions` | 16,700 | Standalone institutions — polytechnics, nursing, teacher-training, etc. |
+| `aishe_fact_research_institutions` | 280 | R&D institutes (ISRO, CSIR, ICAR, ICMR, etc.) with administrative ministry |
+| `aishe_fact_pm_vidyalaxmi_eligible_institutions` | 1,050 | Institutions eligible under the PM Vidyalaxmi scholarship scheme |
 
-All tables include an **`institution_types`** column — a comma-separated list
-of matched types from a 17-type vocabulary (Engineering, Polytechnic, Medical,
-Law, Agriculture, Ayurveda, …) derived from keyword matching on institution
-names. NULL where no type could be inferred.
+Every column is a raw passthrough from the source export (renamed to
+snake_case and whitespace-trimmed) — no derived or computed columns are added.
 
 Schemas: [`schemas/aishe_directory.yaml`](schemas/aishe_directory.yaml)
 Domain primer: [`schemas/README.md`](schemas/README.md)
@@ -53,7 +51,7 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 
 # Python env (from inside aishe/)
 python3 -m venv .venv
-.venv/bin/pip install pandas openpyxl pyarrow rapidfuzz google-cloud-bigquery google-cloud-storage
+.venv/bin/pip install pandas openpyxl pyarrow google-cloud-bigquery google-cloud-storage
 
 # Authenticate
 gcloud auth application-default login
@@ -68,8 +66,8 @@ tab, and click **Export**. Save the files into `aishe/raw/` using these
 exact filenames (as they come from the dashboard):
 
 ```
-raw/College-ALL COLLEGE (1).xlsx
-raw/University-ALL UNIVERSITIES (1).xlsx
+raw/College-ALL COLLEGE.xlsx
+raw/University-ALL UNIVERSITIES.xlsx
 raw/Standalone-ALL STANDALONE.xlsx
 raw/R & D Institutes.xlsx
 raw/vidya_lakshmiAll.xlsx

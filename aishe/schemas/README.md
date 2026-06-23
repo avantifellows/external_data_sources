@@ -64,5 +64,5 @@ year it started teaching. Some records show `-` where the year is unknown.
 Launched in 2024, PM Vidyalaxmi is a central-government scholarship scheme for
 meritorious students from non-affluent families to access quality higher
 education. Only institutions with a **NAAC grade A or A+** (or equivalent NIRF
-ranking) are listed as eligible. The `aishe_fact_pm_vidyalaxmi` table is
+ranking) are listed as eligible. The `aishe_fact_pm_vidyalaxmi_eligible_institutions` table is
 effectively a filtered subset of the other institution tables.
