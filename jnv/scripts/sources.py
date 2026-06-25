@@ -54,6 +54,11 @@ TABLES: list[Table] = [
         parquet="jnv_fact_jee_advanced_rank_list.parquet",
         clustering=("test_year", "category"),
     ),
+    Table(
+        bq_name="jnv_fact_jee_main_candidate_details",
+        parquet="jnv_fact_jee_main_candidate_details.parquet",
+        clustering=("test_year", "qual_state"),
+    ),
 ]
 
 # Original NTA exports kept in GCS for audit/reproducibility. local path (under raw/) -> GCS raw subpath.
@@ -61,4 +66,5 @@ TABLES: list[Table] = [
 RAW_FILES: list[tuple[str, str]] = [
     ("jee_advanced/JEE Advanced 2024.csv", "jee_advanced/"),
     ("jee_advanced/JEE Advanced 2025.csv", "jee_advanced/"),
+    ("jee_mains/2025 NTA JNV - JEE Main.csv", "jee_mains/"),
 ]

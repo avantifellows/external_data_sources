@@ -1,0 +1,93 @@
+# jnv_fact_jee_main_candidate_details
+#
+# NTA's JEE-Main candidate-details export for the JNV cohort: per applicant, the JNV school they sit
+# from and their Class-12 qualification. Built by scripts/build_jee_main_candidate_details.py.
+#
+# Source raw:  gs://avantifellows-external-data/jnv/raw/jee_mains/2025 NTA JNV - JEE Main.csv
+# Clean:       gs://avantifellows-external-data/jnv/clean/jnv_fact_jee_main_candidate_details.parquet
+# BQ table:    avantifellows.external_data_sources.jnv_fact_jee_main_candidate_details
+
+description: |
+  When a student registers for JEE Main, NTA records their Class-12 qualification details and the school
+  they sit from. This table is that registration record for the JNV cohort: one row per JEE-Main applicant
+  per test_year, carrying the JNV SCHOOL NAME (with state/district) and the Class-12 board, marks/CGPA and
+  passing year. It is NOT JEE scores — for results join `application_no` to jnv_fact_jee_results or the
+  production JEE fact.
+
+  WHY IT EXISTS: the downstream JEE-results export dropped the application->JNV-school mapping for some
+  cohorts (the "Issue #26" gap), so school-level analysis of JEE outcomes broke. This table restores that
+  mapping cleanly from the original NTA candidate-details file, plus the Class-12 board/marks NTA collected
+  at registration.
+
+  KEY POINTS:
+  - Grain is (test_year, application_no). `application_no` is the join key to the JEE-results tables.
+    Currently 2025 only (12,656 candidates); other years extend the same schema.
+  - `passing_status` = whether the student had already PASSED Class-12 ('Passed') or was still APPEARING
+    ('Appearing') at registration. Appearing students are the current 12th cohort sitting JEE that cycle.
+  - Class-12 attainment comes in TWO forms depending on the board: percentage-mark boards populate
+    twelfth_obtained/total/percentage; CGPA boards (e.g. CBSE pre-conversion) populate cgpa_value /
+    cgpa_max_scale / cgpa_percentage. Don't assume one is always present — check the board.
+  - school_name / qual_state / qual_district are NTA free text (spellings vary, e.g. "PM SHRI SCHOOL JNV
+    ..."), so they are descriptive, not clean join keys. To attach an Avanti student, go via
+    application_no (to the results tables / production) or via the identity crosswalk, not by school text.
+
+rows: ~12656 (2025)
+grain: (test_year, application_no)
+
+columns:
+  - name: test_year
+    type: STRING
+    mode: REQUIRED
+    description: JEE-Main cycle year ('2025'). STRING.
+  - name: application_no
+    type: STRING
+    mode: REQUIRED
+    description: NTA JEE-Main application number. Join key to jnv_fact_jee_results / production JEE fact.
+  - name: roll_no
+    type: STRING
+    description: JEE-Main exam roll number.
+  - name: school_name
+    type: STRING
+    description: JNV school the candidate sits from, as printed by NTA (free text; the Issue-#26 mapping).
+  - name: qual_state
+    type: STRING
+    description: State of the school (NTA free text).
+  - name: qual_district
+    type: STRING
+    description: District of the school (NTA free text).
+  - name: school_board
+    type: STRING
+    description: Class-12 board (e.g. 'CENTRAL BOARD OF SECONDARY EDUCATION'). Determines which marks form is populated.
+  - name: school_type
+    type: STRING
+    description: School category as recorded by NTA (e.g. 'Jawahar Navodaya Vidyalaya(JNVs)').
+  - name: year_of_passing_12
+    type: STRING
+    description: Year the candidate passed (or is appearing for) Class 12.
+  - name: twelfth_obtained_marks
+    type: FLOAT
+    description: Class-12 marks obtained (percentage-mark boards; null for CGPA boards / appearing students).
+  - name: twelfth_total_marks
+    type: FLOAT
+    description: Class-12 total marks (percentage-mark boards).
+  - name: twelfth_percentage
+    type: FLOAT
+    description: Class-12 percentage (percentage-mark boards).
+  - name: cgpa_value
+    type: FLOAT
+    description: Class-12 CGPA (CGPA boards; null otherwise).
+  - name: cgpa_max_scale
+    type: FLOAT
+    description: CGPA scale maximum (e.g. 10).
+  - name: cgpa_percentage
+    type: FLOAT
+    description: CGPA converted to a percentage (CGPA boards).
+  - name: passing_status
+    type: STRING
+    description: "'Passed' (already cleared Class 12) or 'Appearing' (current 12th cohort) at registration."
+  - name: place_of_school
+    type: STRING
+    description: Place/locality of the school (NTA free text).
+  - name: fee_status
+    type: STRING
+    description: NTA fee category recorded at registration.

@@ -1,8 +1,7 @@
 # JNV — NTA exam results for the Navodaya cohort
 
-`▶ NEXT: load jnv_fact_jee_advanced_rank_list (post-approval), then open its bq-assistant schema PR.
-Then the next tables: jnv_fact_jee_main_2025 (NTA appno→school mapping, fixes Issue #26) and
-dakshana_fact_reported_results_2025 (authoritative Dakshana student list).`
+`▶ NEXT: dakshana_fact_reported_results_2025 (authoritative Dakshana student list). Done & staged to
+GCS (BQ load pending approval): jnv_fact_jee_advanced_rank_list, jnv_fact_jee_main_candidate_details.`
 
 NTA publishes the JNV cohort's exam results (JEE Main, JEE Advanced rank lists, NEET) as per-year
 Excel/CSV exports; Dakshana additionally shares self-reported result sheets for its CoEs. This source
@@ -32,6 +31,8 @@ raw/ (NTA + Dakshana exports, gitignored)  --build_*.py-->  clean/*.parquet (git
 
 - `scripts/build_jee_advanced_rank_list.py` — harmonise `JEE Advanced 2024.csv` + `JEE Advanced 2025.csv`
   (different schemas per year) into one table. Run: `python3 scripts/build_jee_advanced_rank_list.py --raw <dir>`.
+- `scripts/build_jee_main_candidate_details.py` — the NTA JEE-Main candidate-details export → the
+  application→JNV-school mapping + Class-12 board/marks (fixes the Issue-#26 school-mapping gap).
 - `scripts/sources.py` — the table registry (GCS/BQ targets, clustering).
 - `scripts/upload_to_gcs.py`, `scripts/load_bq.py` — stage to GCS, load to BQ. **Both support `--dry-run`;
   do not write to production GCS/BQ without an explicit go.**
