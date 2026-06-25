@@ -1,0 +1,98 @@
+# jnv_fact_jee_advanced_rank_list
+#
+# NTA's published JEE-Advanced rank lists for the JNV (Navodaya) cohort, one harmonised table across
+# years. Built by scripts/build_jee_advanced_rank_list.py from the per-year NTA exports (which do NOT
+# share a schema — see "harmonisation" below).
+#
+# Source raw:  gs://avantifellows-external-data/jnv/raw/JEE Advanced <year>.csv
+# Clean:       gs://avantifellows-external-data/jnv/clean/jnv_fact_jee_advanced_rank_list.parquet
+# BQ table:    avantifellows.external_data_sources.jnv_fact_jee_advanced_rank_list
+
+description: |
+  JEE Advanced is the second-stage entrance exam for the IITs: only students who clear a percentile bar
+  in JEE Main are eligible to sit it, and only those who then clear Advanced get an All-India rank and a
+  shot at an IIT seat. This table is NTA's published Advanced RANK LIST for JNV students — so every row
+  is a student who QUALIFIED Advanced (appearing-but-not-qualifying students are not in the rank list and
+  not in this table). One row per ranked candidate per test_year (2024, 2025).
+
+  How JEE-Advanced ranks work (important for reading the columns):
+  - A qualifier gets a Common Rank List (CRL) rank AND, if they belong to a reserved category, a rank in
+    that category's list. The numbers are positions (1 = top); 0/blank = "not on that list".
+    Categories: open/CRL, EWS (economically weaker), OBC (other backward classes, "OBC-NCL"), SC
+    (scheduled caste), ST (scheduled tribe).
+  - PwD (persons with disability) candidates appear on the "<category>_PwD" list instead of/in addition
+    to the open list.
+  - PREP_* = the preparatory-course rank list: candidates admitted to a one-year preparatory programme
+    (a reserved-category provision), NOT a direct IIT seat. We flag these as prep_qualified, and they are
+    NOT counted in `qualified` (which means a real, non-preparatory Advanced rank).
+
+  Harmonisation (the raw files differ by year, this table hides that):
+  - 2025 keys candidates by `adv_roll_no` (Advanced registration) + Avanti `student_id` (= pk_student_id
+    in dim_student) — so 2025 rows join directly to Avanti students.
+  - 2024 keys by `jee_main_application_no` (sometimes blank) + name/DoB/parents, has NO student_id, and
+    used older labels (GEN_EWS, OBC_NCL) which we map to ews/obc. So 2024 rows must be linked by name+DoB
+    (e.g. via the identity crosswalk), not by id.
+  Both years' category columns are normalised to one scheme: crl, ews, obc, sc, st (+ each "_pwd"), plus
+  the prep_* set. Use the derived `category` / `category_rank` / `qualified` for analysis; the raw
+  per-list rank columns are kept for completeness.
+
+  Join: 2025 -> dim_student on student_id (= pk_student_id). 2024 -> by name+DoB. Across both years the
+  Advanced registration is `adv_roll_no` (2025) — distinct from the JEE-Main application number.
+
+rows: ~2272 (2024: 1083, 2025: 1189)
+grain: (test_year, candidate)
+
+columns:
+  - name: test_year
+    type: STRING
+    mode: REQUIRED
+    description: Year the JEE-Advanced exam was held ('2024' or '2025'). STRING, not INT.
+  - name: adv_roll_no
+    type: STRING
+    description: JEE-Advanced registration / roll number (2025 only; blank for 2024). Distinct from the JEE-Main application number.
+  - name: student_id
+    type: STRING
+    description: Avanti student id (= dim_student.pk_student_id). Populated for 2025; blank for 2024 (link 2024 by name+DoB).
+  - name: jee_main_application_no
+    type: STRING
+    description: NTA JEE-Main application number (2024 file; sometimes blank). Not present in the 2025 file.
+  - name: student_name
+    type: STRING
+    description: Candidate name as printed by NTA (upper/mixed case varies by year).
+  - name: dob
+    type: STRING
+    description: Date of birth (2024 file only; format DD-MM-YYYY). Blank for 2025.
+  - name: gender
+    type: STRING
+    description: Gender (2024 file only; MALE/FEMALE). Blank for 2025.
+  - name: school_name
+    type: STRING
+    description: JNV school name as printed by NTA (free text, spellings vary; not a clean key).
+  - name: state
+    type: STRING
+    description: State of the JNV school (free text).
+  - name: crl
+    type: INTEGER
+    description: Common Rank List (open) rank; 0 if the candidate is not on the open list.
+  - name: category
+    type: STRING
+    description: |
+      Derived. The list this candidate is counted under for analysis: a reserved category (EWS/OBC/SC/ST)
+      if they have a reserved rank, else 'CRL' if only open-ranked, else '' (preparatory-only).
+  - name: category_rank
+    type: INTEGER
+    description: Derived. The candidate's rank in their `category` list (their reserved rank, else the CRL rank).
+  - name: is_pwd
+    type: BOOLEAN
+    description: Derived. True if the candidate appears on any "_PwD" list.
+  - name: prep_qualified
+    type: BOOLEAN
+    description: Derived. True if the candidate has a preparatory-course (PREP_*) rank rather than a direct seat.
+  - name: qualified
+    type: BOOLEAN
+    description: |
+      Derived. True if the candidate has any real (non-preparatory) Advanced rank — i.e. a genuine
+      Advanced qualifier. Mutually exclusive with prep_qualified.
+
+# The physical table also carries the raw per-list rank columns (ews, obc, sc, st and each *_pwd, plus the
+# prep_* set) for completeness; the derived columns above are what most analysis needs.

@@ -1,145 +1,51 @@
-# jnv — JNV Results Pipelines
+# JNV — NTA exam results for the Navodaya cohort
 
-JEE Mains/Advanced, NEET, JNVST selection test, and EI Asset Test results for
-Jawahar Navodaya Vidyalaya (JNV) students.
+`▶ NEXT: load jnv_fact_jee_advanced_rank_list (post-approval), then open its bq-assistant schema PR.
+Then the next tables: jnv_fact_jee_main_2025 (NTA appno→school mapping, fixes Issue #26) and
+dakshana_fact_reported_results_2025 (authoritative Dakshana student list).`
 
-Produces six BigQuery tables:
-- `avantifellows.external_data_sources.jnv_fact_jee_results` (2021–2026)
-- `avantifellows.external_data_sources.jnv_fact_neet_results` (2021–2025)
-- `avantifellows.external_data_sources.jnv_fact_selection_test_results` (2018)
-- `avantifellows.external_data_sources.jnv_fact_ei_asset_test_results`
-- `avantifellows.external_data_sources.jnv_fact_board_results_10th` (2022–2025)
-- `avantifellows.external_data_sources.jnv_fact_board_results_12th` (2022–2025)
+NTA publishes the JNV cohort's exam results (JEE Main, JEE Advanced rank lists, NEET) as per-year
+Excel/CSV exports; Dakshana additionally shares self-reported result sheets for its CoEs. This source
+harmonises those into clean BigQuery tables under `avantifellows.external_data_sources`.
 
-See [`CLAUDE.md`](CLAUDE.md) for full pipeline orientation, design decisions, and pitfalls.
+## Why this source exists
 
-## Quick start — JEE
+Production already has `jnv_fact_jee_results` (combined Mains+Advanced) and `dakshana_fact_ncst_results`,
+but three gaps remain that these raw NTA/Dakshana files fill:
 
-```bash
-# 1. Set up local Python env (from inside jnv/)
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+1. **JEE-Advanced roll + category ranks** — production's advanced fact carries only an `application_no`;
+   the NTA rank lists carry the Advanced registration (`adv_roll_no`), the Common Rank List rank, and the
+   per-category ranks (EWS/OBC/SC/ST + PwD + preparatory). → `jnv_fact_jee_advanced_rank_list` (this PR).
+2. **The 2025 application→JNV-school mapping** that the production export dropped (Issue #26). → a
+   planned `jnv_fact_jee_main_2025` table.
+3. **Authoritative Dakshana identification** — the `student_program='Dakshana CoE'` tag is patchy
+   year-to-year; Dakshana's own reported sheets name every Dakshana student + their CoE. → a planned
+   `dakshana_fact_reported_results_2025` table.
 
-# 2. Drop raw Excel files into raw/jee_mains/ and raw/jee_advanced/
-
-# 3. Transform → clean CSV
-.venv/bin/python scripts/clean_jee.py
-
-# 4. Upload raw (as parquet) + clean (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py --jee-only
-
-# 5. Load clean parquet from GCS → BigQuery
-.venv/bin/python scripts/load_bq.py --jee-only
-```
-
-## Quick start — NEET
-
-```bash
-# 1. Set up local Python env (same venv as JEE)
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-# 2. Drop raw Excel files into raw/neet/ (filenames must match sources.py → RAW_NEET_FILES)
-
-# 3. Transform → clean CSV
-.venv/bin/python scripts/clean_neet.py
-
-# 4. Upload raw (as parquet) + clean (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py --neet-only
-
-# 5. Load clean parquet from GCS → BigQuery
-.venv/bin/python scripts/load_bq.py --neet-only
-```
-
-## Quick start — JNVST Selection Test
-
-```bash
-# 1. Drop raw Excel into raw/jnvst/ (filename must match sources.py → RAW_JNVST_FILES)
-
-# 2. Clean → CSV (lowercase columns, rename to descriptive names, map area/gender values)
-.venv/bin/python scripts/clean_jnvst.py
-
-# 3. Upload raw (as parquet) + clean (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py --jnvst-only
-
-# 4. Load clean parquet from GCS → BigQuery
-.venv/bin/python scripts/load_bq.py --jnvst-only
-```
-
-## Quick start — EI Asset Test
-
-```bash
-# 1. Drop raw Excel into raw/ei_asset_test/ (filename must match sources.py → RAW_EI_ASSET_TEST_FILES)
-
-# 2. Clean → CSV (lowercase columns, rename firstname/lastname/subjectno)
-.venv/bin/python scripts/clean_ei_asset_test.py
-
-# 3. Upload raw (as parquet) + clean (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py --ei-asset-test-only
-
-# 4. Load clean parquet from GCS → BigQuery
-.venv/bin/python scripts/load_bq.py --ei-asset-test-only
-```
-
-## Quick start — Board Results (10th / 12th)
-
-```bash
-# 1. Drop raw Excel files into raw/board_results_10th/ and raw/board_results_12th/
-#    (filenames must match sources.py → RAW_BOARD_RESULTS_10TH_FILES / RAW_BOARD_RESULTS_12TH_FILES)
-
-# 2. Clean → CSV (wide → long unpivot, column renames)
-.venv/bin/python scripts/clean_board_results_10th.py
-.venv/bin/python scripts/clean_board_results_12th.py
-
-# 3. Upload raw (as parquet) + clean (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py --board-results-10th-only
-.venv/bin/python scripts/upload_to_gcs.py --board-results-12th-only
-
-# 4. Load clean parquet from GCS → BigQuery
-.venv/bin/python scripts/load_bq.py --board-results-10th-only
-.venv/bin/python scripts/load_bq.py --board-results-12th-only
-```
-
-## Output
-
-| Table | Grain | ~Rows |
-|---|---|---:|
-| `jnv_fact_jee_results` | (test_year, application_no) | ~64k |
-| `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
-| `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
-| `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
-| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~3.6M |
-| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~2.5M |
-
-## Adding a new JEE year
-
-1. Create `codemaps/mains/yYYYY.py` with a `CODEMAP` dict (copy nearest year as template).
-2. Add one import line to `codemaps/mains/__init__.py` and append to `ALL_CODEMAPS`.
-3. Add the raw Excel file entry to `scripts/sources.py` → `RAW_MAINS_FILES`.
-4. Re-run steps 3–5 above.
-
-## Adding a new NEET year
-
-1. Create `codemaps/neet/yYYYY.py` with a `CODEMAP` dict (copy nearest year as template).
-2. Add one import line to `codemaps/neet/__init__.py` and append to `ALL_NEET_CODEMAPS`.
-3. Add the raw Excel file entry to `scripts/sources.py` → `RAW_NEET_FILES`.
-4. Re-run steps 3–5 above.
-
-## GCS layout
+## Pipeline
 
 ```
-gs://avantifellows-external-data/
-  jnv/raw/jee_mains/<stem>.parquet            ← one per raw JEE Mains Excel
-  jnv/raw/jee_advanced/<stem>.parquet         ← one per raw JEE Advanced Excel
-  jnv/raw/neet/<stem>.parquet                 ← one per raw NEET Excel
-  jnv/raw/jnvst/<stem>.parquet                ← raw JNVST Excel
-  jnv/raw/ei_asset_test/<stem>.parquet        ← raw EI Asset Test Excel
-  jnv/raw/board_results_10th/<stem>.parquet   ← one per raw 10th board Excel
-  jnv/raw/board_results_12th/<stem>.parquet   ← one per raw 12th board Excel
-  jnv/clean/jnv_fact_jee_results.parquet
-  jnv/clean/jnv_fact_neet_results.parquet
-  jnv/clean/jnv_fact_selection_test_results.parquet
-  jnv/clean/jnv_fact_ei_asset_test_results.parquet
-  jnv/clean/jnv_fact_board_results_10th.parquet
-  jnv/clean/jnv_fact_board_results_12th.parquet
+raw/ (NTA + Dakshana exports, gitignored)  --build_*.py-->  clean/*.parquet (gitignored)
+   --upload_to_gcs.py-->  gs://avantifellows-external-data/jnv/clean/
+   --load_bq.py-->        avantifellows.external_data_sources.jnv_fact_*
 ```
+
+- `scripts/build_jee_advanced_rank_list.py` — harmonise `JEE Advanced 2024.csv` + `JEE Advanced 2025.csv`
+  (different schemas per year) into one table. Run: `python3 scripts/build_jee_advanced_rank_list.py --raw <dir>`.
+- `scripts/sources.py` — the table registry (GCS/BQ targets, clustering).
+- `scripts/upload_to_gcs.py`, `scripts/load_bq.py` — stage to GCS, load to BQ. **Both support `--dry-run`;
+  do not write to production GCS/BQ without an explicit go.**
+
+## JNV NTA concepts in 60 seconds
+
+- **JEE Main → JEE Advanced**: Main is the first exam; clearing a percentile bar makes you eligible for
+  Advanced (the IIT exam). Advanced qualifiers get ranks.
+- **Rank lists**: a qualifier gets a Common Rank List (CRL) rank, plus a rank in their reserved category
+  (EWS / OBC-NCL / SC / ST) if applicable. 1 = top; 0/blank = not on that list.
+- **PwD**: persons-with-disability candidates appear on `<category>_PwD` lists.
+- **PREP**: a preparatory-course rank (a reserved-category provision), not a direct IIT seat — flagged
+  separately and excluded from `qualified`.
+- **IDs differ by year**: 2025 has the Avanti `student_id` (joins straight to `dim_student`); 2024 has
+  only application number + name/DoB (link via the identity crosswalk).
+
+Tables are added **one at a time**, each its own PR paired with a bq-assistant schema PR.
