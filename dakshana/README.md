@@ -1,34 +1,36 @@
-# dakshana — NCST Results Pipeline
+# Dakshana — partner-reported results
 
-Ingestion pipeline for the Navodaya CoE Selection Test (NCST) results.
-NCST is conducted jointly by Dakshana Foundation, ENF, and Avanti for JNV students.
+`⏸ PAUSED — first table done & staged to GCS (BQ load pending approval):
+dakshana_fact_reported_results. (dim_dakshana_ncst etc. were loaded by an older process.)`
 
-Produces one BigQuery table:
-- `avantifellows.external_data_sources.dakshana_fact_ncst_results` (2022–2025)
+Dakshana runs intensive JEE/NEET coaching at a set of Navodaya (JNV) Centres of Excellence and shares a
+self-reported result sheet each cycle. This source harmonises those sheets into BigQuery under
+`avantifellows.external_data_sources`.
 
-See [`CLAUDE.md`](CLAUDE.md) for full pipeline orientation, design decisions, and run commands.
+## Why this source exists
 
-## Quick start
+Dakshana students are routinely **mis-attributed** in the warehouse: the `student_program='Dakshana CoE'`
+tag is patchy and inconsistent year-to-year, so a Dakshana student (e.g. at JNV Bengaluru Urban) often
+shows up as Nodal/NVS. Dakshana's own sheet names every Dakshana student + their CoE, so it is the
+**authoritative Dakshana attribution** — and it pins **which JNVs were Dakshana in a given year** (the
+footprint moves: Bundi/Kottayam/Lucknow were Dakshana in 2025, handed to Avanti from 2026).
 
-```bash
-# 1. Set up local Python env (from inside dakshana/)
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+## Pipeline
 
-# 2. Drop raw Excel files into raw/ (filenames must match sources.py → RAW_NCST_FILES)
-
-# 3. Transform raw Excel → clean CSV
-.venv/bin/python scripts/clean_ncst.py
-
-# 4. Upload raw (as parquet) + clean (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py
-
-# 5. Load clean parquet from GCS → BigQuery
-.venv/bin/python scripts/load_bq.py
+```
+raw/ (Dakshana sheets, gitignored)  --build_*.py-->  clean/*.parquet (gitignored)
+   --upload_to_gcs.py [--raw]-->  gs://avantifellows-external-data/dakshana/{raw,clean}/
+   --load_bq.py-->                avantifellows.external_data_sources.dakshana_fact_*
 ```
 
-## Output
+- `scripts/build_reported_results.py` — harmonise the JEE-Main + NEET sheets into one long table with an
+  `exam` + `score_type` discriminator (JEE score is a percentile, NEET is raw marks — never mix).
+- `scripts/sources.py`, `upload_to_gcs.py` (`--raw` stages originals), `load_bq.py` (both `--dry-run`).
 
-| Table | Grain | ~Rows |
-|---|---|---:|
-| `dakshana_fact_ncst_results` | (test_year, roll_no) | ~37k |
+## Linking to Avanti students
+
+The sheets carry **name + CoE only** — no `student_id` / `application_no`. Attach to an Avanti student by
+name (+ DoB) via the identity crosswalk, not by id.
+
+Tables are added one at a time, each its own PR paired with a bq-assistant schema PR. **No production
+GCS/BQ writes without an explicit go** — clean parquet is gitignored; load is post-approval.

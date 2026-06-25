@@ -1,47 +1,56 @@
-#!/usr/bin/env python3
 """
-Load Dakshana NCST clean data from GCS into BigQuery.
+Load clean JNV parquet files from GCS into BigQuery (external_data_sources, asia-south1).
 
-Reads:
-    gs://avantifellows-external-data/dakshana/clean/dakshana_fact_ncst_results.parquet
+Each table in sources.py is loaded with WRITE_TRUNCATE (idempotent), clustered on its filter columns.
 
-Writes (WRITE_TRUNCATE):
-    avantifellows.external_data_sources.dakshana_fact_ncst_results
-
-Run upload_to_gcs.py first to ensure the GCS file is up to date.
+Pre-reqs: dataset avantifellows.external_data_sources exists; clean parquet already staged on GCS
+(scripts/upload_to_gcs.py). Do NOT run against production without an explicit go — stage + review first.
 
 Usage:
-    python3 scripts/load_bq.py
+  python3 scripts/load_bq.py --dry-run                              # show what would happen
+  python3 scripts/load_bq.py --table jnv_fact_jee_advanced_rank_list
 """
+from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
-from google.cloud import bigquery
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sources import BQ_LOCATION, TABLES, Table
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.sources import BQ_LOCATION, BQ_PROJECT, NCST_CLEAN
+
+def _load(table: Table, client, dry_run: bool) -> None:
+    msg = f"{table.gcs_uri} → {table.bq_table_id}  (cluster: {', '.join(table.clustering) or 'none'})"
+    if dry_run:
+        print(f"  [dry-run] {msg}")
+        return
+    from google.cloud import bigquery
+    cfg = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.PARQUET,
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+        clustering_fields=list(table.clustering) or None,
+    )
+    job = client.load_table_from_uri(table.gcs_uri, table.bq_table_id, job_config=cfg, location=BQ_LOCATION)
+    job.result()
+    print(f"  loaded {client.get_table(table.bq_table_id).num_rows:>10,} rows → {table.bq_table_id}")
 
 
 def main() -> None:
-    client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
-
-    job_config = bigquery.LoadJobConfig(
-        source_format=bigquery.SourceFormat.PARQUET,
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
-    )
-    print(f"Loading {NCST_CLEAN.gcs_uri}")
-    print(f"  → {NCST_CLEAN.bq_table_id}")
-    job = client.load_table_from_uri(
-        NCST_CLEAN.gcs_uri,
-        NCST_CLEAN.bq_table_id,
-        job_config=job_config,
-        location=BQ_LOCATION,
-    )
-    job.result()
-    bq_table = client.get_table(NCST_CLEAN.bq_table_id)
-    print(f"  ✓ {bq_table.num_rows:,} rows loaded into {NCST_CLEAN.bq_table_id}")
-    print("\nDone.")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--table", default=None)
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+    chosen = [t for t in TABLES if t.bq_name == args.table] if args.table else TABLES
+    if args.table and not chosen:
+        raise SystemExit(f"unknown table {args.table!r}; known: {[t.bq_name for t in TABLES]}")
+    client = None
+    if not args.dry_run:
+        from google.cloud import bigquery
+        client = bigquery.Client(project="avantifellows")
+    for t in chosen:
+        _load(t, client, args.dry_run)
+    print("done.")
 
 
 if __name__ == "__main__":
