@@ -362,6 +362,13 @@ def post_process(df, cutoffs=None):
 # ── File loader ───────────────────────────────────────────────────────────────
 
 def load_file(raw_dir, source):
+    # Prefer the parquet conversion of the source xlsx when present (the raw xlsx is not always on hand;
+    # the GCS/folder-11 parquet carries the same already-headered columns). Name = snake_case of the xlsx.
+    pq = raw_dir / (source["file"].replace(".xlsx", "").lower().replace(" ", "_") + ".parquet")
+    if pq.exists():
+        print(f"  Loading {pq.name} (parquet) ...")
+        return pd.read_parquet(pq)
+
     path   = raw_dir / source["file"]
     header = source.get("header", 0)
     fallback = source.get("header_fallback")
