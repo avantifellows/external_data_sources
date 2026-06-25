@@ -32,7 +32,10 @@ PREP_COLS = ["prep_crl_pwd", "prep_ews_pwd", "prep_obc_pwd", "prep_sc", "prep_sc
              "prep_st", "prep_st_pwd"]
 
 # per-year raw header -> canonical name. Anything not listed is dropped.
-MAP_2025 = {"advrollno": "adv_roll_no", "cname": "student_name", "student_id": "student_id",
+# NOTE: the 2025 file's `student_id` column is actually the JEE-MAIN APPLICATION NUMBER (it matches
+# jnv_fact_jee_main_candidate_details.application_no 1:1, NOT the Avanti pk_student_id), so it maps to
+# jee_main_application_no — the same key the 2024 file calls "JEE Main Application Number".
+MAP_2025 = {"advrollno": "adv_roll_no", "cname": "student_name", "student_id": "jee_main_application_no",
             "School_or_CollegeName_Address": "school_name", "State": "state",
             "CRL": "crl", "CRL_PwD": "crl_pwd", "EWS": "ews", "EWS_PwD": "ews_pwd",
             "OBC": "obc", "OBC_PwD": "obc_pwd", "SC": "sc", "SC_PwD": "sc_pwd",
@@ -52,7 +55,7 @@ MAP_2024 = {"JEE Main Application Number": "jee_main_application_no", "Student N
 YEARS = {"2024": ("JEE Advanced 2024.csv", MAP_2024),
          "2025": ("JEE Advanced 2025.csv", MAP_2025)}
 
-ALL_OUT = (["test_year", "adv_roll_no", "student_id", "jee_main_application_no", "student_name",
+ALL_OUT = (["test_year", "adv_roll_no", "jee_main_application_no", "student_name",
             "dob", "gender", "school_name", "state"] + RANK_COLS + PREP_COLS
            + ["crl_rank", "category", "category_rank", "is_pwd", "prep_qualified", "qualified"])
 
@@ -103,8 +106,7 @@ def main():
     print(f"wrote {dest}  ({len(out):,} rows)")
     print(out.groupby(["test_year", "category"]).size().unstack(fill_value=0).to_string())
     print(f"\nqualified={int(out.qualified.sum()):,}  prep={int(out.prep_qualified.sum()):,}  "
-          f"pwd={int(out.is_pwd.sum()):,}  with student_id={int((out.student_id != '').sum()):,}  "
-          f"with appno={int((out.jee_main_application_no != '').sum()):,}")
+          f"pwd={int(out.is_pwd.sum()):,}  with jee_main_application_no={int((out.jee_main_application_no != '').sum()):,}")
 
 
 if __name__ == "__main__":

@@ -27,17 +27,20 @@ description: |
     NOT counted in `qualified` (which means a real, non-preparatory Advanced rank).
 
   Harmonisation (the raw files differ by year, this table hides that):
-  - 2025 keys candidates by `adv_roll_no` (Advanced registration) + Avanti `student_id` (= pk_student_id
-    in dim_student) — so 2025 rows join directly to Avanti students.
-  - 2024 keys by `jee_main_application_no` (sometimes blank) + name/DoB/parents, has NO student_id, and
-    used older labels (GEN_EWS, OBC_NCL) which we map to ews/obc. So 2024 rows must be linked by name+DoB
-    (e.g. via the identity crosswalk), not by id.
+  - Both years are keyed by the JEE-MAIN APPLICATION NUMBER (`jee_main_application_no`). The 2025 file
+    labels that column "student_id", but its values are JEE-Main application numbers (they match
+    jnv_fact_jee_main_candidate_details.application_no 1:1, NOT the Avanti pk_student_id) — so we map it to
+    jee_main_application_no, the same key the 2024 file calls "JEE Main Application Number".
+  - 2025 also has `adv_roll_no` (the Advanced registration); 2024 does not. 2024 additionally carries
+    name/DoB/parents and used older category labels (GEN_EWS, OBC_NCL) which we map to ews/obc.
   Both years' category columns are normalised to one scheme: crl, ews, obc, sc, st (+ each "_pwd"), plus
   the prep_* set. Use the derived `category` / `category_rank` / `qualified` for analysis; the raw
   per-list rank columns are kept for completeness.
 
-  Join: 2025 -> dim_student on student_id (= pk_student_id). 2024 -> by name+DoB. Across both years the
-  Advanced registration is `adv_roll_no` (2025) — distinct from the JEE-Main application number.
+  Join: on `jee_main_application_no` to jnv_fact_jee_main_candidate_details / jnv_fact_jee_results /
+  production fact_student_jee_main_results_overall.application_no. There is NO Avanti pk here — reach
+  dim_student via that application_no (or the identity crosswalk by name+DoB). `adv_roll_no` is the
+  Advanced registration number (2025 only), distinct from the application number.
 
 rows: ~2272 (2024: 1083, 2025: 1189)
 grain: (test_year, candidate)
@@ -50,12 +53,12 @@ columns:
   - name: adv_roll_no
     type: STRING
     description: JEE-Advanced registration / roll number (2025 only; blank for 2024). Distinct from the JEE-Main application number.
-  - name: student_id
-    type: STRING
-    description: Avanti student id (= dim_student.pk_student_id). Populated for 2025; blank for 2024 (link 2024 by name+DoB).
   - name: jee_main_application_no
     type: STRING
-    description: NTA JEE-Main application number (2024 file; sometimes blank). Not present in the 2025 file.
+    description: |
+      NTA JEE-Main application number — the join key (to candidate_details / jnv_fact_jee_results /
+      production JEE fact). Populated for both years (~2,258 of 2,272; the 2025 file mislabels this column
+      "student_id" but the values are application numbers, not the Avanti pk). NOT an Avanti id.
   - name: student_name
     type: STRING
     description: Candidate name as printed by NTA (upper/mixed case varies by year).
