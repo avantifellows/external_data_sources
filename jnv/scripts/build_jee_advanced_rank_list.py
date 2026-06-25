@@ -22,7 +22,7 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_RAW = Path(os.environ.get("JNV_RAW", ROOT / "raw"))
+DEFAULT_RAW = Path(os.environ.get("JNV_RAW", ROOT / "raw" / "jee_advanced"))
 CLEAN = ROOT / "clean"
 
 # canonical reserved-category columns the harmonised table exposes (open + 4 reserved, each +PwD)

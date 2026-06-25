@@ -55,3 +55,10 @@ TABLES: list[Table] = [
         clustering=("test_year", "category"),
     ),
 ]
+
+# Original NTA exports kept in GCS for audit/reproducibility. local path (under raw/) -> GCS raw subpath.
+# Mirrors the existing jnv raw layout (raw/jee_advanced/, raw/jee_mains/, ...).
+RAW_FILES: list[tuple[str, str]] = [
+    ("jee_advanced/JEE Advanced 2024.csv", "jee_advanced/"),
+    ("jee_advanced/JEE Advanced 2025.csv", "jee_advanced/"),
+]
