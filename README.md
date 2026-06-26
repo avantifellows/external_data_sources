@@ -15,6 +15,7 @@ BigQuery for analysis. One folder per upstream source.
 | NVS NCST | [`nvs/`](nvs/) | Active | NCST results from 2026 onward — first year the test was conducted at national scale by NVS directly (Dakshana set the paper). ~43k students with richer data: per-subject raw scores, household wealth, academic history. Block 1 columns match `dakshana_fact_ncst_results` for cross-year UNIONs. → 1 table: `nvs_fact_ncst_results`. |
 | UBSE (Uttarakhand) | [`ubse/`](ubse/) | Active | Uttarakhand Board of School Education Grade 10 and Grade 12 board exam results (2026+). Long format — one row per student per subject. → 2 tables: `ubse_fact_grade10_results`, `ubse_fact_grade12_results`. |
 | Punjab SCERT | [`pb_scert/`](pb_scert/) | Active | SOE & RSMS Admission Test merit list for Punjab Schools of Eminence and Meritorious Schools (Class 11 admissions, AY 2024-25 to 2026-27, ~326k records). → 1 table: `pb_scert_fact_soe_rsms_admission_merit_list`. |
+| KCET (Karnataka) | [`kcet/`](kcet/) | Active | Karnataka CET engineering cutoffs — closing ranks for every (college, course, category) seat bucket. KEA PDF → parse → GCS → BQ → 1 `kcet_fact_cutoffs` table. 13,357 rows, 2025 Round 3. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables
