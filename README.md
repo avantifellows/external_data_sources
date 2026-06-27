@@ -19,6 +19,7 @@ BigQuery for analysis. One folder per upstream source.
 | NAS (India) | [`nas/`](nas/) | Active | National Achievement Survey 2021 (NCERT) — student achievement performance and proficiency for grades 3/5/8/10 at state level, by management and location. Student-weighted national rollup included as `state='All India'`. → 1 table: `nas_fact_state_proficiency`. |
 | AICTE (India) | [`aicte/`](aicte/) | Active | AICTE technical-education intake data — approved intake, enrolment, passouts, placements, and institution counts for 6 streams (Engineering, Management, MCA, Pharmacy, Architecture, Hotel Management), AY 2012-13 → 2022-23. Three cuts: national, state, institution-type. → 1 table: `aicte_fact_intake`. |
 | NMC (India) | [`nmc/`](nmc/) | Active | National Medical Commission MBBS seat matrix 2024-25 — all ~780 MBBS medical colleges (incl. AIIMS & JIPMER) with state, district, university, management, year of inception, and annual UG seat intake. PDF parse → GCS → BQ. → 1 table: `nmc_fact_mbbs_seats`. |
+| MoE Board Results | [`moe/`](moe/) | Active | Indian school board exam results (Class X + XII) from MoE RSHSE PDFs — pass figures across all 41–58 boards by year, gender, social category, and Class XII stream (2020–2024, no 2023 edition). PDF parse → GCS → BQ. → 1 table: `moe_fact_board_exam_results`. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables

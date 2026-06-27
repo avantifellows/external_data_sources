@@ -139,5 +139,9 @@ Two patterns, two examples:
 - [`nmc/`](nmc/) — PDF parse. Raw PDF downloaded from NMC → parsed with
   pdfplumber → clean parquet → GCS → BQ. Use as the reference when upstream
   is a structured PDF report. → 1 table: `nmc_fact_mbbs_seats`.
+- [`moe/`](moe/) — multi-PDF parse. Four annual MoE RSHSE PDFs (2020–2024)
+  parsed with pdfplumber across two extractors (overall + stream-wise), merged
+  into one denormalized fact with `cut` sentinel. Same shape as `nmc/` but
+  multi-year and multi-parser. → 1 table: `moe_fact_board_exam_results`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.
