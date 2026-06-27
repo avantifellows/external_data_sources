@@ -142,7 +142,7 @@ gs://avantifellows-external-data/naac/*.parquet
        │
        │  scripts/load_bq.py       (load_table_from_uri, WRITE_TRUNCATE)
        ▼
-avantifellows.external_data_sources.naac_fact_*    (3 tables, asia-south1)
+avantifellows.external_data_sources.naac_dim_*    (3 tables, asia-south1)
 ```
 
 Single source of truth for all config: [`scripts/sources.py`](scripts/sources.py).
@@ -151,9 +151,9 @@ Single source of truth for all config: [`scripts/sources.py`](scripts/sources.py
 
 | Table | Rows | Grain |
 |---|---:|---|
-| `naac_fact_universities` | 497 | `aishe_id` |
-| `naac_fact_colleges` | 7,566 | `aishe_id` |
-| `naac_fact_transition_autonomous_colleges` | 290 | `hei_name` |
+| `naac_dim_universities` | 497 | `aishe_id` |
+| `naac_dim_colleges` | 7,566 | `aishe_id` |
+| `naac_dim_transition_autonomous_colleges` | 290 | `hei_name` |
 
 All tables carry `data_as_of = 2025-08-14` (the date the source file was
 published on naac.gov.in). Schemas: [`schemas/*.yaml`](schemas/).

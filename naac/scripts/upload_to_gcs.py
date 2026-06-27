@@ -8,7 +8,7 @@ Pre-req for clean upload: run build_clean.py first to produce the parquets.
 
 Usage:
   python3 scripts/upload_to_gcs.py                          # upload raw + all clean parquets
-  python3 scripts/upload_to_gcs.py --table naac_fact_colleges  # raw + one clean parquet
+  python3 scripts/upload_to_gcs.py --table naac_dim_colleges  # raw + one clean parquet
   python3 scripts/upload_to_gcs.py --raw-only               # raw xlsx only
   python3 scripts/upload_to_gcs.py --clean-only             # clean parquets only
   python3 scripts/upload_to_gcs.py --dry-run                # show what would happen

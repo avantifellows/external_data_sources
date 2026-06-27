@@ -1,4 +1,4 @@
-# naac_fact_universities
+# naac_dim_universities
 #
 # NAAC-accredited universities with valid accreditation as of 14-Aug-2025.
 # One row per university. Sourced from the "Universities" sheet of the
@@ -12,8 +12,8 @@
 #              C (1.51–2.00). Below 1.51 = not accredited.
 #
 # Source xlsx: gs://avantifellows-external-data/naac/  (raw committed to repo)
-# Source parquet: gs://avantifellows-external-data/naac/naac_fact_universities.parquet
-# BQ table: avantifellows.external_data_sources.naac_fact_universities
+# Source parquet: gs://avantifellows-external-data/naac/naac_dim_universities.parquet
+# BQ table: avantifellows.external_data_sources.naac_dim_universities
 
 description: NAAC-accredited universities — grade, CGPA, cycle, and declaration date. Data as of 14-Aug-2025.
 rows: 497

@@ -20,7 +20,7 @@ Known data quality issues handled here:
 
 Usage:
   python3 scripts/build_clean.py                 # build all three tables
-  python3 scripts/build_clean.py --table naac_fact_colleges   # one only
+  python3 scripts/build_clean.py --table naac_dim_colleges   # one only
   python3 scripts/build_clean.py --dry-run       # build in-mem, print summary, write nothing
 """
 from __future__ import annotations
@@ -128,7 +128,7 @@ def main() -> None:
     )
     ap.add_argument(
         "--table", default=None,
-        help="Build only this BQ table name (e.g. naac_fact_colleges)",
+        help="Build only this BQ table name (e.g. naac_dim_colleges)",
     )
     ap.add_argument(
         "--dry-run", action="store_true",

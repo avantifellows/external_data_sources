@@ -11,7 +11,7 @@ Pre-reqs (one-time):
 
 Usage:
   python3 scripts/load_bq.py                                          # load all three
-  python3 scripts/load_bq.py --table naac_fact_colleges               # one only
+  python3 scripts/load_bq.py --table naac_dim_colleges               # one only
   python3 scripts/load_bq.py --dry-run                                # show what would happen
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ def _load(table: Table, client, dry_run: bool) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--table", default=None, help="Load only this BQ table name (e.g. naac_fact_colleges)")
+    ap.add_argument("--table", default=None, help="Load only this BQ table name (e.g. naac_dim_colleges)")
     ap.add_argument("--dry-run", action="store_true", help="Print plan; don't touch BQ")
     args = ap.parse_args()
 

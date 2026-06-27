@@ -34,7 +34,7 @@ gs://avantifellows-external-data/naac/*.parquet
        │
        │  scripts/load_bq.py       (load_table_from_uri, WRITE_TRUNCATE)
        ▼
-avantifellows.external_data_sources.naac_fact_*    (3 tables, asia-south1)
+avantifellows.external_data_sources.naac_dim_*    (3 tables, asia-south1)
 ```
 
 **Single source of truth: [`scripts/sources.py`](scripts/sources.py).** It
@@ -51,17 +51,17 @@ python3 -m venv .venv
 
 # 1. Build clean parquets from the raw xlsx
 .venv/bin/python scripts/build_clean.py
-.venv/bin/python scripts/build_clean.py --table naac_fact_colleges   # one only
+.venv/bin/python scripts/build_clean.py --table naac_dim_colleges   # one only
 .venv/bin/python scripts/build_clean.py --dry-run                    # validate locally
 
 # 2. Upload clean parquets to GCS
 .venv/bin/python scripts/upload_to_gcs.py
-.venv/bin/python scripts/upload_to_gcs.py --table naac_fact_colleges
+.venv/bin/python scripts/upload_to_gcs.py --table naac_dim_colleges
 .venv/bin/python scripts/upload_to_gcs.py --dry-run
 
 # 3. Load GCS → BQ
 .venv/bin/python scripts/load_bq.py
-.venv/bin/python scripts/load_bq.py --table naac_fact_colleges
+.venv/bin/python scripts/load_bq.py --table naac_dim_colleges
 .venv/bin/python scripts/load_bq.py --dry-run
 ```
 
@@ -77,7 +77,7 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 |---|---|---|
 | `raw/*.xlsx` | Yes | Source file from naac.gov.in (1 MB; small enough to commit) |
 | `clean/*.parquet` | No | Built by `build_clean.py`; authoritative copy on GCS |
-| `schemas/naac_fact_*.yaml` | Yes | Per-table column documentation |
+| `schemas/naac_dim_*.yaml` | Yes | Per-table column documentation |
 | `scripts/sources.py` | Yes | All config: paths, BQ dest, table registry, column renames |
 | `scripts/build_clean.py` | Yes | Raw xlsx → clean parquets (rename, text clean, date parse) |
 | `scripts/upload_to_gcs.py` | Yes | Uploads `clean/` to GCS — no transformation |
@@ -91,9 +91,9 @@ column-level docs in [`schemas/*.yaml`](schemas/).
 
 | Table | Rows | Grain | Sheet |
 |---|---:|---|---|
-| `naac_fact_universities` | 497 | `aishe_id` | Universities |
-| `naac_fact_colleges` | 7,566 | `aishe_id` | Colleges |
-| `naac_fact_transition_autonomous_colleges` | 290 | `hei_name` | Transition Autonomous Colleges |
+| `naac_dim_universities` | 497 | `aishe_id` | Universities |
+| `naac_dim_colleges` | 7,566 | `aishe_id` | Colleges |
+| `naac_dim_transition_autonomous_colleges` | 290 | `hei_name` | Transition Autonomous Colleges |
 
 All tables carry a `data_as_of` DATE column (2025-08-14) recording the
 publication date of the source file.

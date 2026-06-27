@@ -16,7 +16,7 @@ Pipeline:
                               gs://avantifellows-external-data/naac/*.parquet
                                          │  load_bq.py
                                          ▼
-                              avantifellows.external_data_sources.naac_fact_*
+                              avantifellows.external_data_sources.naac_dim_*
 """
 from __future__ import annotations
 
@@ -86,23 +86,23 @@ _ACCREDITED_RENAMES = {
 
 TABLES: list[Table] = [
     Table(
-        bq_name="naac_fact_universities",
+        bq_name="naac_dim_universities",
         sheet="Universities",
-        parquet="naac_fact_universities.parquet",
+        parquet="naac_dim_universities.parquet",
         column_renames=_ACCREDITED_RENAMES,
         date_columns=["date_of_declaration"],
     ),
     Table(
-        bq_name="naac_fact_colleges",
+        bq_name="naac_dim_colleges",
         sheet="Colleges",
-        parquet="naac_fact_colleges.parquet",
+        parquet="naac_dim_colleges.parquet",
         column_renames={**_ACCREDITED_RENAMES, "Affiliating University": "affiliating_university"},
         date_columns=["date_of_declaration"],
     ),
     Table(
-        bq_name="naac_fact_transition_autonomous_colleges",
+        bq_name="naac_dim_transition_autonomous_colleges",
         sheet="Transition Autonomous Colleges",
-        parquet="naac_fact_transition_autonomous_colleges.parquet",
+        parquet="naac_dim_transition_autonomous_colleges.parquet",
         column_renames={
             "Sl. No.":                "sl_no",
             "HEI Name":               "hei_name",

@@ -1,4 +1,4 @@
-# naac_fact_colleges
+# naac_dim_colleges
 #
 # NAAC-accredited colleges with valid accreditation as of 14-Aug-2025.
 # One row per college. Sourced from the "Colleges" sheet of the official
@@ -13,8 +13,8 @@
 # > B+ (2.51–2.75) > B (2.01–2.50) > C (1.51–2.00).
 #
 # Source xlsx: raw/ (committed to repo)
-# Source parquet: gs://avantifellows-external-data/naac/naac_fact_colleges.parquet
-# BQ table: avantifellows.external_data_sources.naac_fact_colleges
+# Source parquet: gs://avantifellows-external-data/naac/naac_dim_colleges.parquet
+# BQ table: avantifellows.external_data_sources.naac_dim_colleges
 
 description: NAAC-accredited colleges — grade, CGPA, cycle, affiliating university, and declaration date. Data as of 14-Aug-2025.
 rows: 7566

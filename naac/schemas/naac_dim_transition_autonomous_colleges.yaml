@@ -1,4 +1,4 @@
-# naac_fact_transition_autonomous_colleges
+# naac_dim_transition_autonomous_colleges
 #
 # Colleges in NAAC's "Transition Autonomous" category as of 14-Aug-2025.
 # One row per college. Sourced from the "Transition Autonomous Colleges" sheet
@@ -21,8 +21,8 @@
 # 2024 or earlier — their accreditation has already expired as of Aug 2025.
 #
 # Source xlsx: raw/ (committed to repo)
-# Source parquet: gs://avantifellows-external-data/naac/naac_fact_transition_autonomous_colleges.parquet
-# BQ table: avantifellows.external_data_sources.naac_fact_transition_autonomous_colleges
+# Source parquet: gs://avantifellows-external-data/naac/naac_dim_transition_autonomous_colleges.parquet
+# BQ table: avantifellows.external_data_sources.naac_dim_transition_autonomous_colleges
 
 description: Colleges with extended NAAC accreditation validity during transition to autonomous status — no CGPA or grade. Data as of 14-Aug-2025.
 rows: 290
