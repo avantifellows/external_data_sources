@@ -18,12 +18,16 @@ Usage:
 
 import re
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import BOARD_RESULTS_10TH_CLEAN, RAW_BOARD_RESULTS_10TH_FILES
+from sources import BOARD_RESULTS_10TH_CLEAN, BQ_PROJECT, BQ_LOCATION, RAW_BOARD_RESULTS_10TH_FILES
+
+_DIM_STUDENT      = f"`{BQ_PROJECT}.production_dbt_final.dim_student`"
+_DIM_STUDENT_HIST = f"`{BQ_PROJECT}.production_dbt_final.dim_student_historical`"
 
 # ── Year configs ───────────────────────────────────────────────────────────────
 
@@ -116,6 +120,7 @@ OUTPUT_COLS = [
     "total_marks", "result",
     "compartment", "reappear",
     "admission_id", "skill_subject", "nse", "nchmct",
+    "fk_avanti_student_id", "fk_match_confidence", "fk_match_count",
 ]
 
 
@@ -220,6 +225,164 @@ def _load_year(exam_year: int, raw) -> pd.DataFrame:
     return df
 
 
+# ── FK student ID matching ─────────────────────────────────────────────────────
+
+def _add_fk_student_id(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Query BigQuery to match each (exam_year, roll_number) to an Avanti pk_student_id
+    using four passes:
+      1. name_dob / name_dob_parent  — exact name + DOB (parent names escalate confidence)
+      2. name_dob_swapped            — DD/MM transposition in dim_student
+      3. name_dob_year_off           — exam_year ± 1
+      4. name_fuzzy_dob              — exact DOB + edit distance ≤ 2 on name
+    Adds fk_avanti_student_id, fk_match_confidence, fk_match_count to df.
+    """
+    from google.cloud import bigquery
+
+    client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
+
+    # Upload unique student rows to a temp table so BQ can join against them
+    students = (
+        df[["exam_year", "roll_number", "student_name", "date_of_birth", "father_name", "mother_name"]]
+        .drop_duplicates(subset=["exam_year", "roll_number"])
+        .copy()
+    )
+    tmp = f"{BQ_PROJECT}.external_data_sources._tmp_b10_{int(time.time())}"
+    print(f"  Uploading {len(students):,} student rows to temp table ...")
+    load_job = client.load_table_from_dataframe(students, tmp)
+    load_job.result()
+
+    try:
+        sql = f"""
+        WITH src AS (
+            SELECT
+                exam_year,
+                roll_number,
+                UPPER(TRIM(REGEXP_REPLACE(student_name,   r'\\s+', ' '))) AS norm_name,
+                SAFE.PARSE_DATE('%d%m%Y', LPAD(date_of_birth, 8, '0'))      AS parsed_dob,
+                UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))) AS norm_father,
+                UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))) AS norm_mother
+            FROM `{tmp}`
+            WHERE student_name IS NOT NULL
+        ),
+        avanti AS (
+            SELECT DISTINCT pk_student_id, date_of_birth, academic_year,
+                UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\\s+', ' ')))         AS norm_name,
+                UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))) AS norm_father,
+                UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))) AS norm_mother,
+                CAST(CAST(RIGHT(academic_year,4) AS INT64) - 2 AS STRING)            AS expected_exam_year,
+                SAFE.DATE(
+                    EXTRACT(YEAR  FROM date_of_birth),
+                    EXTRACT(DAY   FROM date_of_birth),
+                    EXTRACT(MONTH FROM date_of_birth)
+                ) AS dob_swapped
+            FROM {_DIM_STUDENT}
+            WHERE (LOWER(COALESCE(student_school,'')) LIKE '%jnv%'
+                OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')
+              AND student_grade = 12
+              AND academic_year IN ('2023-2024','2024-2025','2025-2026','2026-2027')
+              AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL
+            UNION ALL
+            SELECT DISTINCT pk_student_id, date_of_birth, academic_year,
+                UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\\s+', ' ')))         AS norm_name,
+                UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))) AS norm_father,
+                UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))) AS norm_mother,
+                CAST(CAST(RIGHT(academic_year,4) AS INT64) - 2 AS STRING)            AS expected_exam_year,
+                SAFE.DATE(
+                    EXTRACT(YEAR  FROM date_of_birth),
+                    EXTRACT(DAY   FROM date_of_birth),
+                    EXTRACT(MONTH FROM date_of_birth)
+                ) AS dob_swapped
+            FROM {_DIM_STUDENT_HIST}
+            WHERE (LOWER(COALESCE(student_school,'')) LIKE '%jnv%'
+                OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')
+              AND student_grade = 12
+              AND academic_year IN ('2023-2024','2024-2025','2025-2026','2026-2027')
+              AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL
+        ),
+        p1 AS (
+            SELECT b.exam_year, b.roll_number,
+                COUNT(DISTINCT a.pk_student_id) AS match_count,
+                ANY_VALUE(a.pk_student_id)      AS fk_avanti_student_id,
+                CASE WHEN LOGICAL_OR(
+                    (b.norm_father!='' AND b.norm_father=a.norm_father)
+                    OR (b.norm_mother!='' AND b.norm_mother=a.norm_mother)
+                ) THEN 'name_dob_parent' ELSE 'name_dob' END AS match_confidence
+            FROM src b JOIN avanti a
+                ON a.norm_name=b.norm_name AND a.date_of_birth=b.parsed_dob AND a.expected_exam_year=b.exam_year
+            GROUP BY 1,2
+        ),
+        p2 AS (
+            SELECT b.exam_year, b.roll_number,
+                COUNT(DISTINCT a.pk_student_id) AS match_count,
+                ANY_VALUE(a.pk_student_id)      AS fk_avanti_student_id,
+                'name_dob_swapped'              AS match_confidence
+            FROM src b
+            LEFT JOIN p1 USING (exam_year, roll_number)
+            JOIN avanti a ON a.norm_name=b.norm_name AND a.dob_swapped=b.parsed_dob AND a.expected_exam_year=b.exam_year
+            WHERE p1.roll_number IS NULL
+            GROUP BY 1,2
+        ),
+        p3 AS (
+            SELECT b.exam_year, b.roll_number,
+                COUNT(DISTINCT a.pk_student_id) AS match_count,
+                ANY_VALUE(a.pk_student_id)      AS fk_avanti_student_id,
+                'name_dob_year_off'             AS match_confidence
+            FROM src b
+            LEFT JOIN p1 USING (exam_year, roll_number)
+            LEFT JOIN p2 USING (exam_year, roll_number)
+            JOIN avanti a ON a.norm_name=b.norm_name AND a.date_of_birth=b.parsed_dob
+                AND CAST(a.expected_exam_year AS INT64) IN (CAST(b.exam_year AS INT64)-1, CAST(b.exam_year AS INT64)+1)
+            WHERE p1.roll_number IS NULL AND p2.roll_number IS NULL
+            GROUP BY 1,2
+        ),
+        p4 AS (
+            SELECT b.exam_year, b.roll_number,
+                COUNT(DISTINCT a.pk_student_id) AS match_count,
+                ANY_VALUE(a.pk_student_id)      AS fk_avanti_student_id,
+                'name_fuzzy_dob'                AS match_confidence
+            FROM src b
+            LEFT JOIN p1 USING (exam_year, roll_number)
+            LEFT JOIN p2 USING (exam_year, roll_number)
+            LEFT JOIN p3 USING (exam_year, roll_number)
+            JOIN avanti a ON a.date_of_birth=b.parsed_dob AND a.expected_exam_year=b.exam_year
+                AND EDIT_DISTANCE(a.norm_name, b.norm_name) BETWEEN 1 AND 2
+            WHERE p1.roll_number IS NULL AND p2.roll_number IS NULL AND p3.roll_number IS NULL
+            GROUP BY 1,2
+        ),
+        mapping AS (
+            SELECT exam_year, roll_number,
+                CASE WHEN match_count=1 THEN fk_avanti_student_id ELSE NULL END AS fk_avanti_student_id,
+                match_confidence AS fk_match_confidence,
+                match_count      AS fk_match_count
+            FROM (
+                SELECT * FROM p1 UNION ALL SELECT * FROM p2
+                UNION ALL SELECT * FROM p3 UNION ALL SELECT * FROM p4
+            )
+        )
+        SELECT exam_year, roll_number, fk_avanti_student_id, fk_match_confidence, fk_match_count
+        FROM mapping
+        """
+        print("  Running 4-pass FK matching ...")
+        mapping_df = client.query(sql).to_dataframe()
+        mapping_df["exam_year"] = mapping_df["exam_year"].astype(str)
+        mapping_df["roll_number"] = mapping_df["roll_number"].astype(str)
+        mapping_df["fk_match_count"] = mapping_df["fk_match_count"].astype("Int64")
+
+        matched = mapping_df["fk_avanti_student_id"].notna().sum()
+        print(f"  Matched {matched:,} / {len(mapping_df):,} students ({matched/len(mapping_df)*100:.1f}%)")
+
+        df = df.merge(
+            mapping_df,
+            on=["exam_year", "roll_number"],
+            how="left",
+        )
+    finally:
+        client.delete_table(tmp, not_found_ok=True)
+
+    return df
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -236,6 +399,9 @@ def main() -> None:
         sys.exit(1)
 
     out_df = pd.concat(frames, ignore_index=True)
+
+    print("\nFetching FK student IDs from BigQuery ...")
+    out_df = _add_fk_student_id(out_df)
 
     # Select and order output columns; fill missing ones with NA
     for col in OUTPUT_COLS:

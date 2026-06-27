@@ -19,6 +19,8 @@ CODEMAP = {
     "columns": {
         "application_no":           ["Application Number", "APPNO"],
         "student_full_name":        ["Student Name", "CNAME"],
+        "father_name":              ["Father Name", "FNAME"],
+        "mother_name":              ["Mother Name", "MNAME"],
         "dob":                      ["DoB", "DOB"],
         "student_gender":           ["Gender", "GENDER"],
         "_pwd_raw":                 ["PWD", "PwD"],

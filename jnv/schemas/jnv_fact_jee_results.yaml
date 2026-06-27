@@ -24,6 +24,10 @@ columns:
     type: str
   - name: student_full_name
     type: str
+  - name: father_name
+    type: str
+  - name: mother_name
+    type: str
   - name: dob
     type: str
   - name: student_gender

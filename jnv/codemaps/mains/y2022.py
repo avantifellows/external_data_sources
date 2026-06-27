@@ -1,3 +1,21 @@
+import numpy as np
+import pandas as pd
+
+from codemaps.mains.shared import derive_category_pwd_rank
+
+
+def post_transform(raw_df, out_df):
+    pwd_col_map = {
+        "PWD-OBC": "AI_OBC1PH",
+        "PWD-SC":  "AI_SC1PH",
+        "PWD-ST":  "AI_ST1PH",
+        "PWD-EWS": "AI_EWS1PH",
+        "PWD-Gen": "AI_CRL1PH",
+    }
+    out_df["mains_category_pwd_rank"] = derive_category_pwd_rank(out_df, raw_df, pwd_col_map)
+    return out_df
+
+
 CODEMAP = {
     "source": {
         "file": "JEE Mains 2022.xlsx",
@@ -12,6 +30,8 @@ CODEMAP = {
     "columns": {
         "application_no":           ["APPNO"],
         "student_full_name":        ["CNAME", "Student Name"],
+        "father_name":              ["FNAME"],
+        "mother_name":              ["MNAME"],
         "dob":                      ["DOB"],
         "student_gender":           ["GENDER"],
         "_pwd_raw":                 ["PWD"],
@@ -45,4 +65,5 @@ CODEMAP = {
         "jee_adv_ineligible":       ["NELIG_ADV"],
         "jee_adv_ineligibility_reason": ["NELIG_ADV", "NELIG_REM"],
     },
+    "post_transform": post_transform,
 }

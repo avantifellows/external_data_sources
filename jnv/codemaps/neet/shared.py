@@ -13,7 +13,8 @@ import pandas as pd
 CANONICAL_COLS = [
     # core
     "test_year", "test_name", "application_no", "roll_no",
-    "student_full_name", "dob", "student_gender", "category",
+    "student_full_name", "father_name", "mother_name",
+    "dob", "student_gender", "category",
     # identifiers
     "student_id", "school_code",
     # location
@@ -51,6 +52,8 @@ COLUMN_TYPES = {
     "application_no":               "str",
     "roll_no":                      "str",
     "student_full_name":            "str",
+    "father_name":                  "str",
+    "mother_name":                  "str",
     "dob":                          "str",
     "student_gender":               "gender",
     "category":                     "category",

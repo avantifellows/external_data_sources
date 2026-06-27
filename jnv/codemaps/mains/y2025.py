@@ -1,15 +1,49 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+# JEE Mains 2025.xlsx is a 4,037-row subset of All JNV Candidates that carries
+# CNAME, DOB, FNAME, MNAME — columns absent from the main file.
+_MAINS_2025 = Path(__file__).resolve().parent.parent.parent / "raw" / "jee_mains" / "JEE Mains 2025.xlsx"
 
 
 def post_transform(raw_df, out_df):
     """
-    1. Derive mains_category_pwd_rank from per-category PWD rank columns.
-    2. Capture jee_adv_qualified / jee_prep_qualified from the mains file
+    1. Merge name/DOB/parent names from JEE Mains 2025.xlsx (4,037-row subset
+       that has CNAME/DOB/FNAME/MNAME, absent from All JNV Candidates).
+    2. Derive mains_category_pwd_rank from per-category PWD rank columns.
+    3. Capture jee_adv_qualified / jee_prep_qualified from the mains file
        into the _from_data columns as a fallback.  clean_jee.py will
        override these with rank-derived values for students who appear in
        the advanced Excel file.
     """
+    # ── Step 1: merge identity fields from JEE Mains 2025.xlsx ──────────────────
+    if _MAINS_2025.exists():
+        mains = pd.read_excel(_MAINS_2025, dtype=str)[["APPNO", "CNAME", "DOB", "FNAME", "MNAME"]]
+        mains = mains.rename(columns={
+            "APPNO": "application_no",
+            "CNAME": "_m_name",
+            "DOB":   "_m_dob",
+            "FNAME": "_m_father",
+            "MNAME": "_m_mother",
+        })
+        mains["application_no"] = mains["application_no"].str.strip()
+        out_df["application_no"] = out_df["application_no"].astype(str).str.strip()
+        out_df = out_df.merge(mains, on="application_no", how="left")
+        # Fill nulls in the canonical columns from the Mains file
+        for src, dst in [("_m_name", "student_full_name"), ("_m_dob", "dob"),
+                         ("_m_father", "father_name"), ("_m_mother", "mother_name")]:
+            if dst in out_df.columns:
+                out_df[dst] = out_df[dst].where(out_df[dst].notna(), out_df[src])
+            else:
+                out_df[dst] = out_df[src]
+            out_df = out_df.drop(columns=[src])
+        filled = out_df["student_full_name"].notna().sum()
+        print(f"    [2025] merged JEE Mains 2025.xlsx: {filled:,} / {len(out_df):,} rows now have a name")
+    else:
+        print(f"    [2025] WARN: {_MAINS_2025} not found — name/DOB will be null for all 2025 rows")
+
     cols_lower = {c.lower().strip(): c for c in raw_df.columns}
 
     # ── mains_category_pwd_rank ───────────────────────────────────────────────
