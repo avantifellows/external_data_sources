@@ -136,5 +136,8 @@ Two patterns, two examples:
   raw panel CSVs; `clean_aicte.py` unifies them into one denormalized fact →
   GCS → BQ. Use as the reference when upstream is a JSON API rather than a
   file download. → 1 table: `aicte_fact_intake`.
+- [`nmc/`](nmc/) — PDF parse. Raw PDF downloaded from NMC → parsed with
+  pdfplumber → clean parquet → GCS → BQ. Use as the reference when upstream
+  is a structured PDF report. → 1 table: `nmc_fact_mbbs_seats`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.
