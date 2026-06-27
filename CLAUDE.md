@@ -131,5 +131,10 @@ Two patterns, two examples:
   `jnv_fact_neet_results`, `jnv_fact_selection_test_results`,
   `jnv_fact_ei_asset_test_results`, `jnv_fact_board_results_10th`,
   `jnv_fact_board_results_12th`.
+- [`aicte/`](aicte/) — API-based fetch. Scripted `fetch.py` pulls three cuts
+  (national, state, institution-type) from the AICTE dashboard JSON API into
+  raw panel CSVs; `clean_aicte.py` unifies them into one denormalized fact →
+  GCS → BQ. Use as the reference when upstream is a JSON API rather than a
+  file download. → 1 table: `aicte_fact_intake`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.
