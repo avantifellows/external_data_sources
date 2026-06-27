@@ -1,0 +1,75 @@
+description: >
+  SOE & RSMS Admission Test merit list for Punjab SCERT (School Education
+  Department, Punjab). Covers students who applied for admission to
+  Schools of Eminence (SOE) and Meritorious Schools (RSMS) for Class 11.
+  Each row is one student application for one academic year.
+  Source: "SOE & RSMS Admission Test Merit List_ 2024-26 (3 years).xlsx"
+
+grain: (academic_year, exam_application_no)
+bq_table: pb_scert_fact_soe_rsms_admission_merit_list
+source_files:
+  single: "SOE & RSMS Admission Test Merit List_ 2024-26 (3 years).xlsx (sheet: Student List)"
+
+columns:
+  - name: academic_year
+    type: str
+    description: Academic year of the admission cycle (e.g. "2024-25", "2025-26", "2026-27").
+
+  - name: exam_application_no
+    type: str
+    description: Unique application number assigned to the student for this exam cycle. Forms the grain together with academic_year.
+
+  - name: g10_board_roll_no
+    type: str
+    description: Student's Grade 10 board examination roll number. Null for ~44 rows where the source recorded "\N".
+
+  - name: student_name
+    type: str
+
+  - name: date_of_birth
+    type: str
+    description: Date of birth as recorded in the source file (string, not parsed to date).
+
+  - name: gender
+    type: str
+    description: "Normalised gender. Values: Female, Male, Others."
+
+  - name: category
+    type: str
+    description: "Normalised caste/reservation category. Values: General, SC, ST, OBC, EWS. Punjab source uses 'OBC/BC' as a combined value, mapped to OBC."
+
+  - name: g10_school_udise_code
+    type: str
+    description: UDISE code of the student's Grade 10 school.
+
+  - name: g10_school_name
+    type: str
+    description: Name of the student's Grade 10 school.
+
+  - name: g10_school_board
+    type: str
+    description: "Board of the student's Grade 10 school. ~98% PSEB, ~2% CBSE."
+
+  - name: reasoning_marks
+    type: str
+    description: Marks scored in the Reasoning section of the admission test (out of 75).
+
+  - name: subject_marks
+    type: str
+    description: Marks scored in the Subject section of the admission test (out of 75).
+
+  - name: total_marks_150
+    type: str
+    description: Total marks scored in the admission test (out of 150).
+
+  - name: qualification_status
+    type: str
+    description: "Qualification outcome. Values: Qualified, Not Qualified, Provisionally Qualified, Absent, Cancelled."
+
+  - name: applied_for
+    type: str
+    description: "School type applied for. Values: Both, School of Eminence, Meritorious."
+
+  - name: class
+    type: str
+    description: Class applied for admission into. Always '11TH' in this dataset.

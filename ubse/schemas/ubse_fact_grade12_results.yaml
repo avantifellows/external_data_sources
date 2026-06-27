@@ -1,0 +1,138 @@
+description: >
+  UBSE (Uttarakhand Board of School Education) Grade 12 (Intermediate) board
+  exam results, 2026+. One row per student per subject — wide subject slots
+  from the source file are unpivoted to long format.
+
+grain: (exam_year, roll_no, subject_slot)
+
+source_files:
+  2026: "G12th _UBSE Board data - 2026.xlsx  (sheet: int_net)"
+
+columns:
+  - name: exam_year
+    type: str
+    description: Year of the board exam (e.g. "2026").
+
+  - name: district_code
+    type: str
+    description: UBSE district code (DISTT). 13 districts in Uttarakhand.
+
+  - name: school_code
+    type: str
+    description: School code assigned by UBSE (SCHOOL).
+
+  - name: roll_no
+    type: str
+    description: Student's board exam roll number. Part of the grain.
+
+  - name: registration_no
+    type: str
+    description: Student's registration number (REGCD). Located at the end of the source row.
+
+  - name: student_name
+    type: str
+    description: Student full name (CNAME).
+
+  - name: father_name
+    type: str
+    description: Father's name (FNAME).
+
+  - name: mother_name
+    type: str
+    description: Mother's name (MNAME).
+
+  - name: gender
+    type: str
+    description: "Normalised from SEX code: Male, Female, or Others."
+
+  - name: caste
+    type: str
+    description: "Normalised from CASTE code: SC, ST, OBC, or General."
+
+  - name: stream
+    type: str
+    description: >
+      Academic stream, normalised from GROUP: Arts, Science, Commerce,
+      Vocational (Year 1), or Vocational (Year 2).
+
+  - name: school_type
+    type: str
+    description: >
+      School type code (SCHTYPE): A = Government, B = Government Aided,
+      C = Private (Unaided), D = Central Government (KV/NV/etc.).
+
+  - name: subject_slot
+    type: int
+    description: >
+      Slot number (1–6) from the source wide format. Slot 1 is almost always
+      HINDI (except vocational/agriculture students). SUB6 is only populated
+      for ~344 vocational students.
+
+  - name: subject_name
+    type: str
+    description: Subject name as given in the source (e.g. PHYSICS, HISTORY, ACCOUNTANCY).
+
+  - name: theory_marks
+    type: str
+    description: Theory/written marks for the subject (SUBnTHMKS).
+
+  - name: internal_marks
+    type: str
+    description: >
+      Internal/sessional marks for the subject (SUBnINTMKS).
+      Note: in the source file, INTMKS appears before PRAMKS for Grade 12
+      (opposite order to Grade 10), but both are read by column name.
+
+  - name: practical_marks
+    type: str
+    description: Practical marks for the subject (SUBnPRAMKS). Null for theory-only subjects.
+
+  - name: subject_total
+    type: str
+    description: Total marks for the subject (SUBnTOT).
+
+  - name: subject_result
+    type: str
+    description: Subject-level pass/fail flag (SUBnRES). Populated when a student fails a specific subject (e.g. "F").
+
+  - name: subject_grade
+    type: str
+    description: "Grade for the subject (SUBnGRADE): A1, A2, B1, B2, C1, C2, D1, D2, E."
+
+  - name: f1_total
+    type: str
+    description: >
+      Aggregate total for Vocational Year 1 students (F1_TOTAL).
+      Non-null for ~343 rows only.
+
+  - name: f2_total
+    type: str
+    description: >
+      Aggregate total for Vocational Year 2 students (F2_TOTAL).
+      All null in the 2026 source file.
+
+  - name: total_marks_obtained
+    type: str
+    description: Student's overall total marks across all subjects (TOTMKSOBT). Repeated on every subject row.
+
+  - name: total_max_marks
+    type: str
+    description: Maximum possible total marks (TOTMAXMKS). Typically 0500. Repeated on every subject row.
+
+  - name: result
+    type: str
+    description: >
+      Student's overall result, normalised: Pass, Fail, Absent,
+      Pass (Compartment), Pass (ADL), Withheld, Cancelled, Incomplete.
+      Repeated on every subject row.
+
+  - name: division
+    type: str
+    description: >
+      Division awarded: FIRST HONS, FIRST DIVISION, SECOND DIVISION,
+      THIRD DIVISION. Null for failed/absent students.
+      Repeated on every subject row.
+
+  - name: grace_marks
+    type: str
+    description: Grace marks applied, if any (GRACE). Non-null for ~10k students.
