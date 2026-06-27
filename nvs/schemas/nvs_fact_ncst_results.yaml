@@ -1,0 +1,376 @@
+description: >
+  Navodaya CoE Selection Test (NCST) 2026 results — the first year NCST was
+  conducted at national scale by NVS directly. Dakshana Foundation set the
+  question paper, but the test was administered to all eligible JNV students
+  across the country (~43k students). Prior years (2022–2025) are in
+  dakshana_fact_ncst_results; those were smaller, Dakshana-curated cohorts.
+
+  Note: Dakshana-track students are under-represented here (~86 of the ~318
+  Dakshana-selected students appear; the rest went through a separate process).
+
+grain: (test_year, roll_no)
+
+source_files:
+  2026: "NCST 2026.xlsx  (sheet: NCST Data)"
+
+normalization_logic: >
+  Normalization is per-QP-set equating (two paper sets: A and B). Set B is
+  the reference set (all subject factors = 1.00). Set A students receive
+  subject-specific scaling factors to equate scores across sets:
+
+    Physics             × 0.96  (source column header says "0.94"; actual factor is 0.96)
+    Chemistry           × 0.81
+    Biology             × 1.05
+    Maths               × 0.78
+    Logical Reasoning   × 0.78
+
+  Verified empirically: ratio of normalized/raw score is exactly the factor
+  above for every Set A row (std = 0.0), and exactly 1.00 for every Set B row.
+  Values are pre-computed in the source Excel — the pipeline reads them directly.
+
+  Final Score formula (total_normalized_score) — verified exact across all
+  43,055 rows, 0 exceptions:
+    NEET: Phy_norm + Chem_norm + LR_norm + 0.5 × Bio_norm
+    JEE:  Phy_norm + Chem_norm + LR_norm + 1.0 × Maths_norm
+
+  The 0.5 coefficient on Bio exists because Biology raw marks are on a ~2×
+  scale vs Maths, so 0.5 × Bio_norm ≈ 1.0 × Maths_norm in contribution.
+  total_raw_score is the pre-normalization aggregate kept for reference only.
+
+columns:
+  - name: test_year
+    type: constant
+    description: Year the NCST was conducted (STRING — cast to INT64 in SQL if needed).
+
+  - name: roll_no
+    type: str
+    description: 12-digit NCST exam roll number — unique student identifier and join key.
+
+  - name: student_full_name
+    type: str
+
+  - name: student_gender
+    type: str
+    description: Normalised to Male / Female.
+
+  - name: category
+    type: str
+    description: Normalised to Gen / Gen-EWS / OBC / SC / ST. Source uses OBC-NCL / GEN-EWS spellings.
+
+  - name: physically_disabled
+    type: bool
+    description: Whether the student has a physical disability.
+
+  - name: stream
+    type: str
+    description: Normalised to Engineering (JEE) / Medical (NEET).
+
+  - name: dob
+    type: str
+    description: Date of birth as YYYY-MM-DD string.
+
+  - name: school_name
+    type: str
+    description: JNV school name.
+
+  - name: school_code
+    type: int
+    description: NVS school code.
+
+  - name: school_district
+    type: str
+    description: District of the JNV school.
+
+  - name: state
+    type: str
+    description: School state.
+
+  - name: attendance
+    type: str
+    description: Whether the student was Present or Absent on exam day.
+
+  - name: qp_set
+    type: str
+    description: >
+      Question-paper set the student received (A or B). Set B is the reference
+      set (no adjustment). Set A students have subject scores scaled by
+      per-subject normalization factors (see normalization_logic above).
+
+  - name: exam_date
+    type: str
+    description: NCST exam date as YYYY-MM-DD string.
+
+  - name: annual_family_income
+    type: float
+    description: Self-reported annual household income in INR (numeric).
+
+  - name: father_annual_income
+    type: float
+    description: Father's annual income in INR (numeric; earlier dakshana years used income-bracket labels).
+
+  - name: mother_annual_income
+    type: float
+    description: Mother's annual income in INR (numeric).
+
+  - name: staff_ward
+    type: str
+    description: Whether the student is a ward of NVS/government staff.
+
+  - name: is_father_late
+    type: bool
+    description: Whether the student's father is deceased. Derived by inverting "Is Father alive".
+
+  - name: coaching_preference_1
+    type: str
+    description: >
+      First coaching-partner choice, normalised to one of:
+      Dakshana Foundation / Ex-Navodaya Foundation / Avanti Foundation.
+
+  - name: coaching_preference_2
+    type: str
+    description: Second coaching-partner choice (same normalisation).
+
+  - name: coaching_preference_3
+    type: str
+    description: Third coaching-partner choice (same normalisation).
+
+  - name: total_positive_ques
+    type: int
+    description: Total questions answered correctly across all subjects.
+
+  - name: total_negative_ques
+    type: int
+    description: Total questions answered incorrectly (attracted negative marking).
+
+  - name: total_unattempted_ques
+    type: int
+    description: Total questions left unattempted.
+
+  - name: total_raw_score
+    type: float
+    description: Raw aggregate score before normalization. Kept for reference only.
+
+  - name: total_normalized_score
+    type: float
+    description: >
+      Headline NCST score — normalized composite with Biology and Maths each
+      weighted at 25% of the total. Formula:
+      NEET: Phy_norm + Chem_norm + LR_norm + 0.5 × Bio_norm.
+      JEE:  Phy_norm + Chem_norm + LR_norm + 1.0 × Maths_norm.
+      This is the field used for selection ranking.
+
+  - name: physics_positive_ques
+    type: int
+  - name: physics_negative_ques
+    type: int
+  - name: physics_unattempted_ques
+    type: int
+
+  - name: physics_raw_score
+    type: float
+    description: Physics raw subject score before normalization.
+
+  - name: physics_normalized_score
+    type: float
+    description: >
+      Physics score after per-QP-set equating. Set A: raw × 0.96.
+      Set B: raw × 1.00. Source column header says "(0.94)"; actual factor
+      is 0.96 (verified from data).
+
+  - name: chemistry_positive_ques
+    type: int
+  - name: chemistry_negative_ques
+    type: int
+  - name: chemistry_unattempted_ques
+    type: int
+
+  - name: chemistry_raw_score
+    type: float
+    description: Chemistry raw subject score before normalization.
+
+  - name: chemistry_normalized_score
+    type: float
+    description: >
+      Chemistry score after per-QP-set equating. Set A: raw × 0.81. Set B: raw × 1.00.
+
+  - name: bio_positive_ques
+    type: int
+  - name: bio_negative_ques
+    type: int
+  - name: bio_unattempted_ques
+    type: int
+
+  - name: bio_raw_score
+    type: float
+    description: Biology raw subject score before normalization. Non-null for NEET students only.
+
+  - name: bio_normalized_score
+    type: float
+    description: >
+      Biology score after per-QP-set equating. Set A: raw × 1.05. Set B: raw × 1.00.
+      Non-null for NEET students only. Enters total_normalized_score at weight 0.5.
+
+  - name: maths_positive_ques
+    type: int
+  - name: maths_negative_ques
+    type: int
+  - name: maths_unattempted_ques
+    type: int
+
+  - name: maths_raw_score
+    type: float
+    description: Maths raw subject score before normalization. Non-null for JEE students only.
+
+  - name: maths_normalized_score
+    type: float
+    description: >
+      Maths score after per-QP-set equating. Set A: raw × 0.78. Set B: raw × 1.00.
+      Non-null for JEE students only. Enters total_normalized_score at weight 1.0.
+
+  - name: reasoning_positive_ques
+    type: int
+  - name: reasoning_negative_ques
+    type: int
+  - name: reasoning_unattempted_ques
+    type: int
+
+  - name: reasoning_raw_score
+    type: float
+    description: Logical Reasoning raw subject score before normalization.
+
+  - name: reasoning_normalized_score
+    type: float
+    description: >
+      Logical Reasoning score after per-QP-set equating. Set A: raw × 0.78. Set B: raw × 1.00.
+
+  - name: grade_9_math_marks
+    type: float
+    description: Self-reported Grade 9 Math marks out of 100. Not verified against school records.
+
+  - name: grade_9_science_marks
+    type: float
+    description: Self-reported Grade 9 Science marks out of 100.
+
+  - name: grade_10_math_marks
+    type: float
+    description: Self-reported Grade 10 Math marks out of 100. NOT verified CBSE board marks.
+
+  - name: grade_10_science_marks
+    type: float
+    description: Self-reported Grade 10 Science marks out of 100.
+
+  - name: grade_9_aggregate_pct
+    type: float
+    description: Self-reported Grade 9 aggregate percentage.
+
+  - name: grade_10_aggregate_pct
+    type: float
+    description: Self-reported Grade 10 aggregate percentage.
+
+  - name: willing_for_coaching
+    type: bool
+    description: Whether the student indicated willingness for JEE/NEET coaching.
+
+  - name: is_mother_alive
+    type: bool
+    description: Whether the student's mother is alive.
+
+  - name: father_education
+    type: str
+    description: Father's education level (Below 10th / 10th / 12th / Above 12th).
+
+  - name: father_occupation
+    type: str
+    description: Father's occupation (self-reported free text).
+
+  - name: mother_education
+    type: str
+    description: Mother's education level (Below 10th / 10th / 12th / Above 12th).
+
+  - name: mother_occupation
+    type: str
+    description: Mother's occupation (self-reported free text).
+
+  - name: guardian
+    type: str
+    description: Guardian details. Non-null only when both parents are deceased.
+
+  - name: home_village
+    type: str
+    description: Student's home village or house number.
+
+  - name: home_post_office
+    type: str
+    description: Student's home post office.
+
+  - name: home_district
+    type: str
+    description: Student's home district (may differ from school_district).
+
+  - name: home_state
+    type: str
+    description: Student's home state (may differ from state).
+
+  - name: domicile_state
+    type: str
+    description: State of domicile.
+
+  - name: pin_code
+    type: str
+    description: Student's home PIN code (stored as string to preserve leading zeros).
+
+  - name: household_assets_value
+    type: float
+    description: Approximate total value of all household assets in INR.
+
+  - name: household_earning_members
+    type: int
+    description: Number of earning members in the household.
+
+  - name: household_annual_income
+    type: float
+    description: Typical total annual household income in INR.
+
+  - name: father_mother_combined_income
+    type: float
+    description: Father + mother combined annual income in INR.
+
+  - name: max_household_income
+    type: float
+    description: Maximum of the reported household/family income figures in INR.
+
+  - name: household_cash_savings
+    type: float
+    description: Total household cash savings in INR.
+
+  - name: house_ownership
+    type: str
+    description: House ownership status (Own / Rented).
+
+  - name: house_area_sqft
+    type: float
+    description: Area of the house in square feet.
+
+  - name: house_bedrooms
+    type: int
+    description: Number of bedrooms in the house.
+
+  - name: locality_type
+    type: str
+    description: Type of locality the student lives in (Rural / Semi-Urban / Urban).
+
+  - name: is_bpl
+    type: bool
+    description: Whether the family belongs to the Below Poverty Line (BPL) category.
+
+  - name: has_ration_card
+    type: bool
+    description: Whether the family has a ration card.
+
+  - name: ration_card_color
+    type: str
+    description: Colour of the ration card (indicates subsidy tier).
+
+  - name: submission_type
+    type: str
+    description: How the application form was submitted.
