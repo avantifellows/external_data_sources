@@ -4,10 +4,10 @@ Upload board-results data to GCS.
 
 Uploads (mirrors the jnv/ convention):
   - Raw:   the source MoE report PDFs, as-is (they ARE the raw artifact)
-           gs://avantifellows-external-data/board_results/raw/<pdf>
+           gs://avantifellows-external-data/moe/raw/<pdf>
            (traceability only; not loaded to BQ)
   - Clean: each parsed table → parquet
-           gs://avantifellows-external-data/board_results/clean/<table>.parquet
+           gs://avantifellows-external-data/moe/clean/<table>.parquet
            (these are what load_bq.py loads)
 
 Run clean_overall.py + clean_class_xii_stream.py first to produce clean/*.parquet.
@@ -25,11 +25,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import GCS_BUCKET, RAW_FILES, TABLES
+from sources import GCS_BUCKET, GCS_PREFIX, RAW_FILES, TABLES
 
 
 def upload_raw(client, dry_run: bool) -> None:
-    print(f"Raw → gs://{GCS_BUCKET}/board_results/raw/ ...")
+    print(f"Raw → gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/ ...")
     for rf in RAW_FILES:
         if not rf.local_path.exists():
             raise SystemExit(f"missing raw PDF: {rf.local_path}")
@@ -45,7 +45,7 @@ def upload_raw(client, dry_run: bool) -> None:
 
 
 def upload_clean(client, dry_run: bool) -> None:
-    print(f"Clean → gs://{GCS_BUCKET}/board_results/clean/ ...")
+    print(f"Clean → gs://{GCS_BUCKET}/{GCS_PREFIX}/clean/ ...")
     for t in TABLES:
         if not t.local_path.exists():
             raise SystemExit(f"missing local parquet: {t.local_path}\nRun the clean_*.py scripts first.")
