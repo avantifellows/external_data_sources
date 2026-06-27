@@ -17,6 +17,7 @@ BigQuery for analysis. One folder per upstream source.
 | Punjab SCERT | [`pb_scert/`](pb_scert/) | Active | SOE & RSMS Admission Test merit list for Punjab Schools of Eminence and Meritorious Schools (Class 11 admissions, AY 2024-25 to 2026-27, ~326k records). → 1 table: `pb_scert_fact_soe_rsms_admission_merit_list`. |
 | JoSAA | [`josaa/`](josaa/) | Active | JoSAA engineering seat-allotment cutoffs — opening and closing ranks for every IIT/NIT/IIIT/GFTI seat bucket, all rounds, 2016 → latest (464,496 rows). → 1 table: `josaa_fact_cutoffs`. |
 | NAS (India) | [`nas/`](nas/) | Active | National Achievement Survey 2021 (NCERT) — student achievement performance and proficiency for grades 3/5/8/10 at state level, by management and location. Student-weighted national rollup included as `state='All India'`. → 1 table: `nas_fact_state_proficiency`. |
+| AICTE (India) | [`aicte/`](aicte/) | Active | AICTE technical-education intake data — approved intake, enrolment, passouts, placements, and institution counts for 6 streams (Engineering, Management, MCA, Pharmacy, Architecture, Hotel Management), AY 2012-13 → 2022-23. Three cuts: national, state, institution-type. → 1 table: `aicte_fact_intake`. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables
