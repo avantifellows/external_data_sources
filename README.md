@@ -9,13 +9,22 @@ BigQuery for analysis. One folder per upstream source.
 |---|---|---|---|
 | PLFS (India) | [`plfs/`](plfs/) | Active | Periodic Labour Force Survey — MoSPI unit-level microdata across 11 releases (2018-19 → CY2025). Heavy local parsing → 6 `plfs_*` tables. |
 | NIRF (India) | [`nirf/`](nirf/) | Active | National Institutional Ranking Framework — rankings + admissions/placements/strength data, top-200 institutes across 9 disciplines, 2016-2025. Light pipeline (parquet → GCS → BQ) → 4 `nirf_fact_*` tables. |
+| JNV (entrance + board) | [`jnv/`](jnv/) | Active | JEE Mains + Advanced, NEET, JNVST selection test (2018), EI Asset Test, and CBSE 10th/12th board results for Jawahar Navodaya Vidyalaya students. → 6 tables: `jnv_fact_jee_results`, `jnv_fact_neet_results`, `jnv_fact_selection_test_results`, `jnv_fact_ei_asset_test_results`, `jnv_fact_board_results_10th`, `jnv_fact_board_results_12th`. |
 | UDISE+ (India) | [`udise/`](udise/) | Active | Unified District Information System for Education — school enrolment by state × management × category × location × class × gender, AY 2024-25 (dashboard export, reshaped wide→long). Parse → GCS → BQ → 1 `udise_fact_enrolment` table. |
+| Dakshana NCST | [`dakshana/`](dakshana/) | Active | Navodaya CoE Selection Test (NCST) results — scores, demographics, and coaching preferences for JNV students across 2022–2025. Conducted jointly by Dakshana Foundation, ENF, and Avanti. → 1 table: `dakshana_fact_ncst_results`. |
+| NVS NCST | [`nvs/`](nvs/) | Active | NCST results from 2026 onward — first year the test was conducted at national scale by NVS directly (Dakshana set the paper). ~43k students with richer data: per-subject raw scores, household wealth, academic history. Block 1 columns match `dakshana_fact_ncst_results` for cross-year UNIONs. → 1 table: `nvs_fact_ncst_results`. |
+| UBSE (Uttarakhand) | [`ubse/`](ubse/) | Active | Uttarakhand Board of School Education Grade 10 and Grade 12 board exam results (2026+). Long format — one row per student per subject. → 2 tables: `ubse_fact_grade10_results`, `ubse_fact_grade12_results`. |
+| Punjab SCERT | [`pb_scert/`](pb_scert/) | Active | SOE & RSMS Admission Test merit list for Punjab Schools of Eminence and Meritorious Schools (Class 11 admissions, AY 2024-25 to 2026-27, ~326k records). → 1 table: `pb_scert_fact_soe_rsms_admission_merit_list`. |
+| JoSAA | [`josaa/`](josaa/) | Active | JoSAA engineering seat-allotment cutoffs — opening and closing ranks for every IIT/NIT/IIIT/GFTI seat bucket, all rounds, 2016 → latest (464,496 rows). → 1 table: `josaa_fact_cutoffs`. |
+| NAS (India) | [`nas/`](nas/) | Active | National Achievement Survey 2021 (NCERT) — student achievement performance and proficiency for grades 3/5/8/10 at state level, by management and location. Student-weighted national rollup included as `state='All India'`. → 1 table: `nas_fact_state_proficiency`. |
+| AICTE (India) | [`aicte/`](aicte/) | Active | AICTE technical-education intake data — approved intake, enrolment, passouts, placements, and institution counts for 6 streams (Engineering, Management, MCA, Pharmacy, Architecture, Hotel Management), AY 2012-13 → 2022-23. Three cuts: national, state, institution-type. → 1 table: `aicte_fact_intake`. |
+| NMC (India) | [`nmc/`](nmc/) | Active | National Medical Commission MBBS seat matrix 2024-25 — all ~780 MBBS medical colleges (incl. AIIMS & JIPMER) with state, district, university, management, year of inception, and annual UG seat intake. PDF parse → GCS → BQ. → 1 table: `nmc_fact_mbbs_seats`. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables
 prefixed by source: `plfs_*`, `nirf_*`, etc.
 
-Future candidates: UDISE (school stats), NFHS (health), ASER (learning levels),
+Future candidates: NFHS (health), ASER (learning levels),
 Census 2011 (and 2021 when released). Add a new folder per source.
 
 ## Conventions for adding a new source

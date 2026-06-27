@@ -1,0 +1,112 @@
+# aicte_fact_intake
+#
+# AICTE technical-education intake panel, AY 2012-13 → 2022-23, as one wide
+# fact: one row per (year, program, level, state, institution_type). 4,664 rows.
+# Unifies three published cuts (national, by state, by institution-type) using
+# an "All" sentinel for the dimensions a cut doesn't break out:
+#   - national  rows: state="All", institution_type="All"  (faculties populated)
+#   - state     rows: institution_type="All"               (faculties NULL)
+#   - inst-type rows: state="All"                           (faculties NULL)
+# The national totals are the rows where state="All" AND institution_type="All"
+# (88 = 6 programs across 8 program×level cuts × 11 years).
+#
+# Filter to ONE slice before aggregating — don't SUM across the "All"-sentinel
+# rows and the broken-out rows; they overlap and would double-count.
+#
+# Source: AICTE dashboard JSON API (facilities.aicte-india.org), pulled by
+# scripts/fetch.py into raw/panel_{national,state,inst_type}.csv.
+# Source CSVs:    gs://avantifellows-external-data/aicte/raw/panel_*.csv
+# Source parquet: gs://avantifellows-external-data/aicte/clean/intake.parquet
+# BQ table:       avantifellows.external_data_sources.aicte_fact_intake
+
+description: AICTE technical-education intake / enrolment / passout / placement panel by year, program, level, and (state | institution-type), AY 2012-13 to 2022-23.
+rows: 4664
+grain: (cut, year, program, level, state, institution_type)
+
+columns:
+  - name: cut
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Published slice: 'national' (state + institution_type = "All"; faculties
+      populated), 'state' (institution_type = "All"), or 'inst_type' (state =
+      "All"). ALWAYS filter on cut; never SUM across cuts (they overlap).
+
+  - name: year
+    type: STRING
+    mode: REQUIRED
+    description: 'Academic year, "2012-13" … "2022-23" (11 years).'
+
+  - name: program
+    type: STRING
+    mode: REQUIRED
+    description: >
+      AICTE technical stream — one of: Engineering and Technology, Management,
+      MCA, Pharmacy, Architecture, Hotel Management and Catering.
+
+  - name: level
+    type: STRING
+    mode: REQUIRED
+    description: 'Course level: "UG", "PG", or "DIPLOMA" (Eng & Tech spans all three; others UG or PG).'
+
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: 'State / UT name, or "All" for the national and institution-type cuts (which are not broken out by state).'
+
+  - name: institution_type
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Institution-type (e.g. Private, Government, Deemed University, State
+      Government University, …), or "All" for the national and state cuts
+      (which are not broken out by institution-type).
+
+  - name: approved_intake
+    type: INTEGER
+    mode: NULLABLE
+    description: AICTE-approved sanctioned intake (seats) for this cut. NULL where the source cell was blank.
+
+  - name: enrolled
+    type: INTEGER
+    mode: NULLABLE
+    description: Students enrolled. NULL where the source cell was blank.
+
+  - name: passed
+    type: INTEGER
+    mode: NULLABLE
+    description: Students who passed out (graduates). NULL where the source cell was blank.
+
+  - name: placed
+    type: INTEGER
+    mode: NULLABLE
+    description: Students placed. NULL where the source cell was blank.
+
+  - name: institutions
+    type: INTEGER
+    mode: NULLABLE
+    description: Count of institutions offering this program/level in this cut. NULL where blank.
+
+  - name: girls
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Girls enrolled. The API returns this scalar only for the selected focal
+      year, so it is populated only for AY 2021-22 on the state and
+      institution-type rows (every year on the national rows). NULL otherwise.
+
+  - name: boys
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Boys enrolled. Like `girls`, populated only for the focal year (AY 2021-22)
+      on the state and institution-type rows, every year on the national rows.
+
+  - name: faculties
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Faculty count. Reported by the API only at the national level, so it is
+      populated only on the national rows (state="All" AND institution_type="All");
+      NULL on all state and institution-type rows. Also NULL for national years
+      the source left blank.

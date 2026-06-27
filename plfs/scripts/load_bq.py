@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import re
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -263,6 +264,19 @@ def _read_release_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype=str, keep_default_na=False, na_values=[""])
 
 
+def _drop_dup_name_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop pandas duplicate-name artifacts.
+
+    Some clean CSVs (e.g. annual_2020_21 perv1, the migration block) carry two
+    columns with the same header; pandas read_csv suffixes the second with
+    '.1' / '.2' / …. Those dots are illegal in BigQuery column names
+    ("Character '.' found in field name … not yet supported"), so the parquet
+    fails to load. Drop the suffixed duplicates, keeping the first occurrence.
+    """
+    dups = [c for c in df.columns if re.search(r"\.\d+$", str(c))]
+    return df.drop(columns=dups) if dups else df
+
+
 def build_persons_for_release(release_id: str, labels: dict[str, dict[str, str]]) -> pd.DataFrame | None:
     """Build the persons rows for one release.  Returns None if data is missing."""
     cfg = RELEASES[release_id]
@@ -280,6 +294,7 @@ def build_persons_for_release(release_id: str, labels: dict[str, dict[str, str]]
         df["src_file"] = p.stem  # 'perv1' / 'perrv' / 'cperv1'
         frames.append(df)
     df = pd.concat(frames, ignore_index=True)
+    df = _drop_dup_name_columns(df)
 
     # ── Release-level metadata ──────────────────────────────────────────────
     df["release_id"] = release_id
@@ -348,6 +363,7 @@ def build_households_for_release(release_id: str, labels: dict[str, dict[str, st
         df["src_file"] = p.stem
         frames.append(df)
     df = pd.concat(frames, ignore_index=True)
+    df = _drop_dup_name_columns(df)
 
     df["release_id"] = release_id
     df["release_format"] = cfg["format"]

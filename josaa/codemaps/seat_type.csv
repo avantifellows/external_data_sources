@@ -1,0 +1,11 @@
+seat_type,category,is_pwd,meaning
+OPEN,OPEN,FALSE,Open / unreserved
+EWS,EWS,FALSE,Economically Weaker Section
+OBC-NCL,OBC-NCL,FALSE,Other Backward Classes — Non-Creamy Layer
+SC,SC,FALSE,Scheduled Caste
+ST,ST,FALSE,Scheduled Tribe
+OPEN (PwD),OPEN,TRUE,Open — Person with Disability
+EWS (PwD),EWS,TRUE,EWS — Person with Disability
+OBC-NCL (PwD),OBC-NCL,TRUE,OBC-NCL — Person with Disability
+SC (PwD),SC,TRUE,SC — Person with Disability
+ST (PwD),ST,TRUE,ST — Person with Disability
