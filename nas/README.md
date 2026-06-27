@@ -24,7 +24,7 @@ raw/NAS-2021-data/csv_data/                (local; gitignored)
 clean/state_proficiency.parquet         (local; gitignored)
        │ scripts/upload_to_gcs.py          (raw CSVs + clean parquet → GCS)
        ▼
-gs://avantifellows-external-data/nas/raw/csv_data/<...>          (traceability)
+gs://avantifellows-external-data/nas/raw/NAS-2021-data/csv_data/<...>   (traceability)
 gs://avantifellows-external-data/nas/clean/state_proficiency.parquet
        │ scripts/load_bq.py
        ▼
