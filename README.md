@@ -16,6 +16,7 @@ BigQuery for analysis. One folder per upstream source.
 | UBSE (Uttarakhand) | [`ubse/`](ubse/) | Active | Uttarakhand Board of School Education Grade 10 and Grade 12 board exam results (2026+). Long format — one row per student per subject. → 2 tables: `ubse_fact_grade10_results`, `ubse_fact_grade12_results`. |
 | Punjab SCERT | [`pb_scert/`](pb_scert/) | Active | SOE & RSMS Admission Test merit list for Punjab Schools of Eminence and Meritorious Schools (Class 11 admissions, AY 2024-25 to 2026-27, ~326k records). → 1 table: `pb_scert_fact_soe_rsms_admission_merit_list`. |
 | JoSAA | [`josaa/`](josaa/) | Active | JoSAA engineering seat-allotment cutoffs — opening and closing ranks for every IIT/NIT/IIIT/GFTI seat bucket, all rounds, 2016 → latest (464,496 rows). → 1 table: `josaa_fact_cutoffs`. |
+| NAS (India) | [`nas/`](nas/) | Active | National Achievement Survey 2021 (NCERT) — student achievement performance and proficiency for grades 3/5/8/10 at state level, by management and location. Student-weighted national rollup included as `state='All India'`. → 1 table: `nas_fact_state_proficiency`. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables
