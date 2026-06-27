@@ -3,8 +3,8 @@
 Upload NAS 2021 data to GCS.
 
   - Raw:   the source CSVs from the cloned community mirror, as-is, mirroring
-           the upstream csv_data/ tree (traceability)
-           gs://avantifellows-external-data/nas/raw/csv_data/<...>
+           the upstream NAS-2021-data/csv_data/ tree (traceability)
+           gs://avantifellows-external-data/nas/raw/NAS-2021-data/csv_data/<...>
   - Clean: the national-aggregated fact → parquet
            gs://avantifellows-external-data/nas/clean/national_proficiency.parquet
 
@@ -51,13 +51,13 @@ def main() -> None:
     if not args.clean_only:
         if not SOURCE_CSV_DIR.exists():
             raise SystemExit(f"missing raw csv_data: {SOURCE_CSV_DIR}\nRun scripts/fetch.py first.")
-        print(f"Raw → gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/csv_data/")
+        print(f"Raw → gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/NAS-2021-data/csv_data/")
         csvs = sorted(SOURCE_CSV_DIR.rglob("*.csv"))
         if not csvs:
             raise SystemExit(f"no CSVs under {SOURCE_CSV_DIR}")
         for csv in csvs:
             rel = csv.relative_to(SOURCE_CSV_DIR).as_posix()
-            _cp(client, csv, f"{GCS_PREFIX}/raw/csv_data/{rel}", "text/csv", args.dry_run)
+            _cp(client, csv, f"{GCS_PREFIX}/raw/NAS-2021-data/csv_data/{rel}", "text/csv", args.dry_run)
 
     if not args.raw_only:
         print(f"Clean → gs://{GCS_BUCKET}/{GCS_PREFIX}/clean/")
