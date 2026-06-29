@@ -1,0 +1,6 @@
+# AICTE source + derived data — never in git. Staged to GCS instead.
+# Raw panel CSVs pulled from the AICTE API by fetch.py (regenerable).
+raw/*.csv
+raw/*.CSV
+# Cleaned parquet — regenerable via clean_aicte.py.
+clean/*.parquet

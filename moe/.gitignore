@@ -1,0 +1,5 @@
+# Source MoE report PDFs — large, re-downloadable; staged to GCS, not git.
+raw/*.pdf
+raw/*.PDF
+# Parsed parquet — regenerable via the clean_*.py scripts.
+clean/*.parquet
