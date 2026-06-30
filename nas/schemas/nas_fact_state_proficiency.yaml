@@ -1,0 +1,65 @@
+# nas_fact_state_proficiency
+#
+# NAS 2021 (National Achievement Survey) performance & proficiency at STATE level
+# — the level NAS actually publishes — by management and by location, for grades
+# 3 / 5 / 8 / 10. One row per (state, grade, subject, dimension, category).
+# The student-weighted NATIONAL rollup is kept as state='All India'.
+#
+# Proficiency is reported as two tails only: "% Proficient and Advance" (top) and
+# "% Basic and Below Basic" (bottom). NAS does not publish the four-band split.
+#
+# Source CSVs: gs://avantifellows-external-data/nas/raw/csv_data/
+# Source parquet: gs://avantifellows-external-data/nas/clean/state_proficiency.parquet
+# BQ table:    avantifellows.external_data_sources.nas_fact_state_proficiency
+#
+# NOTE: parquet regenerates at state grain (was national-only, 90 rows); the
+# 'All India' rows are the prior national figures.
+
+description: NAS 2021 performance & proficiency by STATE, grade, subject, and management/location bucket. state='All India' = student-weighted national rollup.
+rows: 3510
+grain: (state, grade, subject, dimension, category)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: "State/UT name, or 'All India' for the student-weighted national rollup."
+
+  - name: grade
+    type: INTEGER
+    mode: REQUIRED
+    description: 'Class assessed: 3, 5, 8, or 10.'
+
+  - name: subject
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Subject code as published. Grade 3/5: language, math, evs. Grade 8:
+      language, math, sci, sst. Grade 10: eng, mil, math, sci, sst.
+
+  - name: dimension
+    type: STRING
+    mode: REQUIRED
+    description: 'Breakdown dimension: "management" or "location".'
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Bucket within the dimension. management → State Govt, Govt Aided,
+      Private Recognised, Central Govt. location → Rural, Urban.
+
+  - name: pct_correct_mean
+    type: FLOAT
+    mode: NULLABLE
+    description: Mean percent-correct score for this cell.
+
+  - name: pct_proficient_advanced
+    type: FLOAT
+    mode: NULLABLE
+    description: Share (%) of students in the Proficient + Advanced band (top tail).
+
+  - name: pct_basic_below_basic
+    type: FLOAT
+    mode: NULLABLE
+    description: Share (%) of students in the Basic + Below-Basic band (bottom tail).
