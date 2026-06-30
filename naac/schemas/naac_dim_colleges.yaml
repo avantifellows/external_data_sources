@@ -1,0 +1,86 @@
+# naac_dim_colleges
+#
+# NAAC-accredited colleges with valid accreditation as of 14-Aug-2025.
+# One row per college. Sourced from the "Colleges" sheet of the official
+# NAAC download: naac.gov.in → Accreditation Status.
+#
+# Covers affiliated, constituent, and autonomous colleges. This is the
+# largest and most useful table for career counseling — most colleges
+# Avanti students apply to will appear here.
+#
+# NAAC accreditation is valid for 5 years per cycle. Grade bands:
+# A++ (3.51–4.00) > A+ (3.26–3.50) > A (3.01–3.25) > B++ (2.76–3.00)
+# > B+ (2.51–2.75) > B (2.01–2.50) > C (1.51–2.00).
+#
+# Source xlsx: raw/ (committed to repo)
+# Source parquet: gs://avantifellows-external-data/naac/naac_dim_colleges.parquet
+# BQ table: avantifellows.external_data_sources.naac_dim_colleges
+
+description: NAAC-accredited colleges — grade, CGPA, cycle, affiliating university, and declaration date. Data as of 14-Aug-2025.
+rows: 7566
+grain: (aishe_id)  # one row per college; aishe_id is the stable national identifier
+
+columns:
+  - name: sl_no
+    type: INTEGER
+    description: Serial number within this sheet (source ordering only; not a stable key).
+
+  - name: hei_name
+    type: STRING
+    description: Full official name of the college as registered with NAAC.
+
+  - name: track_id
+    type: STRING
+    description: |
+      NAAC's internal tracking identifier. Prefix encodes state + institution
+      type (e.g. AN = Andaman & Nicobar, CO = College, GN = Government).
+
+  - name: aishe_id
+    type: STRING
+    description: |
+      All India Survey on Higher Education (AISHE) unique code.
+      Format: C-XXXXX for colleges. Primary join key when linking
+      NAAC accreditation status to other datasets.
+
+  - name: affiliating_university
+    type: STRING
+    description: |
+      The university this college is legally affiliated to for degree-granting.
+      Even autonomous colleges remain affiliated (they set their own curriculum
+      but cannot independently award degrees). NULL would indicate a standalone
+      institution (not expected in this dataset).
+
+  - name: address
+    type: STRING
+    description: |
+      Postal address of the college. Format varies; typically
+      "locality, city, district, state, pincode". Embedded newlines
+      from the source are cleaned to spaces on load.
+
+  - name: current_cycle_number
+    type: INTEGER
+    description: |
+      Number of full NAAC accreditation cycles completed.
+      Cycle 1 = first-ever accreditation. A lapsed-then-reapplied
+      institution resets to Cycle 1.
+
+  - name: current_cgpa
+    type: FLOAT
+    description: CGPA on a 0–4.00 scale. Determines the letter grade.
+
+  - name: current_grade
+    type: STRING
+    description: Letter grade — A++, A+, A, B++, B+, B, or C.
+
+  - name: date_of_declaration
+    type: DATE
+    description: |
+      Date the current accreditation cycle was formally declared.
+      Valid for 5 years from this date. Source format DD-MM-YYYY.
+
+  - name: data_as_of
+    type: DATE
+    description: |
+      Date the source file was published on naac.gov.in (2025-08-14).
+      A college with a 2020 declaration date has a grade that is 5 years
+      old even if this file was loaded recently.

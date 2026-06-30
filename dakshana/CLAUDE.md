@@ -7,6 +7,22 @@ All paths in this file are relative to `dakshana/` unless otherwise noted.
 
 ## What this folder is
 
+Two Dakshana datasets share this folder and pipeline scripts:
+
+| Table | Source | Built by | Clean artifact |
+|---|---|---|---|
+| `dakshana_fact_ncst_results` | NCST selection test, per-year Excel (2022–2025) | `clean_ncst.py` | `clean/ncst_clean.csv` |
+| `dakshana_fact_reported_results` | Dakshana self-reported JEE/NEET sheets (per cycle) | `build_reported_results.py` | `clean/dakshana_fact_reported_results.parquet` |
+
+`sources.py` holds both: every output table is an entry in `TABLES`, every raw artifact an entry in
+`RAW_FILES`. `upload_to_gcs.py` and `load_bq.py` loop over those lists, so they cover both tables; the
+two only differ in shape (NCST clean is a CSV dtyped on upload + raw Excel→parquet; reported clean is
+parquet + raw CSVs copied as-is) and `upload_to_gcs.py` dispatches on that. Most of this file documents
+the **NCST** pipeline (the heavier one); the reported pipeline is a thin `build_reported_results.py` +
+its schema YAML.
+
+### NCST pipeline
+
 A transform + ingestion pipeline for NCST (Navodaya CoE Selection Test)
 results for **2022–2025**. In these years, NCST was conducted jointly by
 Dakshana Foundation, Ex-Navodaya Foundation (ENF), and Avanti Foundation
@@ -51,42 +67,54 @@ avantifellows.external_data_sources.dakshana_fact_ncst_results  (asia-south1)
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# 1. Transform raw Excel files → clean CSV
-.venv/bin/python scripts/clean_ncst.py
+# 1. Build clean artifacts
+.venv/bin/python scripts/clean_ncst.py                 # NCST: raw Excel → clean/ncst_clean.csv
+.venv/bin/python scripts/build_reported_results.py     # reported: raw CSVs → clean/...reported_results.parquet
 
-# 2. Upload raw Excel (as parquet) + clean CSV (as parquet) to GCS
-.venv/bin/python scripts/upload_to_gcs.py
-.venv/bin/python scripts/upload_to_gcs.py --raw-only
-.venv/bin/python scripts/upload_to_gcs.py --clean-only
+# 2. Stage to GCS. Default = all clean tables; --raw = original sources. --table picks one, --dry-run previews.
+.venv/bin/python scripts/upload_to_gcs.py                                   # all clean tables → clean/
+.venv/bin/python scripts/upload_to_gcs.py --raw                             # all originals → raw/
+.venv/bin/python scripts/upload_to_gcs.py --table dakshana_fact_ncst_results
+.venv/bin/python scripts/upload_to_gcs.py --dry-run
 
-# 3. Load clean parquet from GCS → BigQuery
+# 3. Load clean parquet from GCS → BigQuery. Loops over all tables; --table / --dry-run as above.
 .venv/bin/python scripts/load_bq.py
+.venv/bin/python scripts/load_bq.py --table dakshana_fact_reported_results --dry-run
 ```
 
 ## What lives where
 
 | Path | Committed? | Purpose |
 |---|---|---|
-| `raw/NCST *.xlsx` | No | Source Excel files per year. Gitignored. |
+| `raw/NCST *.xlsx` | No | NCST source Excel files per year. Gitignored. |
+| `raw/reported/*.csv` | No | Dakshana self-reported JEE/NEET sheets. Gitignored. |
 | `clean/ncst_clean.csv` | No | Output of `clean_ncst.py`. Gitignored. |
+| `clean/dakshana_fact_reported_results.parquet` | No | Output of `build_reported_results.py`. Gitignored. |
 | `codemaps/ncst/__init__.py` | Yes | Registry — `ALL_NCST_CODEMAPS` list. Add new years here. |
 | `codemaps/ncst/shared.py` | Yes | `CANONICAL_COLS`, `COLUMN_TYPES`, normalisation helpers, `apply_dtypes`. |
 | `codemaps/ncst/y20XX.py` | Yes | Per-year column mapping configs. |
-| `scripts/sources.py` | Yes | GCS bucket, BQ destination, raw file list, clean table definition. |
-| `scripts/clean_ncst.py` | Yes | Transform engine: codemap loop → merged clean CSV. |
-| `scripts/upload_to_gcs.py` | Yes | Converts Excel + CSV → parquet, uploads to GCS. |
-| `scripts/load_bq.py` | Yes | Loads clean parquet from GCS → BQ (WRITE_TRUNCATE). |
-| `schemas/` | Yes | YAML column documentation for the BQ table. |
+| `scripts/sources.py` | Yes | GCS/BQ config; `TABLES` (output tables) + `RAW_FILES` (raw artifacts) for both datasets. |
+| `scripts/clean_ncst.py` | Yes | NCST transform engine: codemap loop → merged clean CSV. |
+| `scripts/build_reported_results.py` | Yes | Reported-results transform: JEE+NEET sheets → one long parquet. |
+| `scripts/upload_to_gcs.py` | Yes | Stages clean (default) or `--raw` originals to GCS; dispatches per table shape. |
+| `scripts/load_bq.py` | Yes | Loads clean parquet from GCS → BQ (WRITE_TRUNCATE) for all tables. |
+| `schemas/` | Yes | YAML column documentation, one file per BQ table. |
 
 ## BQ schema
 
-One table in `avantifellows.external_data_sources`:
+Two tables in `avantifellows.external_data_sources`:
 
 | Table | Grain | ~Rows |
 |---|---|---:|
 | `dakshana_fact_ncst_results` | (test_year, roll_no) | ~49k |
+| `dakshana_fact_reported_results` | (test_year, exam, student) | ~371 (2025) |
 
-Key column groups:
+`dakshana_fact_reported_results` is one long table of Dakshana's self-reported JEE-Main + NEET outcomes,
+with an `exam` + `score_type` discriminator (**JEE score is a percentile, NEET is raw marks — never
+mix**). It carries name + Dakshana CoE but **no `student_id`/`application_no`** — link to Avanti students
+by name (+ DoB) via the identity crosswalk. See `schemas/dakshana_fact_reported_results.yaml` for columns.
+
+The rest of this section documents `dakshana_fact_ncst_results`. Key column groups:
 
 | Group | Columns |
 |---|---|
@@ -129,7 +157,8 @@ year-specific knowledge lives in `codemaps/ncst/`.
    }
    ```
 2. Add one import line to `codemaps/ncst/__init__.py` and append to `ALL_NCST_CODEMAPS`.
-3. Add the raw Excel file to `scripts/sources.py` → `RAW_NCST_FILES`.
+3. Add the raw Excel file to `scripts/sources.py` → `RAW_FILES` as
+   `RawFile("NCST YYYY.xlsx", "ncst/", sheet="<sheet name>")`.
 4. Re-run the pipeline.
 
 **Codemap keys:**
@@ -181,6 +210,8 @@ year-specific knowledge lives in `codemaps/ncst/`.
 - **2023 reasoning scores can be negative.** A few rows have a negative
   effective score for reasoning (penalty only, zero positive marks).
   These are kept as-is.
-- **Run `clean_ncst.py` before `upload_to_gcs.py --clean-only`.** The
-  upload script reads `clean/ncst_clean.csv`; it will error if that file
-  doesn't exist.
+- **Build the clean artifact before staging it.** The default
+  `upload_to_gcs.py` reads each table's `clean/` file (`ncst_clean.csv` for
+  NCST, the parquet for reported); run `clean_ncst.py` /
+  `build_reported_results.py` first or it errors. Stage one table at a time
+  with `--table <bq_name>`.
