@@ -1,0 +1,5 @@
+raw/
+clean/
+outputs/
+__pycache__/
+.venv/

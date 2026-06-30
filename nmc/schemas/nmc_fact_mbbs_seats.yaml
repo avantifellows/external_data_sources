@@ -1,0 +1,73 @@
+# nmc_fact_mbbs_seats
+#
+# One row per MBBS medical college in India for the 2024-25 admission year, with
+# its annual intake of UG (MBBS) seats. Parsed from the NMC "Revised UG Seat
+# Matrix 2024-25" PDF (state-wise list of medical colleges including AIIMS &
+# JIPMER).
+#
+# Source parquet: gs://avantifellows-external-data/nmc/clean/mbbs_seats.parquet
+# BQ table:       avantifellows.external_data_sources.nmc_fact_mbbs_seats
+#
+# Validation: 780 college rows; SUM(annual_intake_seats) = 118,190 (matches the
+# grand-total footer row in the source PDF, which is excluded from the table).
+
+description: One row per MBBS medical college (2024-25), with annual UG seat intake. Parsed from the NMC Revised UG Seat Matrix 2024-25 PDF.
+rows: 780
+grain: (snapshot, sl_no) — one row per MBBS medical college
+
+columns:
+  - name: snapshot
+    type: STRING
+    mode: REQUIRED
+    description: Admission/edition year of the seat matrix. Constant "2024-25" for this release.
+
+  - name: sl_no
+    type: INTEGER
+    mode: REQUIRED
+    description: Serial number from the source PDF (1..780). Unique within snapshot; the PDF's row identifier.
+
+  - name: state
+    type: STRING
+    mode: NULLABLE
+    description: State/UT the college is in (whitespace normalized). Forward-filled from the report's grouping column if a row's cell is blank.
+
+  - name: college
+    type: STRING
+    mode: NULLABLE
+    description: Name and address of the medical college / medical institution (whitespace normalized; source wraps long names across lines).
+
+  - name: district
+    type: STRING
+    mode: NULLABLE
+    description: District of the college (whitespace normalized).
+
+  - name: university
+    type: STRING
+    mode: NULLABLE
+    description: Affiliating university name (whitespace normalized).
+
+  - name: management_category
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Normalized grouping of `management` — one of Government / Private / Trust /
+      Society / Deemed / Other. The clean column for govt-vs-private analysis.
+
+  - name: management
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Management/ownership of the college, as published — e.g. "Govt.", "Trust",
+      "Society", "Private", "Govt- Society". Govt-managed colleges are those
+      whose value starts with "Govt". Values are source text with whitespace
+      collapsed; a couple are truncated by source line-wrap (e.g. "Govt. Societ").
+
+  - name: year_of_inception
+    type: INTEGER
+    mode: NULLABLE
+    description: Year the college was established (4-digit). Recovered as the first 4-digit run in the cell to absorb stray characters from source line-wrap.
+
+  - name: annual_intake_seats
+    type: INTEGER
+    mode: NULLABLE
+    description: Annual intake of MBBS (UG) seats for 2024-25. Sums to 118,190 across all rows.
