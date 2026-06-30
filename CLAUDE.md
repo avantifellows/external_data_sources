@@ -143,5 +143,9 @@ Two patterns, two examples:
   parsed with pdfplumber across two extractors (overall + stream-wise), merged
   into one denormalized fact with `cut` sentinel. Same shape as `nmc/` but
   multi-year and multi-parser. → 1 table: `moe_fact_board_exam_results`.
+- [`aishe/`](aishe/) — xlsx parse. Three AISHE Final Report workbooks (2019-22)
+  parsed with openpyxl across three published cross-tabs (state×level, programme×social,
+  UG discipline), unified into one denormalized fact with `cut` sentinel. Follows
+  `plfs/` shape for parsing + `nirf/` shape for GCS staging. → 1 table: `aishe_fact_higher_ed_students`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.

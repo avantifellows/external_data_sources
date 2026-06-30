@@ -1,0 +1,8 @@
+# AISHE pipeline dependencies.
+# Parsing:
+openpyxl>=3.1
+pandas>=2.0
+pyarrow>=14.0
+# GCS staging + BQ load:
+google-cloud-storage>=2.10
+google-cloud-bigquery>=3.11
