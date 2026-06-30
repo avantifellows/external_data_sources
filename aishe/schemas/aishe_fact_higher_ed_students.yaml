@@ -1,4 +1,4 @@
-# aishe_fact_higher_ed
+# aishe_fact_higher_ed_students
 #
 # ── What AISHE is ────────────────────────────────────────────────────────────
 # AISHE = All India Survey on Higher Education, run annually by the Ministry of
@@ -34,7 +34,7 @@
 #                Commerce… (Table 35/12 group UG students by subject, not degree.)
 #
 # Source parquet: gs://avantifellows-external-data/aishe/clean/higher_ed.parquet
-# BQ table:       avantifellows.external_data_sources.aishe_fact_higher_ed
+# BQ table:       avantifellows.external_data_sources.aishe_fact_higher_ed_students
 #
 # Validation: 2021-22 UG graduates (metric='graduates', gender='Total') = 7,754,223
 # via BOTH the state_level cut and the ug_discipline cut (they must reconcile).

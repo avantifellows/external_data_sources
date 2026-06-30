@@ -1,6 +1,6 @@
 """
 Parse the AISHE Final Report workbooks in raw/ into the single denormalized
-higher-ed fact (clean/higher_ed.parquet → BQ aishe_fact_higher_ed).
+higher-ed fact (clean/higher_ed.parquet → BQ aishe_fact_higher_ed_students).
 
 The fact unifies several published cuts into one grain. Every row is tagged
 with `cut` (which published slice it came from) and `metric` (enrolment vs

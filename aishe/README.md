@@ -29,7 +29,7 @@ gs://avantifellows-external-data/aishe/raw/<year>/<sheet>.parquet     (traceabil
 gs://avantifellows-external-data/aishe/clean/higher_ed.parquet        (loaded to BQ)
        │ scripts/load_bq.py
        ▼
-avantifellows.external_data_sources.aishe_fact_higher_ed   (asia-south1)
+avantifellows.external_data_sources.aishe_fact_higher_ed_students   (asia-south1)
 ```
 
 The single source of truth for filenames, GCS URIs, and BQ destinations is
@@ -37,7 +37,7 @@ The single source of truth for filenames, GCS URIs, and BQ destinations is
 
 ## Table produced
 
-**`aishe_fact_higher_ed`** — one wide fact (6,999 rows). Grain:
+**`aishe_fact_higher_ed_students`** — one wide fact (6,999 rows). Grain:
 `(cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)`
 → `value`. Each row carries a `cut` (which published cross-tab it came from) and a
 `metric` (`enrolment` = students currently studying, or `graduates` = out-turn /
@@ -52,7 +52,7 @@ qualifiers that year). Dimensions a cut doesn't break out carry the sentinel `"A
 **The cuts overlap (different views of the same students) — always filter to one
 `cut`, and never `SUM(value)` across cuts.**
 
-Schema: [`schemas/aishe_fact_higher_ed.yaml`](schemas/aishe_fact_higher_ed.yaml).
+Schema: [`schemas/aishe_fact_higher_ed_students.yaml`](schemas/aishe_fact_higher_ed_students.yaml).
 
 **Validation:** 2021-22 UG graduates (`metric='graduates'`, `gender='Total'`) =
 **7,754,223** via both the `state_level` cut and the `ug_discipline` cut (Tables 33

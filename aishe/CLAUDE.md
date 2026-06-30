@@ -21,14 +21,14 @@ aishe/
 │   ├── build_programme_map.py# 34a programme names -> discipline (heuristic) -> codemaps/*.csv
 │   ├── clean_aishe.py        # parse raw/*.xlsx -> clean/higher_ed.parquet (one fact)
 │   ├── upload_to_gcs.py      # raw sheets + clean fact -> gs://…/aishe/{raw,clean}/ (both parquet)
-│   └── load_bq.py            # GCS clean/ -> avantifellows.external_data_sources.aishe_fact_higher_ed
-├── schemas/                  # one YAML per BQ table (just aishe_fact_higher_ed)
+│   └── load_bq.py            # GCS clean/ -> avantifellows.external_data_sources.aishe_fact_higher_ed_students
+├── schemas/                  # one YAML per BQ table (just aishe_fact_higher_ed_students)
 ├── codemaps/                 # programme_to_discipline.csv (committed, auditable)
 ├── raw/                      # source workbooks (gitignored)
 └── clean/                    # parsed parquet (gitignored)
 ```
 
-**One denormalized fact**, `aishe_fact_higher_ed`. Every row carries a `cut`
+**One denormalized fact**, `aishe_fact_higher_ed_students`. Every row carries a `cut`
 (which published cross-tab it came from) and a `metric` (`enrolment` |
 `graduates`); the measure is `value`:
 

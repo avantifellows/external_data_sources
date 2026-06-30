@@ -5,7 +5,7 @@ Everything downstream (clean_aishe.py, upload_to_gcs.py, load_bq.py) reads from
 here.
 
 One denormalized fact:
-  aishe_fact_higher_ed — student ENROLMENT + GRADUATES (out-turn), unified across
+  aishe_fact_higher_ed_students — student ENROLMENT + GRADUATES (out-turn), unified across
   AISHE Tables 33 (graduates by state × level), 34a (graduates by programme ×
   social category), and 12 + 35 (UG enrolment + graduates by discipline,
   2019-20 → 2021-22). Each row is tagged with `cut` (the published slice) and
@@ -86,7 +86,7 @@ class Table:
 
 TABLES: list[Table] = [
     Table(
-        bq_name="aishe_fact_higher_ed",
+        bq_name="aishe_fact_higher_ed_students",
         parquet="higher_ed.parquet",
         grain="(cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)",
     ),
