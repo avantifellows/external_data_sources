@@ -302,8 +302,19 @@ def post_process(df, cutoffs=None):
     # Priority: rank-derived (adv_appeared=True) > mains-file flag (2025 fallback).
     adv_in_file = df.get("adv_appeared", pd.Series(False, index=df.index)).fillna(False)
 
-    # from_data: True if CRL rank present for students in adv file; else mains fallback
-    adv_qual_from_rank = df["adv_all_india_rank"].notna()
+    # from_data: a student qualified JEE Advanced if they hold any REGULAR rank — the general CRL OR
+    # a reserved-category rank (SC/ST/OBC/EWS, incl their PwD variants). PREPARATORY-course ranks
+    # (PREP_*) are a separate provision (1-year prep course, no regular seat) and do NOT count as
+    # qualified — they feed jee_prep_qualified below. This previously checked adv_all_india_rank
+    # (CRL) only, which dropped every category-only qualifier (377 in 2024, 405 in 2025 —
+    # disproportionately SC/ST/OBC, who clear the lower category cutoff but hold no general CRL).
+    # Counting mere presence in the file would wrongly add ~340 prep-only students per year.
+    _regular_adv_rank_cols = [
+        c for c in (["adv_all_india_rank", "adv_all_india_pwd_rank"]
+                    + [k for k in ADV_RANK_SOURCE_COLS if not k.startswith("adv_prep")])
+        if c in df.columns
+    ]
+    adv_qual_from_rank = df[_regular_adv_rank_cols].notna().any(axis=1)
     if "jee_advanced_qualified_from_data" not in df.columns:
         df["jee_advanced_qualified_from_data"] = None
     df["jee_advanced_qualified_from_data"] = np.where(
@@ -351,6 +362,13 @@ def post_process(df, cutoffs=None):
 # ── File loader ───────────────────────────────────────────────────────────────
 
 def load_file(raw_dir, source):
+    # Prefer the parquet conversion of the source xlsx when present (the raw xlsx is not always on hand;
+    # the GCS/folder-11 parquet carries the same already-headered columns). Name = snake_case of the xlsx.
+    pq = raw_dir / (source["file"].replace(".xlsx", "").lower().replace(" ", "_") + ".parquet")
+    if pq.exists():
+        print(f"  Loading {pq.name} (parquet) ...")
+        return pd.read_parquet(pq)
+
     path   = raw_dir / source["file"]
     header = source.get("header", 0)
     fallback = source.get("header_fallback")
