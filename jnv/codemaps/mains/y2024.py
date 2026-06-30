@@ -26,7 +26,6 @@ CODEMAP = {
     #   District12/State12 candidates never matched, leaving them NULL.
     "columns": {
         "application_no":           ["Application Number", "APPNO"],
-        "avanti_student_id":        ["Student ID"],
         "program":                  ["12th Program", "Final Program", "Program Model"],
         "student_full_name":        ["Student Name", "CNAME"],
         "dob":                      ["DoB", "DOB"],

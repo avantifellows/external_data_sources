@@ -100,7 +100,6 @@ CODEMAP = {
     #   rows are the JNV PMU control pool (program NULL by design).
     "columns": {
         "application_no":           ["JEEApplicationNumber", "APPNO"],
-        "avanti_student_id":        ["avanti_studentid"],
         "program":                  ["final program", "12th Program", "Program Model"],
         "student_full_name":        ["CNAME", "Student Name"],
         "dob":                      ["DOB", "DoB"],

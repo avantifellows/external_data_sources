@@ -10,7 +10,7 @@ import pandas as pd
 
 CANONICAL_COLS = [
     # core
-    "test_year", "test_name", "application_no", "avanti_student_id", "student_full_name",
+    "test_year", "test_name", "application_no", "student_full_name",
     "dob", "student_gender", "category",
     "school_code", "program",
     # location
@@ -62,7 +62,6 @@ COLUMN_TYPES = {
     "test_year":                    "constant",
     "test_name":                    "constant",
     "application_no":               "str",
-    "avanti_student_id":            "str",
     "student_full_name":            "str",
     "dob":                          "str",
     "student_gender":               "gender",

@@ -32,9 +32,13 @@ columns:
     type: category
   - name: school_code
     type: str
+  - name: program
+    type: str
   - name: student_state
     type: str
   - name: district_12
+    type: str
+  - name: district_10
     type: str
   - name: place_of_school
     type: str
@@ -46,6 +50,8 @@ columns:
     type: float
   - name: board_12
     type: str
+  - name: roll_no_12
+    type: str
   - name: marks_12_obtained
     type: float
   - name: marks_12_total
@@ -55,6 +61,8 @@ columns:
   - name: year_of_passing_10
     type: float
   - name: board_10
+    type: str
+  - name: roll_no_10
     type: str
   - name: marks_10_obtained
     type: float
