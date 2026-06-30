@@ -1,0 +1,86 @@
+# dakshana_fact_reported_results
+#
+# Dakshana's self-reported JEE-Main / NEET result sheets, harmonised into one table. Built by
+# scripts/build_reported_results.py.
+#
+# Source raw:  gs://avantifellows-external-data/dakshana/raw/reported/*.csv
+# Clean:       gs://avantifellows-external-data/dakshana/clean/dakshana_fact_reported_results.parquet
+# BQ table:    avantifellows.external_data_sources.dakshana_fact_reported_results
+
+description: |
+  Dakshana is a partner that runs intensive JEE/NEET coaching at a set of Navodaya (JNV) Centres of
+  Excellence. Each cycle Dakshana shares a result sheet naming every Dakshana student, the Dakshana CoE
+  (the JNV they were coached at), and their JEE-Main / NEET outcome. This table harmonises those sheets.
+
+  WHY IT MATTERS: this is the AUTHORITATIVE record of who was a Dakshana student and at which centre. In
+  the warehouse, the `student_program='Dakshana CoE'` tag is patchy and inconsistent year-to-year, so
+  Dakshana students are routinely mis-attributed (e.g. a Bengaluru-Urban Dakshana student showing up as
+  Nodal/NVS). This sheet fixes that. It also pins WHICH JNVs were Dakshana in a given year — important
+  because the footprint moves: in 2025 Bundi, Kottayam and Lucknow were Dakshana CoEs; they were handed
+  to Avanti from 2026. So `coe` here is a year-specific Dakshana attribution, not a permanent label.
+
+  KEY POINTS:
+  - Grain is (test_year, exam, student). `exam` is 'JEE Main' or 'NEET'. One harmonised long table.
+  - SCORE UNITS DIFFER BY EXAM, so there is a `score_type` discriminator: JEE `score_value` is a
+    PERCENTILE (0-100, higher better); NEET `score_value` is RAW MARKS (out of 720). NEVER compare or
+    average score_value across exams without filtering score_type.
+  - NO student_id / application_no in the source — only name + CoE. To attach a Dakshana student to an
+    Avanti record, link by name (+ DoB via the identity crosswalk), not by id.
+  - `qualifying_status` is the sheet's own qualification label ('Qualified' / 'Not Qualified' / DNQ).
+  - 2025: 371 students (253 JEE across Bengaluru Urban/Rural, Bundi, Kottayam, Lucknow; 118 NEET at Pune).
+
+rows: ~371 (2025)
+grain: (test_year, exam, student)
+
+columns:
+  - name: test_year
+    type: STRING
+    mode: REQUIRED
+    description: Result cycle year ('2025'). STRING.
+  - name: exam
+    type: STRING
+    mode: REQUIRED
+    description: "'JEE Main' or 'NEET'. Discriminator — filter before aggregating scores."
+  - name: drn
+    type: STRING
+    description: Dakshana Registration Number (JEE sheet only; blank for NEET).
+  - name: student_name
+    type: STRING
+    mode: REQUIRED
+    description: Student name as Dakshana reports it. The only identity key (no id/appno) — link by name+DoB.
+  - name: gender
+    type: STRING
+    description: Gender (Male/Female).
+  - name: category
+    type: STRING
+    description: Social category as Dakshana labels it (e.g. OBC-NCL, GEN-EWS, SC, ST).
+  - name: pwd
+    type: STRING
+    description: Persons-with-disability flag (Yes/No).
+  - name: coe
+    type: STRING
+    description: |
+      The Dakshana Centre of Excellence (a JNV) the student was coached at, e.g. 'JNV Bengaluru Urban',
+      'JNV Pune'. A YEAR-SPECIFIC Dakshana attribution (the footprint changes; some of these JNVs moved
+      to Avanti in later years).
+  - name: score_type
+    type: STRING
+    description: "'percentile' (JEE) or 'marks' (NEET). Tells you the unit of score_value."
+  - name: score_value
+    type: FLOAT
+    description: JEE-Main percentile (0-100) OR NEET raw marks (out of 720), per score_type. Don't mix.
+  - name: all_india_rank
+    type: FLOAT
+    description: Open / Common all-India rank.
+  - name: category_rank
+    type: FLOAT
+    description: Rank within the student's social category.
+  - name: air_pwd
+    type: FLOAT
+    description: All-India PwD rank (where applicable).
+  - name: category_pwd_rank
+    type: FLOAT
+    description: Category PwD rank (where applicable).
+  - name: qualifying_status
+    type: STRING
+    description: Dakshana's qualification label ('Qualified' / 'Not Qualified'; for JEE, qualification for Advanced).

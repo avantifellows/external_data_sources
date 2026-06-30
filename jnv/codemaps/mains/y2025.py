@@ -116,19 +116,37 @@ CODEMAP = {
     # - jee_advanced_qualified_from_data / jee_prep_qualified_from_data written
     #   by post_transform as fallback; overridden for students in the advanced
     #   Excel file during the merge step in clean_jee.py.
+    # - SOURCE MUST BE THE appno-MERGE of three 2025 files (all keyed on the JEE
+    #   application number, 12,103 rows each, perfect 1:1 overlap):
+    #     1. "JEE 2025 - All JNV Candidates" (Avanti enrichment): avanti_studentid,
+    #        `final program`, jeeTotal (percentile), YEAROFPASSING12.
+    #     2. NTA "Appeared Candidates Data": CNAME, DOB, GENDER, CAT, ranks.  <- names/DOB
+    #     3. NTA "Registered Candidates Data": rollno (12th board roll), QualDistrict,
+    #        QualState, 12th marks (obtainedMark/totalMark/percentageOfMarks).
+    #   The current pipeline points at file (1) ALONE, so student_full_name / dob /
+    #   12th roll / district / state come out NULL. The candidates below resolve
+    #   correctly once the merged file is the source.
+    # - NO 10th board roll exists in ANY 2025 NTA file (registration captures only the
+    #   12th marksheet). So jnv_fact_board_results_10th can only be linked by name+DOB
+    #   (district-scoped via QualDistrict) — ~50-64% per program, not the 92-99%
+    #   id-join that 2024's "10th Roll Number" allows. roll_no_10 stays NULL for 2025.
+    # - `final program` tags only the 813 Avanti-touched students; the ~11,290 untagged
+    #   rows are the JNV PMU control pool (program NULL by design).
     "columns": {
         "application_no":           ["JEEApplicationNumber", "APPNO"],
+        "program":                  ["final program", "12th Program", "Program Model"],
         "student_full_name":        ["CNAME", "Student Name"],
         "dob":                      ["DOB", "DoB"],
         "student_gender":           ["Gender", "GENDER"],
         "_pwd_raw":                 ["PWD"],
         "category":                 ["Category", "CAT"],
-        "student_state":            ["State12"],
-        "district_12":              ["District"],
-        "place_of_school":          ["PlaceofSchool", "PlaceofSchooling"],
+        "student_state":            ["State12", "QualState"],
+        "district_12":              ["District", "QualDistrict", "District12"],
+        "place_of_school":          ["PlaceofSchool", "PlaceofSchooling", "School_or_CollegeName_Address"],
         "jnv_name":                 ["jnvname", "JNV Name"],
+        "roll_no_12":               ["rollno", "12th Roll Number"],
         "year_of_passing_12":       ["YEAROFPASSING12", "yearOfPassing"],
-        "board_12":                 ["boardName", "Board"],
+        "board_12":                 ["boardName", "Board", "School_Board"],
         "marks_12_obtained":        ["obtainedMark"],
         "marks_12_total":           ["totalMark"],
         "marks_12_pct":             ["percentageOfMarks"],
