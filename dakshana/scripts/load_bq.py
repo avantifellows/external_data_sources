@@ -1,14 +1,15 @@
 """
-Load clean JNV parquet files from GCS into BigQuery (external_data_sources, asia-south1).
+Load clean Dakshana parquet files from GCS into BigQuery (external_data_sources, asia-south1).
 
-Each table in sources.py is loaded with WRITE_TRUNCATE (idempotent), clustered on its filter columns.
+Loads both Dakshana tables defined in sources.py — dakshana_fact_ncst_results and
+dakshana_fact_reported_results — each with WRITE_TRUNCATE (idempotent), clustered on its filter columns.
 
 Pre-reqs: dataset avantifellows.external_data_sources exists; clean parquet already staged on GCS
 (scripts/upload_to_gcs.py). Do NOT run against production without an explicit go — stage + review first.
 
 Usage:
   python3 scripts/load_bq.py --dry-run                              # show what would happen
-  python3 scripts/load_bq.py --table jnv_fact_jee_advanced_rank_list
+  python3 scripts/load_bq.py --table dakshana_fact_reported_results
 """
 from __future__ import annotations
 
