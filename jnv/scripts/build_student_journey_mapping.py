@@ -1,31 +1,65 @@
 #!/usr/bin/env python3
 """
-Build jnv_student_journey_mapping: a unified cross-table student identity table
-for JNV students across board_10th, board_12th, JEE, and NEET.
+Build jnv_student_outcome_mapping: a unified cross-table student IDENTITY map
+for JNV students across board_10th, board_12th, JEE, and NEET — plus the
+analyst-facing journey-of-results columns (10th → 12th → JEE/NEET).
 
-Grain: (board_12th_roll_number, board_12th_exam_year, jee_test_year, neet_test_year)
-       — retakers get additional rows (different test_year on same board_12th anchor).
+ENGINE: this runs **entirely in pandas**. We pull each source down from BigQuery
+ALREADY AGGREGATED to one row per natural key (the board tables are subject-long
+and only collapse to ~one-row-per-student after GROUP BY), do all the identity
+resolution / linking / FK matching as ordinary DataFrame merges, then upload the
+finished table. There is no server-side CTE graph, so BigQuery's query-planner
+complexity limit ("too many subqueries / query too complex") simply cannot occur.
+The reference crosswalks (Poojita sheets, JEE-2024 file) are read straight from
+local Excel — no temp tables.
 
-Linkage priority:
-  board_12th → board_10th:
-    1. roll_number_10th column (board_12th 2025 only)
-    2. Poojita 2024 sheet  (2024 cohort, source of truth)
-    3. Name + year match   (fallback)
+The aggregated frames are small (board 12th ~400k students, board 10th ~450k,
+JEE ~64k, NEET ~114k) so the whole pipeline fits comfortably in memory.
 
-  board_12th → JEE / NEET:
-    1. Poojita 2024 sheet  (2024 cohort)
-    2. Name + state match  (all cohorts, unambiguous only)
+Grain: one row per (student_key, attempt_year), where
+       attempt_year = COALESCE(jee_test_year, neet_test_year).
+       Multiple JEE/NEET sittings → one row per entrance year.
+       A student with no entrance record → one row with null attempt fields.
 
+Spine: a RESOLVED STUDENT IDENTITY built from the UNION of all four stages —
+       NOT anchored on 12th. A student with a JEE/NEET record but no 12th row
+       still gets a journey (their cohort_year falls back to first entrance year).
+       Bare 10th-only students are NOT seeded EXCEPT for the 2026/2027 frontier
+       cohorts, whose 10th roster IS the cohort (no 12th/entrance data yet).
+
+Run model: `_resolve()` builds the ENTIRE cross-year identity universe in one
+       in-memory pass, so the default (no flag) rebuilds the whole table at once
+       (WRITE_TRUNCATE). `--year YYYY` slices that same resolution to one cohort
+       and refreshes it idempotently (DELETE rows for the year, then INSERT) —
+       useful when only one year's source data changed. Each student has exactly
+       one cohort_year, so cohorts are disjoint.
+
+  cohort_year = COALESCE(board_12th_exam_year, board_10th_exam_year+2,
+                         first_entrance_attempt_year)
+
+Linkage priority (lowest number wins; "candidate-emit then keep-lowest-pri"):
+  identity resolution (cluster records into one student):
+    1. Poojita 2024 sheet  (12th↔10th↔JEE↔NEET roll/app crosswalk, 2024 cohort)
+    2. roll_number_10th    (12th 2025 file → 10th direct) / JEE-2024 file rolls
+    3. name (+father)      (12th→10th / 12th→JEE/NEET, unambiguous only)
   Avanti FK:
-    1. direct_student_id   (JEE 2025 avanti_studentid, NEET student_id, Poojita 2025 avanti_id)
-    2. name + DOB          (from board_10th — richest identity source)
+    1. direct_student_id   (JEE 2025 avanti_studentid, NEET student_id, Poojita)
+    2. name + DOB          (DOB from board_10th — richest identity source)
+    3. name + DOB swapped  (DD/MM transposition)
+
+Output columns are LEAN and grouped by stage. The join keys (rolls, app numbers)
+and FK match metadata are retained because (a) they are the table's reason to
+exist — they let you join out to the fact tables — and (b) `add_avanti_fk.py`
+reads them to key the FK back onto the source tables.
 
 Usage:
-    python3 scripts/build_student_journey_mapping.py
+    python3 scripts/build_student_journey_mapping.py             # rebuild ALL cohorts
+    python3 scripts/build_student_journey_mapping.py --year 2026 # refresh one cohort only
 """
 
+import argparse
+import hashlib
 import sys
-import time
 from pathlib import Path
 
 import pandas as pd
@@ -36,542 +70,764 @@ from sources import BQ_PROJECT, BQ_DATASET, BQ_LOCATION
 _EDS  = f"`{BQ_PROJECT}.{BQ_DATASET}`"
 _DIM  = f"`{BQ_PROJECT}.production_dbt_final.dim_student`"
 _DIMH = f"`{BQ_PROJECT}.production_dbt_final.dim_student_historical`"
-_OUT  = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_journey_mapping"
+_OUT  = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_outcome_mapping"
 
-_POOJITA = (
-    Path(__file__).resolve().parent.parent
-    / "raw" / "mapping_files"
-    / "12th & 10 Marks Mapping (Poojita Data).xlsx"
-)
-_JEE_2025_RAW = (
-    Path(__file__).resolve().parent.parent
-    / "raw" / "jee_mains"
-    / "JEE 2025 - All JNV Candidates.xlsx"
-)
+_RAW = Path(__file__).resolve().parent.parent / "raw"
+_POOJITA      = _RAW / "mapping_files" / "12th & 10 Marks Mapping (Poojita Data).xlsx"
+_JEE_2025_RAW = _RAW / "jee_mains" / "JEE 2025 - All JNV Candidates.xlsx"
+_JEE_2024_RAW = _RAW / "jee_mains" / "JEE Mains 2024.xlsx"
+# 2024 NEET file carries the same board crosswalk as the JEE-2024 file:
+# application_no → 10th roll (100%), 12th roll (94%). Student ID is only ~1.5%
+# populated so it's not a useful direct id — the ROLLS are the lever.
+_NEET_2024_RAW = _RAW / "neet" / "NEET 2024.xlsx"
+
+# Final column order: key → cohort → fk + match meta → program → 10th → 12th → jee → neet.
+_FINAL_COLS = [
+    "student_key", "cohort_year", "fk_avanti_student_id",
+    "match_confidence", "match_count",
+    "student_program", "student_product",
+    # 10th
+    "board_10th_exam_year", "board_10th_roll_number",
+    "marks_10_obtained", "result_10",
+    "marks_10_math", "marks_10_science", "marks_10_english",
+    # 12th
+    "board_12th_exam_year", "board_12th_roll_number",
+    "marks_12_obtained", "result_12",
+    "marks_12_physics", "marks_12_chemistry", "marks_12_maths", "marks_12_biology",
+    # JEE (incl. advanced)
+    "jee_test_year", "jee_application_no",
+    "jee_total_percentile", "jee_air", "jee_category_rank",
+    "jee_mains_qualified", "jee_advanced_qualified",
+    "jee_adv_all_india_rank", "jee_adv_category_rank", "jee_adv_prep_category_rank",
+    # NEET
+    "neet_test_year", "neet_application_no",
+    "neet_total_score", "neet_air", "neet_category_rank", "neet_qualified",
+]
 
 
-def _upload_reference_tables(client) -> tuple[str, str, str]:
+# ─────────────────────────────────────────────────────────────────────────────
+# small helpers
+# ─────────────────────────────────────────────────────────────────────────────
+def _S(series: pd.Series) -> pd.Series:
+    """Normalise a key column to trimmed pandas-string (NA stays NA)."""
+    return series.astype("string").str.strip()
+
+
+def _ne(series: pd.Series) -> pd.Series:
+    """Boolean mask: value is present (not NA and not empty string)."""
+    s = series.astype("string")
+    return s.notna() & (s.str.len() > 0)
+
+
+def _coalesce(*series: pd.Series) -> pd.Series:
+    """First present (non-NA, non-empty) value across the given string Series."""
+    out = series[0].astype("string").copy()
+    for s in series[1:]:
+        out = out.where(_ne(out), s.astype("string"))
+    return out
+
+
+def _year_shift(series: pd.Series, n: int) -> pd.Series:
+    """'2025' → '2025'+n as a pandas-string ('2027'); NA-safe."""
+    return (pd.to_numeric(series, errors="coerce").astype("Int64") + n).astype("string")
+
+
+def _lowest_pri(cands: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
+    """Keep one candidate per key — the lowest `pri` (the priority ladder)."""
+    if cands.empty:
+        return cands
+    return (cands.sort_values(keys + ["pri"])
+                 .drop_duplicates(subset=keys, keep="first")
+                 .reset_index(drop=True))
+
+
+def _unambiguous(df: pd.DataFrame, group_keys: list[str]) -> pd.DataFrame:
+    """Rows whose (group_keys) group has exactly one member (a unique match)."""
+    if df.empty:
+        return df
+    sz = df.groupby(group_keys, dropna=False)[group_keys[0]].transform("size")
+    return df[sz == 1]
+
+
+def _ent_key(name, father, dob, exam, yr, app, avanti_id) -> str:
     """
-    Upload Poojita 2024, Poojita 2025, and JEE 2025 avanti_studentid mapping
-    to temp BQ tables. Returns (tmp24, tmp25, tmp_jee25_avanti).
+    Identity key for an entrance-only record (no 12th/10th anchor) — 3-tier HYBRID:
+      1. avanti_id present  → `ent:sid:<id>`  (authoritative — a production-linked
+         Avanti student; merges that person's records and stays distinct from others)
+      2. name AND dob present → `ent:md5(name|father|dob)` (JEE+NEET / retakes merge)
+      3. otherwise           → natural exam key `<exam>:<yr>:<app>` so identity-less
+         records (e.g. the ~8k JEE-2025 rows with blank name+dob) stay DISTINCT
+         instead of collapsing into one md5('||') bucket.
+    (See student_journey_mapping.md decisions log.)
     """
-    ts = int(time.time())
-    tmp24            = f"{BQ_PROJECT}.{BQ_DATASET}._tmp_poojita_24_{ts}"
-    tmp25            = f"{BQ_PROJECT}.{BQ_DATASET}._tmp_poojita_25_{ts}"
-    tmp_jee25_avanti = f"{BQ_PROJECT}.{BQ_DATASET}._tmp_jee25_avanti_{ts}"
+    def _s(v):
+        return "" if v is None or (isinstance(v, float) and pd.isna(v)) or v is pd.NA else str(v)
+    aid = _s(avanti_id)
+    if aid:
+        return "ent:sid:" + aid
+    name, dob = _s(name), _s(dob)
+    if name and dob:
+        return "ent:" + hashlib.md5(f"{name}|{_s(father)}|{dob}".encode("utf-8")).hexdigest()[:16]
+    return f"{_s(exam)}:{_s(yr)}:{_s(app)}"
 
-    from google.cloud.bigquery import LoadJobConfig, WriteDisposition
 
-    # ── Poojita 2024 sheet ─────────────────────────────────────────────────────
-    df24 = pd.read_excel(_POOJITA, sheet_name="Mapped Data (2024 Students)", dtype=str)
-    df24 = df24.rename(columns={
-        "JEE application No":  "jee_app_no",
-        "NEET Application No": "neet_app_no",
-        "10th Roll No":        "roll_10th",
-        "12th Roll No":        "roll_12th",
-    })[["jee_app_no", "neet_app_no", "roll_10th", "roll_12th"]].copy()
-    for col in df24.columns:
-        df24[col] = df24[col].str.strip().replace("nan", pd.NA)
-    df24 = df24[df24[["jee_app_no", "neet_app_no", "roll_10th", "roll_12th"]].notna().any(axis=1)]
-    client.load_table_from_dataframe(
-        df24, tmp24,
-        job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
-    ).result()
-    print(f"  Uploaded Poojita 2024: {len(df24):,} rows → {tmp24}")
+def _coalesce_by_source(contrib: pd.DataFrame, col: str, order: list[str],
+                        is_date: bool = False) -> pd.Series:
+    """
+    Per student_key, pick `col` from the first source in `order` that has a
+    present value (mirrors the SQL COALESCE(MAX(IF(src=...)))). Returns a Series
+    indexed by student_key.
+    """
+    rank = {s: i for i, s in enumerate(order)}
+    d = contrib.loc[contrib["src"].isin(order), ["student_key", "src", col]].copy()
+    if is_date:
+        d = d[d[col].notna()]
+    else:
+        d = d[_ne(d[col])]
+    d["r"] = d["src"].map(rank)
+    d = d.sort_values(["student_key", "r"]).drop_duplicates("student_key", keep="first")
+    return d.set_index("student_key")[col]
 
-    # ── Poojita 2025 sheet ─────────────────────────────────────────────────────
-    df25 = pd.read_excel(_POOJITA, sheet_name="Mapped Data (2025 Students)", dtype=str)
-    df25 = df25.rename(columns={
-        "Avanti Student ID": "avanti_student_id",
-        "10th Roll Number":  "roll_10th",
-    })[["avanti_student_id", "roll_10th"]].copy()
-    for col in df25.columns:
-        df25[col] = df25[col].str.strip().replace("nan", pd.NA)
-    df25 = df25[df25["avanti_student_id"].notna() & df25["roll_10th"].notna()]
-    client.load_table_from_dataframe(
-        df25, tmp25,
-        job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
-    ).result()
-    print(f"  Uploaded Poojita 2025: {len(df25):,} rows → {tmp25}")
 
-    # ── JEE 2025 avanti_studentid → application_no mapping ────────────────────
-    # The All JNV Candidates file carries avanti_studentid for all 12,103 rows;
-    # we use this for direct FK matching without adding it as a permanent JEE column.
-    df_jee25 = pd.read_excel(
-        _JEE_2025_RAW,
-        sheet_name="JEE 2025 - All JNV Candidates",
-        usecols=["JEEApplicationNumber", "avanti_studentid"],
-        dtype=str,
-    )
-    df_jee25 = df_jee25.rename(columns={
-        "JEEApplicationNumber": "application_no",
-        "avanti_studentid":     "avanti_student_id",
+# ─────────────────────────────────────────────────────────────────────────────
+# BigQuery reads — each is a single, simple, single-table aggregation
+# ─────────────────────────────────────────────────────────────────────────────
+def _read_sources(client) -> dict:
+    """Pull the four normalised source frames (one row per natural key)."""
+    name = r"UPPER(TRIM(REGEXP_REPLACE({c}, r'\s+', ' ')))"
+    nn   = lambda c: name.format(c=c)
+    nnc  = lambda c: name.format(c=f"COALESCE({c},'')")
+    dob_parse = ("COALESCE(SAFE.PARSE_DATE('%d-%m-%Y', dob),"
+                 " SAFE.PARSE_DATE('%Y-%m-%d', dob),"
+                 " SAFE.PARSE_DATE('%d%m%Y', dob))")
+
+    q = {
+        "b12": f"""
+            SELECT exam_year AS yr12, roll_number AS roll12,
+                ANY_VALUE({nn('student_name')})  AS norm_name,
+                ANY_VALUE({nnc('father_name')})  AS norm_father,
+                ANY_VALUE({nnc('mother_name')})  AS norm_mother,
+                ANY_VALUE(roll_number_10th)      AS roll_number_10th
+            FROM {_EDS}.jnv_fact_board_results_12th
+            WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
+            GROUP BY 1, 2""",
+        "b10": f"""
+            SELECT exam_year AS yr10, roll_number AS roll10,
+                ANY_VALUE({nn('student_name')}) AS norm_name,
+                FORMAT_DATE('%Y-%m-%d',
+                    ANY_VALUE(SAFE.PARSE_DATE('%d%m%Y', LPAD(date_of_birth, 8, '0')))) AS dob,
+                ANY_VALUE({nnc('father_name')}) AS norm_father,
+                ANY_VALUE({nnc('mother_name')}) AS norm_mother
+            FROM {_EDS}.jnv_fact_board_results_10th
+            WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
+            GROUP BY 1, 2""",
+        "jee": f"""
+            SELECT test_year, application_no,
+                ANY_VALUE({nnc('student_full_name')}) AS norm_name,
+                FORMAT_DATE('%Y-%m-%d', ANY_VALUE({dob_parse})) AS dob,
+                ANY_VALUE({nnc('father_name')}) AS norm_father,
+                ANY_VALUE({nnc('mother_name')}) AS norm_mother
+            FROM {_EDS}.jnv_fact_jee_results
+            WHERE application_no IS NOT NULL
+            GROUP BY 1, 2""",
+        "neet": f"""
+            SELECT test_year, application_no,
+                ANY_VALUE({nnc('student_full_name')}) AS norm_name,
+                FORMAT_DATE('%Y-%m-%d', ANY_VALUE({dob_parse})) AS dob,
+                ANY_VALUE({nnc('father_name')}) AS norm_father,
+                ANY_VALUE({nnc('mother_name')}) AS norm_mother,
+                ANY_VALUE(student_id)           AS avanti_id
+            FROM {_EDS}.jnv_fact_neet_results
+            WHERE application_no IS NOT NULL
+            GROUP BY 1, 2""",
+    }
+    out = {}
+    for k, sql in q.items():
+        df = client.query(sql).to_dataframe()
+        for c in df.columns:
+            df[c] = _S(df[c])  # everything (incl. dob as 'YYYY-MM-DD') stays string
+        out[k] = df
+        print(f"  read {k:<4} {len(df):>8,} rows")
+    return out
+
+
+def _read_avanti(client) -> pd.DataFrame:
+    """JNV grade-12 students from dim_student (+ historical), with DOB & swapped DOB."""
+    name = r"UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\s+', ' ')))"
+    swap = ("SAFE.DATE(EXTRACT(YEAR FROM date_of_birth),"
+            " EXTRACT(DAY FROM date_of_birth), EXTRACT(MONTH FROM date_of_birth))")
+    years = "'2021-2022','2022-2023','2023-2024','2024-2025','2025-2026','2026-2027'"
+    filt = (f"(LOWER(COALESCE(student_school,'')) LIKE '%jnv%'"
+            f" OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')"
+            f" AND student_grade = 12 AND academic_year IN ({years})"
+            f" AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL")
+    sql = f"""
+        SELECT DISTINCT pk_student_id,
+            FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
+            {name} AS norm_name,
+            FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped
+        FROM {_DIM}  WHERE {filt}
+        UNION ALL
+        SELECT DISTINCT pk_student_id,
+            FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
+            {name} AS norm_name,
+            FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped
+        FROM {_DIMH} WHERE {filt}
+    """
+    df = client.query(sql).to_dataframe().drop_duplicates()
+    for c in df.columns:
+        df[c] = _S(df[c])  # dob / dob_swapped kept as 'YYYY-MM-DD' strings
+
+    # Full pk_student_id universe (NO JNV/grade filter) — used to validate a
+    # DIRECT FK (e.g. a production-supplied student_id may sit under a non-JNV
+    # label). Name/DOB matching still uses the tighter `df` frame above.
+    all_ids = client.query(
+        f"SELECT pk_student_id FROM {_DIM} WHERE pk_student_id IS NOT NULL "
+        f"UNION DISTINCT SELECT pk_student_id FROM {_DIMH} WHERE pk_student_id IS NOT NULL"
+    ).to_dataframe()
+    all_ids = set(_S(all_ids["pk_student_id"]).dropna())
+    print(f"  read avanti {len(df):>6,} rows  ({len(all_ids):,} total pk ids)")
+    return df, all_ids
+
+
+def _read_marks(client) -> dict:
+    """The result/marks frames used to enrich the resolved spine."""
+    q = {
+        "b10_marks": f"""
+            SELECT exam_year AS board_10th_exam_year, roll_number AS board_10th_roll_number,
+                ANY_VALUE(SAFE_CAST(total_marks AS FLOAT64)) AS marks_10_obtained,
+                ANY_VALUE(result)                            AS result_10,
+                MAX(IF(UPPER(subject_name) LIKE '%MATH%',    SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_math,
+                MAX(IF(UPPER(subject_name) LIKE '%SCIENCE%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_science,
+                MAX(IF(UPPER(subject_name) LIKE '%ENGLISH%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_english
+            FROM {_EDS}.jnv_fact_board_results_10th
+            WHERE roll_number IS NOT NULL AND exam_year IS NOT NULL GROUP BY 1, 2""",
+        "b12_marks": f"""
+            SELECT exam_year AS board_12th_exam_year, roll_number AS board_12th_roll_number,
+                ANY_VALUE(SAFE_CAST(total_marks AS FLOAT64)) AS marks_12_obtained,
+                ANY_VALUE(result)                            AS result_12,
+                MAX(IF(UPPER(subject_name) LIKE '%PHYSIC%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_physics,
+                MAX(IF(UPPER(subject_name) LIKE '%CHEMIS%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_chemistry,
+                MAX(IF(UPPER(subject_name) LIKE '%MATH%',   SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_maths,
+                MAX(IF(UPPER(subject_name) LIKE '%BIOLOG%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_biology
+            FROM {_EDS}.jnv_fact_board_results_12th
+            WHERE roll_number IS NOT NULL AND exam_year IS NOT NULL GROUP BY 1, 2""",
+        "jee_results": f"""
+            SELECT test_year AS jee_test_year, application_no AS jee_application_no,
+                ANY_VALUE(mains_total_score)      AS jee_total_percentile,
+                ANY_VALUE(mains_all_india_rank)   AS jee_air,
+                ANY_VALUE(mains_category_rank)    AS jee_category_rank,
+                ANY_VALUE(jee_mains_qualified)    AS jee_mains_qualified,
+                ANY_VALUE(jee_advanced_qualified) AS jee_advanced_qualified,
+                ANY_VALUE(adv_all_india_rank)     AS jee_adv_all_india_rank,
+                ANY_VALUE(adv_category_rank)      AS jee_adv_category_rank,
+                ANY_VALUE(adv_prep_category_rank) AS jee_adv_prep_category_rank
+            FROM {_EDS}.jnv_fact_jee_results
+            WHERE application_no IS NOT NULL AND test_year IS NOT NULL GROUP BY 1, 2""",
+        "neet_results": f"""
+            SELECT test_year AS neet_test_year, application_no AS neet_application_no,
+                ANY_VALUE(neet_total_score)    AS neet_total_score,
+                ANY_VALUE(neet_all_india_rank) AS neet_air,
+                ANY_VALUE(neet_category_rank)  AS neet_category_rank,
+                ANY_VALUE(neet_qualified)      AS neet_qualified
+            FROM {_EDS}.jnv_fact_neet_results
+            WHERE application_no IS NOT NULL AND test_year IS NOT NULL GROUP BY 1, 2""",
+        "program_lookup": f"""
+            SELECT fk_avanti_student_id, student_program, student_product FROM (
+                SELECT fk_avanti_student_id, student_program, student_product,
+                       ROW_NUMBER() OVER (PARTITION BY fk_avanti_student_id ORDER BY src) AS rn
+                FROM (
+                    SELECT pk_student_id AS fk_avanti_student_id, student_program,
+                           COALESCE(student_product_corrected, student_product) AS student_product, 1 AS src
+                    FROM {_DIM}
+                    UNION ALL
+                    SELECT pk_student_id, student_program, student_product, 2 AS src FROM {_DIMH}
+                )
+            ) WHERE rn = 1 AND fk_avanti_student_id IS NOT NULL""",
+    }
+    out = {}
+    for k, sql in q.items():
+        df = client.query(sql).to_dataframe()
+        for c in df.columns:
+            if c.endswith("_qualified"):
+                pass  # boolean — leave as-is (check first: 'jee_advanced_qualified' etc.)
+            elif (c.endswith("_rank") or c.startswith(("marks_", "jee_total", "jee_air",
+                                                       "neet_total", "neet_air"))):
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+            else:
+                df[c] = _S(df[c])
+        out[k] = df
+    return out
+
+
+def _read_prod_fk(client) -> dict:
+    """
+    Avanti's own `application_no → student_id` linkage, lifted from the production
+    dbt fact tables (fact_student_jee_main_results / fact_student_neet_results).
+    These rows are Avanti students whose JEE/NEET result dbt already matched to
+    `pk_student_id` — an AUTHORITATIVE direct FK, independent of the (often blank)
+    identity fields in our jnv_fact_* sources. Keyed (test_year, application_no).
+    """
+    P = "avantifellows.production_dbt_final"
+    out = {}
+    for k, tbl in (("jee", "fact_student_jee_main_results"), ("neet", "fact_student_neet_results")):
+        # Only trust an application_no→student_id link when it is UNAMBIGUOUS.
+        # production's application_no is a placeholder before 2025 (one constant
+        # value shared by hundreds of students), so HAVING COUNT(DISTINCT
+        # student_id)=1 both (a) prevents an arbitrary ANY_VALUE mis-assignment
+        # and (b) cleanly drops the placeholder years. Net effect: this fetch
+        # contributes only where the app number really identifies one student
+        # (JEE 2025/2026, NEET 2025); earlier years fall back to name+DOB.
+        df = client.query(f"""
+            SELECT CAST(test_year AS STRING) AS test_year,
+                   CAST(application_no AS STRING) AS application_no,
+                   ANY_VALUE(CAST(student_id AS STRING)) AS prod_sid
+            FROM `{P}.{tbl}`
+            WHERE application_no IS NOT NULL AND student_id IS NOT NULL
+            GROUP BY 1, 2
+            HAVING COUNT(DISTINCT student_id) = 1
+        """).to_dataframe()
+        for c in df.columns:
+            df[c] = _S(df[c])
+        out[k] = df
+        print(f"  read prod_fk {k:<4} {len(df):>7,} rows")
+    return out
+
+
+def _read_refs() -> dict:
+    """Local Excel crosswalks — no upload."""
+    p24 = pd.read_excel(_POOJITA, sheet_name="Mapped Data (2024 Students)", dtype=str).rename(
+        columns={"JEE application No": "jee_app_no", "NEET Application No": "neet_app_no",
+                 "10th Roll No": "roll_10th", "12th Roll No": "roll_12th"})
+    p24 = p24[["jee_app_no", "neet_app_no", "roll_10th", "roll_12th"]]
+
+    p25 = pd.read_excel(_POOJITA, sheet_name="Mapped Data (2025 Students)", dtype=str).rename(
+        columns={"Avanti Student ID": "avanti_student_id", "10th Roll Number": "roll_10th"})
+    p25 = p25[["avanti_student_id", "roll_10th"]]
+
+    j25 = pd.read_excel(_JEE_2025_RAW, sheet_name="JEE 2025 - All JNV Candidates",
+                        usecols=["JEEApplicationNumber", "avanti_studentid"], dtype=str).rename(
+        columns={"JEEApplicationNumber": "application_no", "avanti_studentid": "avanti_student_id"})
+
+    j24 = pd.read_excel(_JEE_2024_RAW, sheet_name="JEE Mains",
+                        usecols=["Application Number", "10th Roll Number", "12th Roll Number", "Student ID"],
+                        dtype=str).rename(
+        columns={"Application Number": "application_no", "10th Roll Number": "roll_10",
+                 "12th Roll Number": "roll_12", "Student ID": "student_id"})
+
+    # NEET-2024 board crosswalk — same shape as jee24x (app → 10th/12th roll, Student ID).
+    n24 = pd.read_excel(_NEET_2024_RAW, sheet_name="Sheet1",
+                        usecols=["Application Number", "10th Roll Number", "12th Roll Number", "Student ID"],
+                        dtype=str).rename(
+        columns={"Application Number": "application_no", "10th Roll Number": "roll_10",
+                 "12th Roll Number": "roll_12", "Student ID": "student_id"})
+
+    refs = {"poojita24": p24, "poojita25": p25, "jee25_avanti": j25, "jee24x": j24, "neet24x": n24}
+    for name, df in refs.items():
+        for c in df.columns:
+            df[c] = _S(df[c]).replace("nan", pd.NA)
+        print(f"  read ref {name:<13} {len(df):>7,} rows")
+    return refs
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# identity resolution (all pandas)
+# ─────────────────────────────────────────────────────────────────────────────
+def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: set) -> pd.DataFrame:
+    b12, b10, jee, neet = src["b12"], src["b10"], src["jee"], src["neet"]
+    p24, p25 = refs["poojita24"], refs["poojita25"]
+    j25, j24x, n24x = refs["jee25_avanti"], refs["jee24x"], refs["neet24x"]
+
+    # Direct-Avanti-id, highest trust first:
+    #   1. production dbt's application_no→student_id (Avanti's own authoritative link)
+    #   2. JEE-2025 file avanti_studentid · 3. JEE-2024 file Student ID
+    jee = (jee.merge(prod["jee"], on=["test_year", "application_no"], how="left")
+              .merge(j25[["application_no", "avanti_student_id"]], on="application_no", how="left")
+              .merge(j24x[["application_no", "student_id"]], on="application_no", how="left"))
+    jee["avanti_id"] = _coalesce(jee["prod_sid"], jee["avanti_student_id"], jee["student_id"])
+    jee = jee.drop(columns=["prod_sid", "avanti_student_id", "student_id"])
+
+    # NEET avanti id: production → jnv_fact source student_id → NEET-2024 file Student ID.
+    neet = (neet.merge(prod["neet"], on=["test_year", "application_no"], how="left")
+                .merge(n24x[["application_no", "student_id"]].rename(columns={"student_id": "n24_sid"}),
+                       on="application_no", how="left"))
+    neet["avanti_id"] = _coalesce(neet["prod_sid"], neet["avanti_id"], neet["n24_sid"])
+    neet = neet.drop(columns=["prod_sid", "n24_sid"])
+
+    # ── b12 → b10 link ────────────────────────────────────────────────────────
+    cols = ["yr12", "roll12", "yr10", "roll10", "pri", "b10_src"]
+    c1 = b12[(b12.yr12 == "2025") & _ne(b12.roll_number_10th)].copy()
+    c1["yr10"], c1["roll10"], c1["pri"], c1["b10_src"] = _year_shift(c1.yr12, -2), c1.roll_number_10th, 1, "direct_roll"
+    c2 = b12[b12.yr12 == "2024"].merge(
+        p24[_ne(p24.roll_10th)][["roll_12th", "roll_10th"]], left_on="roll12", right_on="roll_12th")
+    c2["yr10"], c2["roll10"], c2["pri"], c2["b10_src"] = "2022", c2.roll_10th, 2, "poojita_2024"
+    xr = j24x[_ne(j24x.roll_12) & _ne(j24x.roll_10)][["roll_12", "roll_10"]].drop_duplicates()
+    c3 = b12[b12.yr12 == "2024"].merge(xr, left_on="roll12", right_on="roll_12")
+    c3["yr10"], c3["roll10"], c3["pri"], c3["b10_src"] = "2022", c3.roll_10, 3, "jee2024_file"
+    nr = n24x[_ne(n24x.roll_12) & _ne(n24x.roll_10)][["roll_12", "roll_10"]].drop_duplicates()
+    c3b = b12[b12.yr12 == "2024"].merge(nr, left_on="roll12", right_on="roll_12")
+    c3b["yr10"], c3b["roll10"], c3b["pri"], c3b["b10_src"] = "2022", c3b.roll_10, 3, "neet2024_file"
+    m = b12[_ne(b12.norm_name)].merge(b10[["yr10", "roll10", "norm_name"]], on="norm_name")
+    m = m[m.yr10 == _year_shift(m.yr12, -2)]
+    m = _unambiguous(m, ["yr12", "roll12"]).copy()
+    m["pri"], m["b10_src"] = 4, "name_match"
+    b10_link = _lowest_pri(pd.concat([c[cols] for c in (c1, c2, c3, c3b, m)], ignore_index=True),
+                           ["yr12", "roll12"])
+
+    # ── b12 → JEE link ──────────────────────────────────────────────────────────
+    jcols = ["yr12", "roll12", "jee_yr", "jee_app_no", "pri", "jee_src"]
+    pj = p24[_ne(p24.jee_app_no)][["roll_12th", "jee_app_no"]]
+    j1 = (b12[b12.yr12 == "2024"].merge(pj, left_on="roll12", right_on="roll_12th")
+          .merge(jee[["test_year", "application_no"]], left_on="jee_app_no", right_on="application_no"))
+    j1["jee_yr"], j1["jee_app_no"], j1["pri"], j1["jee_src"] = j1.test_year, j1.application_no, 1, "poojita_2024"
+    xj = j24x[_ne(j24x.roll_12)][["roll_12", "application_no"]]
+    j2 = (b12[b12.yr12 == "2024"].merge(xj, left_on="roll12", right_on="roll_12")
+          .merge(jee[jee.test_year == "2024"][["test_year", "application_no"]], on="application_no"))
+    j2["jee_yr"], j2["jee_app_no"], j2["pri"], j2["jee_src"] = j2.test_year, j2.application_no, 2, "jee2024_file"
+    mj = b12[_ne(b12.norm_father)].merge(
+        jee[_ne(jee.norm_name) & _ne(jee.norm_father)][["test_year", "application_no", "norm_name", "norm_father"]],
+        on=["norm_name", "norm_father"])
+    y, ty = pd.to_numeric(mj.yr12, errors="coerce"), pd.to_numeric(mj.test_year, errors="coerce")
+    mj = mj[(ty >= y) & (ty <= y + 2)]
+    mj = _unambiguous(mj, ["yr12", "roll12", "test_year"]).copy()
+    mj["jee_yr"], mj["jee_app_no"], mj["pri"], mj["jee_src"] = mj.test_year, mj.application_no, 3, "name_father_match"
+    jee_link = _lowest_pri(pd.concat([j[jcols] for j in (j1, j2, mj)], ignore_index=True),
+                           ["jee_app_no", "jee_yr"])
+
+    # ── b12 → NEET link ─────────────────────────────────────────────────────────
+    #   1 = Poojita · 2 = NEET-2024 file (app→12th roll) · 3 = name+father
+    ncols = ["yr12", "roll12", "neet_yr", "neet_app_no", "pri", "neet_src"]
+    pn = p24[_ne(p24.neet_app_no)][["roll_12th", "neet_app_no"]]
+    n1 = (b12[b12.yr12 == "2024"].merge(pn, left_on="roll12", right_on="roll_12th")
+          .merge(neet[["test_year", "application_no"]], left_on="neet_app_no", right_on="application_no"))
+    n1["neet_yr"], n1["neet_app_no"], n1["pri"], n1["neet_src"] = n1.test_year, n1.application_no, 1, "poojita_2024"
+    xn = n24x[_ne(n24x.roll_12)][["roll_12", "application_no"]]
+    n2 = (b12[b12.yr12 == "2024"].merge(xn, left_on="roll12", right_on="roll_12")
+          .merge(neet[neet.test_year == "2024"][["test_year", "application_no"]], on="application_no"))
+    n2["neet_yr"], n2["neet_app_no"], n2["pri"], n2["neet_src"] = n2.test_year, n2.application_no, 2, "neet2024_file"
+    mn = b12[_ne(b12.norm_father)].merge(
+        neet[_ne(neet.norm_name) & _ne(neet.norm_father)][["test_year", "application_no", "norm_name", "norm_father"]],
+        on=["norm_name", "norm_father"])
+    y, ty = pd.to_numeric(mn.yr12, errors="coerce"), pd.to_numeric(mn.test_year, errors="coerce")
+    mn = mn[(ty >= y) & (ty <= y + 2)]
+    mn = _unambiguous(mn, ["yr12", "roll12", "test_year"]).copy()
+    mn["neet_yr"], mn["neet_app_no"], mn["pri"], mn["neet_src"] = mn.test_year, mn.application_no, 3, "name_father_match"
+    neet_link = _lowest_pri(pd.concat([n[ncols] for n in (n1, n2, mn)], ignore_index=True),
+                            ["neet_app_no", "neet_yr"])
+
+    # ── spine 1: 12th-anchored students ────────────────────────────────────────
+    spine_12th = b12[["yr12", "roll12"]].copy()
+    spine_12th = spine_12th.merge(b10_link[["yr12", "roll12", "yr10", "roll10", "b10_src"]],
+                                  on=["yr12", "roll12"], how="left")
+    spine_12th = pd.DataFrame({
+        "student_key": "b12:" + spine_12th.yr12 + ":" + spine_12th.roll12,
+        "cohort_year": spine_12th.yr12, "cohort_year_source": "12th",
+        "board_12th_exam_year": spine_12th.yr12, "board_12th_roll_number": spine_12th.roll12,
+        "board_10th_exam_year": spine_12th.yr10, "board_10th_roll_number": spine_12th.roll10,
+        "board_10th_link_source": spine_12th.b10_src,
     })
-    for col in df_jee25.columns:
-        df_jee25[col] = df_jee25[col].str.strip().replace("nan", pd.NA)
-    df_jee25 = df_jee25[df_jee25["avanti_student_id"].notna() & df_jee25["application_no"].notna()]
-    client.load_table_from_dataframe(
-        df_jee25, tmp_jee25_avanti,
-        job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
-    ).result()
-    print(f"  Uploaded JEE 2025 avanti_studentid map: {len(df_jee25):,} rows → {tmp_jee25_avanti}")
 
-    return tmp24, tmp25, tmp_jee25_avanti
+    # ── no-12th 10th-anchored crosswalk (lead on Poojita) ──────────────────────
+    p24_no12 = p24[(~_ne(p24.roll_12th)) & _ne(p24.roll_10th)][["roll_10th", "jee_app_no", "neet_app_no"]].drop_duplicates()
+    linked_jee_2024 = set(jee_link[jee_link.jee_yr == "2024"].jee_app_no.dropna())
+    poj_jee_apps    = set(p24_no12.jee_app_no.dropna())
+    jx = j24x[_ne(j24x.roll_10)]
+    jx = jx[(~jx.application_no.isin(linked_jee_2024)) & (~jx.application_no.isin(poj_jee_apps))]
+    j24_no12 = pd.DataFrame({"roll_10th": jx.roll_10, "jee_app_no": jx.application_no,
+                             "neet_app_no": pd.NA}).drop_duplicates()
+    # NEET-2024 no-12th: anchor on 10th roll, same as the JEE-2024 file path.
+    linked_neet_2024 = set(neet_link[neet_link.neet_yr == "2024"].neet_app_no.dropna())
+    poj_neet_apps    = set(p24_no12.neet_app_no.dropna())
+    nx = n24x[_ne(n24x.roll_10)]
+    nx = nx[(~nx.application_no.isin(linked_neet_2024)) & (~nx.application_no.isin(poj_neet_apps))]
+    n24_no12 = pd.DataFrame({"roll_10th": nx.roll_10, "jee_app_no": pd.NA,
+                             "neet_app_no": nx.application_no}).drop_duplicates()
+    no12 = pd.concat([p24_no12.assign(src="poojita_2024"),
+                      j24_no12.assign(src="jee2024_file"),
+                      n24_no12.assign(src="neet2024_file")], ignore_index=True)
 
+    jee_link_p10 = no12[_ne(no12.jee_app_no)].merge(
+        jee[["test_year", "application_no"]], left_on="jee_app_no", right_on="application_no")
+    jee_link_p10 = pd.DataFrame({"student_key": "b10:2022:" + jee_link_p10.roll_10th,
+                                 "jee_yr": jee_link_p10.test_year, "jee_app_no": jee_link_p10.jee_app_no,
+                                 "jee_src": jee_link_p10.src})
+    neet_link_p10 = no12[_ne(no12.neet_app_no)].merge(
+        neet[["test_year", "application_no"]], left_on="neet_app_no", right_on="application_no")
+    neet_link_p10 = pd.DataFrame({"student_key": "b10:2022:" + neet_link_p10.roll_10th,
+                                  "neet_yr": neet_link_p10.test_year, "neet_app_no": neet_link_p10.neet_app_no,
+                                  "neet_src": neet_link_p10.src})
 
-def _build_sql(tmp24: str, tmp25: str, tmp_jee25_avanti: str) -> str:
-    return f"""
--- ── Source tables (one row per student per exam) ──────────────────────────────
-WITH b12_raw AS (
-    SELECT DISTINCT
-        exam_year                                                                    AS yr12,
-        roll_number                                                                  AS roll12,
-        UPPER(TRIM(REGEXP_REPLACE(student_name,            r'\\s+', ' ')))         AS norm_name,
-        UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' ')))        AS norm_father,
-        UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' ')))        AS norm_mother,
-        roll_number_10th
-    FROM {_EDS}.jnv_fact_board_results_12th
-    WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
-),
-b12 AS (
-    -- deduplicate (same roll can appear across subjects)
-    SELECT yr12, roll12,
-           ANY_VALUE(norm_name)   AS norm_name,
-           ANY_VALUE(norm_father) AS norm_father,
-           ANY_VALUE(norm_mother) AS norm_mother,
-           ANY_VALUE(roll_number_10th) AS roll_number_10th
-    FROM b12_raw
-    GROUP BY 1, 2
-),
-b10 AS (
-    SELECT DISTINCT
-        exam_year                                                           AS yr10,
-        roll_number                                                         AS roll10,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(student_name, r'\\s+', ' ')))) AS norm_name,
-        ANY_VALUE(SAFE.PARSE_DATE('%d%m%Y', LPAD(date_of_birth, 8, '0'))) AS dob,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' ')))) AS norm_father,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' ')))) AS norm_mother
-    FROM {_EDS}.jnv_fact_board_results_10th
-    WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
-    GROUP BY 1, 2
-),
+    spb = no12.groupby("roll_10th", as_index=False).agg(src=("src", "first"))
+    spine_poojita_b10 = pd.DataFrame({
+        "student_key": "b10:2022:" + spb.roll_10th,
+        "cohort_year": "2024", "cohort_year_source": "10th",
+        "board_10th_exam_year": "2022", "board_10th_roll_number": spb.roll_10th,
+        "board_10th_link_source": spb.src,
+    })
 
--- ── Reference tables (must precede CTEs that join them) ───────────────────────
-poojita24     AS (SELECT * FROM `{tmp24}`),
-poojita25     AS (SELECT * FROM `{tmp25}`),
--- JEE 2025 avanti_studentid: not stored as a permanent JEE column; joined here for FK matching only
-jee25_avanti  AS (SELECT * FROM `{tmp_jee25_avanti}`),
+    # ── spine 3: 10th frontier (2026/2027 cohorts — only 10th exists) ──────────
+    fr = b10[b10.yr10.isin(["2024", "2025"])]
+    spine_b10_frontier = pd.DataFrame({
+        "student_key": "b10:" + fr.yr10 + ":" + fr.roll10,
+        "cohort_year": _year_shift(fr.yr10, 2), "cohort_year_source": "10th",
+        "board_10th_exam_year": fr.yr10, "board_10th_roll_number": fr.roll10,
+        "board_10th_link_source": "spine_10th",
+    })
+    # JEE 2026 → 10th 2024 by name+father (unambiguous, not already claimed).
+    claimed_jee = set(jee_link.jee_app_no.dropna()) | set(jee_link_p10.jee_app_no.dropna())
+    bf = b10[(b10.yr10 == "2024") & _ne(b10.norm_father)]
+    jf = jee[(jee.test_year == "2026") & _ne(jee.norm_name) & _ne(jee.norm_father)]
+    mbf = bf.merge(jf[["test_year", "application_no", "norm_name", "norm_father"]], on=["norm_name", "norm_father"])
+    mbf = mbf[~mbf.application_no.isin(claimed_jee)]
+    mbf = _unambiguous(mbf, ["application_no", "test_year"])
+    jee_link_b10f = pd.DataFrame({"student_key": "b10:2024:" + mbf.roll10,
+                                  "jee_yr": mbf.test_year, "jee_app_no": mbf.application_no,
+                                  "jee_src": "name_father_match"})
 
-jee AS (
-    SELECT DISTINCT
-        test_year,
-        application_no,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(student_full_name,''), r'\\s+', ' ')))) AS norm_name,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(student_state,    ''), r'\\s+', ' ')))) AS norm_state,
-        ANY_VALUE(COALESCE(
-            SAFE.PARSE_DATE('%d-%m-%Y', dob),
-            SAFE.PARSE_DATE('%Y-%m-%d', dob),
-            SAFE.PARSE_DATE('%d%m%Y',   dob)
-        ))                                                                                    AS dob,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))))       AS norm_father,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))))       AS norm_mother,
-        ANY_VALUE(j25.avanti_student_id)                                                      AS avanti_studentid
-    FROM {_EDS}.jnv_fact_jee_results
-    LEFT JOIN jee25_avanti j25 USING (application_no)
-    WHERE application_no IS NOT NULL
-    GROUP BY 1, 2
-),
-neet AS (
-    SELECT DISTINCT
-        test_year,
-        application_no,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(student_full_name,''), r'\\s+', ' ')))) AS norm_name,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(student_state,    ''), r'\\s+', ' ')))) AS norm_state,
-        ANY_VALUE(COALESCE(
-            SAFE.PARSE_DATE('%d-%m-%Y', dob),
-            SAFE.PARSE_DATE('%Y-%m-%d', dob),
-            SAFE.PARSE_DATE('%d%m%Y',   dob)
-        ))                                                                                    AS dob,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))))       AS norm_father,
-        ANY_VALUE(UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))))       AS norm_mother,
-        ANY_VALUE(student_id)                                                                 AS avanti_student_id
-    FROM {_EDS}.jnv_fact_neet_results
-    WHERE application_no IS NOT NULL
-    GROUP BY 1, 2
-),
+    # ── entrance-only students (JEE/NEET linked to nothing) ────────────────────
+    claimed_jee_keys = set(zip(jee_link.jee_app_no, jee_link.jee_yr)) \
+        | set(zip(jee_link_p10.jee_app_no, jee_link_p10.jee_yr)) \
+        | set(zip(jee_link_b10f.jee_app_no, jee_link_b10f.jee_yr))
+    lj = jee[~pd.Series(list(zip(jee.application_no, jee.test_year)), index=jee.index).isin(claimed_jee_keys)]
+    claimed_neet_keys = set(zip(neet_link.neet_app_no, neet_link.neet_yr)) \
+        | set(zip(neet_link_p10.neet_app_no, neet_link_p10.neet_yr))
+    ln = neet[~pd.Series(list(zip(neet.application_no, neet.test_year)), index=neet.index).isin(claimed_neet_keys)]
+    ent_cols = ["exam", "test_year", "application_no", "norm_name", "norm_father", "dob", "avanti_id"]
+    ln = ln.copy(); ln["avanti_id"] = ln["avanti_id"] if "avanti_id" in ln else pd.NA
+    entrance = pd.concat([lj.assign(exam="jee")[ent_cols], ln.assign(exam="neet")[ent_cols]], ignore_index=True)
+    entrance["student_key"] = [_ent_key(n, f, d, ex, yr, ap, aid)
+                               for n, f, d, ex, yr, ap, aid in
+                               zip(entrance.norm_name, entrance.norm_father, entrance.dob,
+                                   entrance.exam, entrance.test_year, entrance.application_no,
+                                   entrance.avanti_id)]
+    entrance_students = entrance.groupby("student_key", as_index=False).agg(cohort_year=("test_year", "min"))
+    entrance_students["cohort_year_source"] = "entrance"
 
--- ── board_12th → board_10th linking ───────────────────────────────────────────
--- Priority 1: direct roll_number_10th (2025 cohort only)
-b10_link_direct AS (
-    SELECT yr12, roll12, CAST(CAST(yr12 AS INT64)-2 AS STRING) AS yr10,
-           roll_number_10th AS roll10, 'direct_roll' AS b10_src
-    FROM b12
-    WHERE yr12 = '2025' AND roll_number_10th IS NOT NULL AND roll_number_10th != ''
-),
--- Priority 2: Poojita 2024 (2024 cohort)
-b10_link_poojita AS (
-    SELECT b12.yr12, b12.roll12, '2022' AS yr10, p.roll_10th AS roll10, 'poojita_2024' AS b10_src
-    FROM b12
-    JOIN poojita24 p ON p.roll_12th = b12.roll12
-    WHERE b12.yr12 = '2024' AND p.roll_10th IS NOT NULL
-),
--- Priority 3: name match fallback (all cohorts, unambiguous only)
-b10_link_name_raw AS (
-    SELECT b12.yr12, b12.roll12,
-           CAST(CAST(b12.yr12 AS INT64)-2 AS STRING) AS yr10,
-           b10.roll10,
-           COUNT(*) OVER (PARTITION BY b12.roll12, b12.yr12) AS match_cnt
-    FROM b12
-    -- skip cohorts already handled above
-    LEFT JOIN b10_link_direct  dir ON dir.roll12 = b12.roll12 AND dir.yr12 = b12.yr12
-    LEFT JOIN b10_link_poojita poj ON poj.roll12 = b12.roll12 AND poj.yr12 = b12.yr12
-    JOIN b10 ON b10.norm_name = b12.norm_name
-             AND b10.yr10 = CAST(CAST(b12.yr12 AS INT64)-2 AS STRING)
-    WHERE dir.roll12 IS NULL AND poj.roll12 IS NULL
-),
-b10_link_name AS (
-    SELECT yr12, roll12, yr10, roll10, 'name_match' AS b10_src
-    FROM b10_link_name_raw WHERE match_cnt = 1
-),
--- Combine all b10 links (no overlap — each priority excludes the previous)
-b10_link AS (
-    SELECT * FROM b10_link_direct
-    UNION ALL SELECT * FROM b10_link_poojita
-    UNION ALL SELECT * FROM b10_link_name
-),
+    # ── map every JEE / NEET record to its student_key ─────────────────────────
+    jmap = pd.concat([
+        pd.DataFrame({"student_key": "b12:" + jee_link.yr12 + ":" + jee_link.roll12,
+                      "jee_test_year": jee_link.jee_yr, "jee_application_no": jee_link.jee_app_no,
+                      "jee_link_source": jee_link.jee_src}),
+        jee_link_p10.rename(columns={"jee_yr": "jee_test_year", "jee_app_no": "jee_application_no",
+                                     "jee_src": "jee_link_source"}),
+        jee_link_b10f.rename(columns={"jee_yr": "jee_test_year", "jee_app_no": "jee_application_no",
+                                      "jee_src": "jee_link_source"}),
+        pd.DataFrame({"student_key": entrance[entrance.exam == "jee"].student_key,
+                      "jee_test_year": entrance[entrance.exam == "jee"].test_year,
+                      "jee_application_no": entrance[entrance.exam == "jee"].application_no,
+                      "jee_link_source": "entrance_identity"}),
+    ], ignore_index=True)
+    nmap = pd.concat([
+        pd.DataFrame({"student_key": "b12:" + neet_link.yr12 + ":" + neet_link.roll12,
+                      "neet_test_year": neet_link.neet_yr, "neet_application_no": neet_link.neet_app_no,
+                      "neet_link_source": neet_link.neet_src}),
+        neet_link_p10.rename(columns={"neet_yr": "neet_test_year", "neet_app_no": "neet_application_no",
+                                      "neet_src": "neet_link_source"}),
+        pd.DataFrame({"student_key": entrance[entrance.exam == "neet"].student_key,
+                      "neet_test_year": entrance[entrance.exam == "neet"].test_year,
+                      "neet_application_no": entrance[entrance.exam == "neet"].application_no,
+                      "neet_link_source": "entrance_identity"}),
+    ], ignore_index=True)
 
--- ── board_12th → JEE linking ──────────────────────────────────────────────────
--- Priority 1: Poojita 2024
-jee_link_poojita AS (
-    SELECT b12.yr12, b12.roll12, '2024' AS jee_yr, p.jee_app_no, 'poojita_2024' AS jee_src
-    FROM b12
-    JOIN poojita24 p ON p.roll_12th = b12.roll12
-    WHERE b12.yr12 = '2024' AND p.jee_app_no IS NOT NULL
-),
--- Priority 2: name + father name match (unambiguous only, for all cohorts)
--- board_12th has 0 DOB but 100% father/mother name — use father name to disambiguate
-jee_link_name_raw AS (
-    SELECT b12.yr12, b12.roll12, jee.test_year AS jee_yr, jee.application_no AS jee_app_no,
-           COUNT(*) OVER (PARTITION BY b12.roll12, b12.yr12, jee.test_year) AS match_cnt
-    FROM b12
-    LEFT JOIN jee_link_poojita poj ON poj.roll12 = b12.roll12 AND poj.yr12 = b12.yr12
-    JOIN jee ON jee.norm_name   = b12.norm_name
-            AND jee.norm_father = b12.norm_father
-            AND CAST(jee.test_year AS INT64) BETWEEN CAST(b12.yr12 AS INT64)
-                                                 AND CAST(b12.yr12 AS INT64) + 2
-    WHERE poj.roll12 IS NULL AND jee.norm_name != '' AND b12.norm_father != ''
-      AND jee.norm_father != ''
-),
-jee_link_name AS (
-    SELECT yr12, roll12, jee_yr, jee_app_no, 'name_father_match' AS jee_src
-    FROM jee_link_name_raw WHERE match_cnt = 1
-),
-jee_link AS (
-    SELECT * FROM jee_link_poojita
-    UNION ALL SELECT * FROM jee_link_name
-),
+    # ── attempts: one row per (student_key, attempt_year) ──────────────────────
+    au = pd.concat([
+        pd.DataFrame({"student_key": jmap.student_key, "yr": jmap.jee_test_year,
+                      "jee_app": jmap.jee_application_no, "jee_src": jmap.jee_link_source,
+                      "neet_app": pd.NA, "neet_src": pd.NA}),
+        pd.DataFrame({"student_key": nmap.student_key, "yr": nmap.neet_test_year,
+                      "jee_app": pd.NA, "jee_src": pd.NA,
+                      "neet_app": nmap.neet_application_no, "neet_src": nmap.neet_link_source}),
+    ], ignore_index=True)
+    attempts = au.groupby(["student_key", "yr"], as_index=False).agg(
+        jee_application_no=("jee_app", "max"), jee_link_source=("jee_src", "max"),
+        neet_application_no=("neet_app", "max"), neet_link_source=("neet_src", "max"))
+    attempts = attempts.rename(columns={"yr": "attempt_year"})
 
--- ── board_12th → NEET linking ─────────────────────────────────────────────────
--- Priority 1: Poojita 2024
-neet_link_poojita AS (
-    SELECT b12.yr12, b12.roll12, '2024' AS neet_yr, p.neet_app_no, 'poojita_2024' AS neet_src
-    FROM b12
-    JOIN poojita24 p ON p.roll_12th = b12.roll12
-    WHERE b12.yr12 = '2024' AND p.neet_app_no IS NOT NULL
-),
--- Priority 2: name + father name match (unambiguous only)
-neet_link_name_raw AS (
-    SELECT b12.yr12, b12.roll12, neet.test_year AS neet_yr, neet.application_no AS neet_app_no,
-           COUNT(*) OVER (PARTITION BY b12.roll12, b12.yr12, neet.test_year) AS match_cnt
-    FROM b12
-    LEFT JOIN neet_link_poojita poj ON poj.roll12 = b12.roll12 AND poj.yr12 = b12.yr12
-    JOIN neet ON neet.norm_name   = b12.norm_name
-             AND neet.norm_father = b12.norm_father
-             AND CAST(neet.test_year AS INT64) BETWEEN CAST(b12.yr12 AS INT64)
-                                                   AND CAST(b12.yr12 AS INT64) + 2
-    WHERE poj.roll12 IS NULL AND neet.norm_name != '' AND b12.norm_father != ''
-      AND neet.norm_father != ''
-),
-neet_link_name AS (
-    SELECT yr12, roll12, neet_yr, neet_app_no, 'name_father_match' AS neet_src
-    FROM neet_link_name_raw WHERE match_cnt = 1
-),
-neet_link AS (
-    SELECT * FROM neet_link_poojita
-    UNION ALL SELECT * FROM neet_link_name
-),
+    # ── per-student identity (name / dob / parents / direct avanti id) ─────────
+    idc_cols = ["student_key", "src", "norm_name", "norm_father", "norm_mother", "dob", "avanti_id"]
 
--- ── Assemble one row per (b12_roll, b12_year, jee_year, neet_year) ────────────
--- Start from all JEE + NEET links; students with neither still get a row from b12
-all_exam_links AS (
-    -- JEE rows
-    SELECT yr12, roll12, jee_yr, jee_app_no, jee_src, NULL AS neet_yr, NULL AS neet_app_no, NULL AS neet_src
-    FROM jee_link
-    UNION ALL
-    -- NEET rows
-    SELECT yr12, roll12, NULL, NULL, NULL, neet_yr, neet_app_no, neet_src
-    FROM neet_link
-),
--- Merge JEE and NEET rows for the same (roll12, yr12) into one row where test years match
-exam_combined AS (
-    SELECT yr12, roll12,
-        jee_yr, jee_app_no, jee_src,
-        neet_yr, neet_app_no, neet_src,
-        -- merge JEE+NEET for same student same year into one row
-        ROW_NUMBER() OVER (PARTITION BY yr12, roll12, COALESCE(jee_yr, neet_yr)
-                           ORDER BY jee_app_no, neet_app_no) AS _rn
-    FROM (
-        SELECT yr12, roll12,
-            MAX(CASE WHEN jee_app_no IS NOT NULL THEN jee_yr END)   AS jee_yr,
-            MAX(jee_app_no)  AS jee_app_no,
-            MAX(jee_src)     AS jee_src,
-            MAX(CASE WHEN neet_app_no IS NOT NULL THEN neet_yr END) AS neet_yr,
-            MAX(neet_app_no) AS neet_app_no,
-            MAX(neet_src)    AS neet_src
-        FROM all_exam_links
-        GROUP BY yr12, roll12, COALESCE(jee_yr, neet_yr)
-    )
-),
--- b12 students with no JEE and no NEET also get a row
-base AS (
-    SELECT b12.yr12, b12.roll12,
-        ec.jee_yr, ec.jee_app_no, ec.jee_src,
-        ec.neet_yr, ec.neet_app_no, ec.neet_src
-    FROM b12
-    LEFT JOIN exam_combined ec ON ec.roll12 = b12.roll12 AND ec.yr12 = b12.yr12 AND ec._rn = 1
-    -- for retakers: there are additional rows in exam_combined beyond _rn=1
-    UNION ALL
-    SELECT ec.yr12, ec.roll12, ec.jee_yr, ec.jee_app_no, ec.jee_src,
-           ec.neet_yr, ec.neet_app_no, ec.neet_src
-    FROM exam_combined ec
-    WHERE ec._rn > 1
-),
+    def _idc(df, key, src, has_dob=True, avanti_col=None):
+        out = pd.DataFrame({
+            "student_key": key, "src": src,
+            "norm_name": df["norm_name"].values, "norm_father": df["norm_father"].values,
+            "norm_mother": df["norm_mother"].values,
+            "dob": df["dob"].values if has_dob else pd.NA,
+            "avanti_id": df[avanti_col].values if avanti_col else pd.NA,
+        })
+        return out[idc_cols]
 
--- ── Enrich with identity fields ───────────────────────────────────────────────
-enriched AS (
-    SELECT
-        base.yr12                                         AS board_12th_exam_year,
-        base.roll12                                       AS board_12th_roll_number,
-        b10_link.yr10                                     AS board_10th_exam_year,
-        b10_link.roll10                                   AS board_10th_roll_number,
-        b10_link.b10_src,
-        base.jee_yr                                       AS jee_test_year,
-        base.jee_app_no                                   AS jee_application_no,
-        base.jee_src,
-        base.neet_yr                                      AS neet_test_year,
-        base.neet_app_no                                  AS neet_application_no,
-        base.neet_src,
-        -- best name: prefer b12 (always present), use JEE/NEET as fallback
-        COALESCE(b12.norm_name, jee.norm_name, neet.norm_name)   AS norm_name,
-        -- DOB: b10 is the gold standard (12th has no DOB), JEE/NEET as fallback
-        COALESCE(b10.dob, jee.dob, neet.dob)                     AS dob,
-        -- parent names: pool from b10 and JEE/NEET
-        COALESCE(
-            NULLIF(b10.norm_father, ''),
-            NULLIF(jee.norm_father, ''),
-            NULLIF(neet.norm_father, '')
-        )                                                           AS norm_father,
-        COALESCE(
-            NULLIF(b10.norm_mother, ''),
-            NULLIF(jee.norm_mother, ''),
-            NULLIF(neet.norm_mother, '')
-        )                                                           AS norm_mother,
-        -- direct Avanti ID: JEE 2025 avanti_studentid, NEET student_id, Poojita 2025
-        COALESCE(
-            NULLIF(jee.avanti_studentid, ''),
-            NULLIF(neet.avanti_student_id, ''),
-            p25.avanti_student_id
-        )                                                           AS source_avanti_student_id
-    FROM base
-    LEFT JOIN b12       ON b12.roll12  = base.roll12 AND b12.yr12 = base.yr12
-    LEFT JOIN b10_link  ON b10_link.roll12 = base.roll12 AND b10_link.yr12 = base.yr12
-    LEFT JOIN b10       ON b10.roll10  = b10_link.roll10 AND b10.yr10 = b10_link.yr10
-    LEFT JOIN jee       ON jee.application_no = base.jee_app_no AND jee.test_year = base.jee_yr
-    LEFT JOIN neet      ON neet.application_no = base.neet_app_no AND neet.test_year = base.neet_yr
-    LEFT JOIN poojita25 p25 ON p25.roll_10th = b10_link.roll10
-),
+    idc_b12 = _idc(b12, "b12:" + b12.yr12 + ":" + b12.roll12, "b12", has_dob=False)
+    b10l = (b10_link.merge(b10, on=["yr10", "roll10"])
+            .merge(p25[["roll_10th", "avanti_student_id"]], left_on="roll10", right_on="roll_10th", how="left"))
+    idc_b10l = _idc(b10l, "b12:" + b10l.yr12 + ":" + b10l.roll12, "b10", avanti_col="avanti_student_id")
+    no12b = no12[["roll_10th"]].drop_duplicates().merge(b10[b10.yr10 == "2022"], left_on="roll_10th", right_on="roll10")
+    idc_no12 = _idc(no12b, "b10:2022:" + no12b.roll_10th, "b10")
+    idc_fr = _idc(fr, "b10:" + fr.yr10 + ":" + fr.roll10, "b10")
+    jmj = jmap.merge(jee, left_on=["jee_application_no", "jee_test_year"], right_on=["application_no", "test_year"])
+    idc_jee = _idc(jmj, jmj.student_key, "jee", avanti_col="avanti_id")
+    nmj = nmap.merge(neet, left_on=["neet_application_no", "neet_test_year"], right_on=["application_no", "test_year"])
+    idc_neet = _idc(nmj, nmj.student_key, "neet", avanti_col="avanti_id")
+    id_contrib = pd.concat([idc_b12, idc_b10l, idc_no12, idc_fr, idc_jee, idc_neet], ignore_index=True)
 
--- ── Avanti FK matching ────────────────────────────────────────────────────────
-avanti AS (
-    SELECT DISTINCT pk_student_id, date_of_birth,
-        UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\\s+', ' ')))       AS norm_name,
-        UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))) AS norm_father,
-        UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))) AS norm_mother,
-        SAFE.DATE(EXTRACT(YEAR FROM date_of_birth), EXTRACT(DAY FROM date_of_birth), EXTRACT(MONTH FROM date_of_birth)) AS dob_swapped
-    FROM {_DIM}
-    WHERE (LOWER(COALESCE(student_school,'')) LIKE '%jnv%'
-        OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')
-      AND student_grade = 12
-      AND academic_year IN ('2021-2022','2022-2023','2023-2024','2024-2025','2025-2026','2026-2027')
-      AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL
-    UNION ALL
-    SELECT DISTINCT pk_student_id, date_of_birth,
-        UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\\s+', ' ')))       AS norm_name,
-        UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\\s+', ' '))) AS norm_father,
-        UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\\s+', ' '))) AS norm_mother,
-        SAFE.DATE(EXTRACT(YEAR FROM date_of_birth), EXTRACT(DAY FROM date_of_birth), EXTRACT(MONTH FROM date_of_birth)) AS dob_swapped
-    FROM {_DIMH}
-    WHERE (LOWER(COALESCE(student_school,'')) LIKE '%jnv%'
-        OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')
-      AND student_grade = 12
-      AND academic_year IN ('2021-2022','2022-2023','2023-2024','2024-2025','2025-2026','2026-2027')
-      AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL
-),
--- Pass 1: direct Avanti ID
-fk_direct AS (
-    SELECT e.board_12th_roll_number, e.board_12th_exam_year, e.jee_test_year, e.neet_test_year,
-        e.source_avanti_student_id AS fk_avanti_student_id, 'direct_student_id' AS match_confidence, 1 AS match_count
-    FROM enriched e
-    WHERE e.source_avanti_student_id IS NOT NULL
-      AND EXISTS (SELECT 1 FROM avanti a WHERE a.pk_student_id = e.source_avanti_student_id)
-),
--- Pass 2: name + DOB exact (using b10 DOB)
-fk_p2_raw AS (
-    SELECT e.board_12th_roll_number, e.board_12th_exam_year, e.jee_test_year, e.neet_test_year,
-        COUNT(DISTINCT a.pk_student_id) AS cnt, ANY_VALUE(a.pk_student_id) AS candidate_id
-    FROM enriched e
-    LEFT JOIN fk_direct fd ON fd.board_12th_roll_number = e.board_12th_roll_number
-                           AND fd.board_12th_exam_year  = e.board_12th_exam_year
-                           AND IFNULL(fd.jee_test_year, '')  = IFNULL(e.jee_test_year, '')
-                           AND IFNULL(fd.neet_test_year, '') = IFNULL(e.neet_test_year, '')
-    JOIN avanti a ON a.norm_name = e.norm_name AND a.date_of_birth = e.dob
-    WHERE fd.board_12th_roll_number IS NULL AND e.norm_name IS NOT NULL AND e.dob IS NOT NULL
-    GROUP BY 1, 2, 3, 4
-),
-fk_p2 AS (
-    SELECT *, CASE WHEN cnt=1 THEN candidate_id ELSE NULL END AS fk_avanti_student_id,
-        'name_dob' AS match_confidence, cnt AS match_count
-    FROM fk_p2_raw
-),
--- Pass 3: name + DOB swapped (DD/MM transposition)
-fk_p3_raw AS (
-    SELECT e.board_12th_roll_number, e.board_12th_exam_year, e.jee_test_year, e.neet_test_year,
-        COUNT(DISTINCT a.pk_student_id) AS cnt, ANY_VALUE(a.pk_student_id) AS candidate_id
-    FROM enriched e
-    LEFT JOIN fk_direct fd ON fd.board_12th_roll_number = e.board_12th_roll_number
-                           AND fd.board_12th_exam_year  = e.board_12th_exam_year
-                           AND IFNULL(fd.jee_test_year, '')  = IFNULL(e.jee_test_year, '')
-                           AND IFNULL(fd.neet_test_year, '') = IFNULL(e.neet_test_year, '')
-    LEFT JOIN fk_p2 p2 ON p2.board_12th_roll_number = e.board_12th_roll_number
-                       AND p2.board_12th_exam_year  = e.board_12th_exam_year
-                       AND IFNULL(p2.jee_test_year, '')  = IFNULL(e.jee_test_year, '')
-                       AND IFNULL(p2.neet_test_year, '') = IFNULL(e.neet_test_year, '')
-    JOIN avanti a ON a.norm_name = e.norm_name AND a.dob_swapped = e.dob
-    WHERE fd.board_12th_roll_number IS NULL AND p2.board_12th_roll_number IS NULL
-      AND e.norm_name IS NOT NULL AND e.dob IS NOT NULL
-    GROUP BY 1, 2, 3, 4
-),
-fk_p3 AS (
-    SELECT *, CASE WHEN cnt=1 THEN candidate_id ELSE NULL END AS fk_avanti_student_id,
-        'name_dob_swapped' AS match_confidence, cnt AS match_count
-    FROM fk_p3_raw
-),
--- Combine FK passes
-fk_all AS (
-    SELECT board_12th_roll_number, board_12th_exam_year, jee_test_year, neet_test_year,
-        fk_avanti_student_id, match_confidence, match_count
-    FROM fk_direct
-    UNION ALL
-    SELECT board_12th_roll_number, board_12th_exam_year, jee_test_year, neet_test_year,
-        fk_avanti_student_id, match_confidence, match_count
-    FROM fk_p2
-    UNION ALL
-    SELECT board_12th_roll_number, board_12th_exam_year, jee_test_year, neet_test_year,
-        fk_avanti_student_id, match_confidence, match_count
-    FROM fk_p3
-)
+    keys = pd.Index(id_contrib.student_key.unique(), name="student_key")
+    sid = pd.DataFrame(index=keys)
+    sid["norm_name"]  = _coalesce_by_source(id_contrib, "norm_name", ["b12", "b10", "jee", "neet"])
+    sid["norm_father"] = _coalesce_by_source(id_contrib, "norm_father", ["b12", "b10", "jee", "neet"])
+    sid["dob"] = _coalesce_by_source(id_contrib, "dob", ["b10", "jee", "neet"], is_date=True)
+    sid["source_avanti_student_id"] = _coalesce_by_source(id_contrib, "avanti_id", ["jee", "neet", "b10"])
+    sid = sid.reset_index()
 
--- ── Final output ──────────────────────────────────────────────────────────────
-SELECT
-    e.board_12th_exam_year,
-    e.board_12th_roll_number,
-    e.board_10th_exam_year,
-    e.board_10th_roll_number,
-    e.b10_src                AS board_10th_link_source,
-    e.jee_test_year,
-    e.jee_application_no,
-    e.jee_src                AS jee_link_source,
-    e.neet_test_year,
-    e.neet_application_no,
-    e.neet_src               AS neet_link_source,
-    e.norm_name,
-    e.dob,
-    e.norm_father,
-    e.norm_mother,
-    e.source_avanti_student_id,
-    fk.fk_avanti_student_id,
-    fk.match_confidence,
-    fk.match_count
-FROM enriched e
-LEFT JOIN fk_all fk
-    ON  fk.board_12th_roll_number = e.board_12th_roll_number
-    AND fk.board_12th_exam_year   = e.board_12th_exam_year
-    AND IFNULL(fk.jee_test_year,  '') = IFNULL(e.jee_test_year,  '')
-    AND IFNULL(fk.neet_test_year, '') = IFNULL(e.neet_test_year, '')
-"""
+    # ── Avanti FK (priority: direct id → name+dob → name+dob-swapped) ──────────
+    fk_resolved = _match_fk(sid, avanti, all_ids)
+
+    # ── student master (disjoint spine keys → concat) ──────────────────────────
+    master_cols = ["student_key", "cohort_year", "cohort_year_source",
+                   "board_12th_exam_year", "board_12th_roll_number",
+                   "board_10th_exam_year", "board_10th_roll_number", "board_10th_link_source"]
+    master = pd.concat([spine_12th, spine_poojita_b10, spine_b10_frontier, entrance_students],
+                       ignore_index=True)
+    for c in master_cols:
+        if c not in master:
+            master[c] = pd.NA
+    master = master[master_cols].drop_duplicates("student_key")
+
+    # attach FK + explode to attempts
+    spine = master.merge(fk_resolved, on="student_key", how="left") \
+                  .merge(attempts, on="student_key", how="left")
+    spine["jee_test_year"]  = spine.attempt_year.where(spine.jee_application_no.notna())
+    spine["neet_test_year"] = spine.attempt_year.where(spine.neet_application_no.notna())
+    return spine
 
 
+def _match_fk(sid: pd.DataFrame, avanti: pd.DataFrame, all_ids: set) -> pd.DataFrame:
+    # Direct id validated against the FULL pk universe (a production-supplied
+    # student_id may sit under a non-JNV label); name/DOB matched against the
+    # tighter JNV-grade-12 `avanti` frame to avoid false positives.
+    cand_cols = ["student_key", "fk", "pri", "conf", "cnt"]
+
+    direct = sid[_ne(sid.source_avanti_student_id) & sid.source_avanti_student_id.isin(all_ids)].copy()
+    direct = pd.DataFrame({"student_key": direct.student_key, "fk": direct.source_avanti_student_id,
+                           "pri": 1, "conf": "direct_student_id", "cnt": 1})
+
+    def _name_match(right_dob_col, pri, conf):
+        m = sid[sid.norm_name.notna() & sid.dob.notna()].merge(
+            avanti[["pk_student_id", "norm_name", right_dob_col]],
+            left_on=["norm_name", "dob"], right_on=["norm_name", right_dob_col])
+        g = m.groupby("student_key").agg(cnt=("pk_student_id", "nunique"),
+                                         cand=("pk_student_id", "first")).reset_index()
+        return pd.DataFrame({"student_key": g.student_key,
+                             "fk": g.cand.where(g.cnt == 1), "pri": pri, "conf": conf, "cnt": g.cnt})
+
+    nd  = _name_match("dob", 2, "name_dob")
+    nds = _name_match("dob_swapped", 3, "name_dob_swapped")
+
+    cand = pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols]], ignore_index=True)
+    # prefer candidates with a real fk (fk-present first), then lowest priority.
+    cand["fk_isnull"] = cand.fk.isna()
+    cand = cand.sort_values(["student_key", "fk_isnull", "pri"]).drop_duplicates("student_key", keep="first")
+    cand["match_confidence"] = cand.conf.where(cand.fk.notna(),
+                                               other=pd.Series("ambiguous", index=cand.index).where(cand.cnt > 1))
+    return cand.rename(columns={"fk": "fk_avanti_student_id", "cnt": "match_count"})[
+        ["student_key", "fk_avanti_student_id", "match_confidence", "match_count"]]
+
+
+def _enrich(spine: pd.DataFrame, marks: dict) -> pd.DataFrame:
+    df = (spine
+          .merge(marks["b10_marks"], on=["board_10th_exam_year", "board_10th_roll_number"], how="left")
+          .merge(marks["b12_marks"], on=["board_12th_exam_year", "board_12th_roll_number"], how="left")
+          .merge(marks["jee_results"], on=["jee_test_year", "jee_application_no"], how="left")
+          .merge(marks["neet_results"], on=["neet_test_year", "neet_application_no"], how="left")
+          .merge(marks["program_lookup"], on="fk_avanti_student_id", how="left"))
+    for c in _FINAL_COLS:
+        if c not in df:
+            df[c] = pd.NA
+    return df[_FINAL_COLS]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 def main() -> None:
     from google.cloud import bigquery
-    from google.cloud.bigquery import QueryJobConfig, WriteDisposition
+    from google.cloud.bigquery import LoadJobConfig, WriteDisposition
+    from google.cloud.exceptions import NotFound
+
+    parser = argparse.ArgumentParser(
+        description="Build jnv_student_outcome_mapping. Default rebuilds ALL cohorts in one pass; "
+                    "--year refreshes just one cohort idempotently.")
+    parser.add_argument("--year", default=None,
+                        help="refresh only this cohort_year (idempotent delete+insert). "
+                             "Omit to rebuild the whole table.")
+    args = parser.parse_args()
+    year = str(args.year) if args.year else None
+
+    for f in (_POOJITA, _JEE_2025_RAW, _JEE_2024_RAW):
+        if not f.exists():
+            print(f"ERROR: reference file not found: {f}")
+            sys.exit(1)
 
     client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
 
-    if not _POOJITA.exists():
-        print(f"ERROR: Poojita file not found: {_POOJITA}")
-        sys.exit(1)
+    print("Reading reference sheets (local Excel) ...")
+    refs = _read_refs()
+    print("Reading source frames from BigQuery (aggregated) ...")
+    src = _read_sources(client)
+    avanti, all_ids = _read_avanti(client)
+    prod = _read_prod_fk(client)
+    marks = _read_marks(client)
 
-    print("Uploading reference sheets ...")
-    tmp24, tmp25, tmp_jee25_avanti = _upload_reference_tables(client)
+    # Resolve the entire cross-year identity universe ONCE; slice afterwards.
+    print(f"\nResolving student identities (pandas) ...")
+    out = _enrich(_resolve(src, refs, avanti, prod, all_ids), marks)
 
-    try:
-        sql = _build_sql(tmp24, tmp25, tmp_jee25_avanti)
-        print(f"\nBuilding {_OUT} ...")
-        job = client.query(
-            sql,
-            job_config=QueryJobConfig(
-                destination=_OUT,
-                write_disposition=WriteDisposition.WRITE_TRUNCATE,
-                create_disposition="CREATE_IF_NEEDED",
-            ),
-        )
-        job.result()
+    if year is None:
+        print(f"\nFull rebuild → {_OUT}: {len(out):,} rows, {out.student_key.nunique():,} students")
+        client.load_table_from_dataframe(
+            out, _OUT,
+            job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
+        ).result()
+    else:
+        out = out[out.cohort_year == year]
+        print(f"\nRefreshing cohort {year} → {_OUT}: {len(out):,} rows, "
+              f"{out.student_key.nunique():,} students")
+        # create fresh if table is absent / old schema; else idempotent delete+insert.
+        try:
+            cols = {f.name for f in client.get_table(_OUT).schema}
+            new_schema = {"cohort_year", "student_key"} <= cols
+        except NotFound:
+            new_schema = False
+        if not new_schema:
+            print("  (table absent or old schema — creating fresh with just this cohort)")
+            client.load_table_from_dataframe(
+                out, _OUT,
+                job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
+            ).result()
+        else:
+            client.query(f"DELETE FROM `{_OUT}` WHERE cohort_year = '{year}'").result()
+            # force df → existing table schema so an all-null column can't drift the type.
+            client.load_table_from_dataframe(
+                out, _OUT,
+                job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_APPEND,
+                                         schema=client.get_table(_OUT).schema),
+            ).result()
 
-        tbl = client.get_table(_OUT)
-        print(f"  ✓ {tbl.num_rows:,} rows written to {_OUT}")
-
-        # Quick coverage summary
-        summary_sql = f"""
-        SELECT
-            board_12th_exam_year,
-            COUNT(*) AS total_rows,
-            COUNTIF(board_10th_roll_number IS NOT NULL)  AS has_b10,
-            COUNTIF(jee_application_no IS NOT NULL)      AS has_jee,
-            COUNTIF(neet_application_no IS NOT NULL)     AS has_neet,
-            COUNTIF(fk_avanti_student_id IS NOT NULL)    AS has_fk,
-            COUNTIF(source_avanti_student_id IS NOT NULL) AS has_direct_id
-        FROM `{_OUT}`
-        GROUP BY 1 ORDER BY 1
-        """
-        print(f"\n{'yr12':<6} {'rows':>7} {'b10':>7} {'jee':>7} {'neet':>7} {'fk':>7} {'direct_id':>10}")
-        print("-" * 58)
-        for r in client.query(summary_sql).result():
-            print(
-                f"  {r.board_12th_exam_year:<4}"
-                f"  {r.total_rows:>7,}"
-                f"  {r.has_b10:>7,}"
-                f"  {r.has_jee:>7,}"
-                f"  {r.has_neet:>7,}"
-                f"  {r.has_fk:>7,}"
-                f"  {r.has_direct_id:>10,}"
-            )
-
-    finally:
-        client.delete_table(tmp24, not_found_ok=True)
-        client.delete_table(tmp25, not_found_ok=True)
-        client.delete_table(tmp_jee25_avanti, not_found_ok=True)
-        print("\nTemp tables cleaned up.")
-        print("Done.")
+    # coverage summary (all cohorts in the table)
+    summary_sql = f"""
+        SELECT cohort_year,
+            COUNT(*)                                  AS total_rows,
+            COUNT(DISTINCT student_key)               AS students,
+            COUNTIF(board_10th_exam_year IS NOT NULL) AS has_b10,
+            COUNTIF(board_12th_exam_year IS NOT NULL) AS has_b12,
+            COUNTIF(jee_test_year  IS NOT NULL)       AS has_jee,
+            COUNTIF(neet_test_year IS NOT NULL)       AS has_neet,
+            COUNTIF(fk_avanti_student_id IS NOT NULL) AS has_fk
+        FROM `{_OUT}` GROUP BY 1 ORDER BY cohort_year
+    """
+    print(f"\n{'cohort':<7} {'rows':>8} {'students':>9} {'b10':>8} {'b12':>8} "
+          f"{'jee':>8} {'neet':>8} {'fk':>8}")
+    print("-" * 70)
+    for r in client.query(summary_sql).result():
+        print(f"  {r.cohort_year:<5}  {r.total_rows:>8,}  {r.students:>9,}  {r.has_b10:>8,}  "
+              f"{r.has_b12:>8,}  {r.has_jee:>8,}  {r.has_neet:>8,}  {r.has_fk:>8,}")
+    print("\nDone.")
 
 
 if __name__ == "__main__":
