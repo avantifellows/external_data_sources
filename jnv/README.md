@@ -143,3 +143,16 @@ gs://avantifellows-external-data/
   jnv/clean/jnv_fact_board_results_10th.parquet
   jnv/clean/jnv_fact_board_results_12th.parquet
 ```
+
+## Source provenance
+
+The authoritative raw sources live in **GCS** at `gs://avantifellows-external-data/jnv/raw/`
+(`.csv` / `.parquet`, one per upstream Excel — see the GCS layout above). These have been
+verified against the loaded BigQuery tables by Priyanka.
+
+The same raw source files are also **mirrored in Google Drive** for convenience:
+<https://drive.google.com/drive/folders/1cZYTEesgr1vcLF5GVffsAkPPSLs9whyW> (includes the 2025
+NTA files and Dakshana's self-reported data). GCS is the source of truth for the pipeline; the
+Drive copy is a human-browsable backup — keep them in sync when new source files arrive.
+
+Recorded per avantifellows/external_data_sources#28.
