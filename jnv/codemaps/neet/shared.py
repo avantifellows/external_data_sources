@@ -16,7 +16,7 @@ CANONICAL_COLS = [
     "student_full_name", "father_name", "mother_name",
     "dob", "student_gender", "category",
     # identifiers
-    "student_id", "school_code",
+    "school_code",
     # location
     "student_state", "place_of_school", "jnv_name",
     # 12th board
@@ -57,7 +57,6 @@ COLUMN_TYPES = {
     "dob":                          "str",
     "student_gender":               "gender",
     "category":                     "category",
-    "student_id":                   "str",
     "school_code":                  "str",
     "student_state":                "str",
     "place_of_school":              "str",
@@ -213,7 +212,7 @@ def apply_dtypes(df: "pd.DataFrame") -> "pd.DataFrame":
             pass
 
     # ID columns: strip trailing .0 from numeric reads (e.g. "4411109202.0" → "4411109202")
-    for col in ("application_no", "roll_no", "student_id", "school_code"):
+    for col in ("application_no", "roll_no", "school_code"):
         if col not in df.columns:
             continue
         def _clean_id(v):

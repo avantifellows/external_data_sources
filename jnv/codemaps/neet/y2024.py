@@ -24,7 +24,6 @@ CODEMAP = {
         "dob":                       ["DoB"],
         "student_gender":            ["Gender"],
         "category":                  ["Category"],
-        "student_id":                ["Student ID"],
         "jnv_name":                  ["JNV Name"],
         # 10th board
         "year_of_passing_10":        ["Year of Passing 10th"],

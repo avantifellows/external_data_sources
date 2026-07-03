@@ -125,6 +125,11 @@ server-side CTE graph → no planner-complexity errors). One in-memory pass buil
 then keys the resolved `fk_avanti_student_id`, `match_confidence`, `match_count`
 **back onto the four source tables** (jee, neet, board 10th/12th) on each table's grain.
 
+> ⚠️ **`fk_avanti_student_id` = `COALESCE(pk_student_id, apaar_id)`.** It's a
+> `pk_student_id` for most students, but an `apaar_id` for students who have no pk in
+> `dim_student` (only an apaar — mostly JNV NVS). Join back with
+> `COALESCE(pk_student_id, apaar_id) = fk_avanti_student_id`, not `pk_student_id` alone.
+
 ```bash
 .venv/bin/python scripts/build_student_journey_mapping.py            # rebuild ALL cohorts
 .venv/bin/python scripts/build_student_journey_mapping.py --year 2026 # refresh one cohort

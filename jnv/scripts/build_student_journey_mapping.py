@@ -42,10 +42,20 @@ Linkage priority (lowest number wins; "candidate-emit then keep-lowest-pri"):
     1. Poojita 2024 sheet  (12th↔10th↔JEE↔NEET roll/app crosswalk, 2024 cohort)
     2. roll_number_10th    (12th 2025 file → 10th direct) / JEE-2024 file rolls
     3. name (+father)      (12th→10th / 12th→JEE/NEET, unambiguous only)
-  Avanti FK:
+  Avanti FK (= COALESCE(pk_student_id, apaar_id) — see note below):
     1. direct_student_id   (JEE 2025 avanti_studentid, NEET student_id, Poojita)
     2. name + DOB          (DOB from board_10th — richest identity source)
     3. name + DOB swapped  (DD/MM transposition)
+    4. name_dob_fuzzy      (exact-DOB block + ≥2 shared name tokens AND token-
+                            Jaccard ≥ 0.5 — LAST resort, unambiguous only; catches
+                            token reorder/extra tokens, not initials-vs-full-name.
+                            Single-token hits are dropped as coincidence-prone.)
+
+⚠️ fk_avanti_student_id semantics: it is `pk_student_id` for MOST students, but for
+   students who have NO pk_student_id in dim_student (only an apaar_id — mostly JNV
+   NVS), it holds their `apaar_id` instead. So to join back to dim_student, match on
+   `COALESCE(pk_student_id, apaar_id) = fk_avanti_student_id`, not on pk_student_id
+   alone. Same for the fk written onto the source tables by add_avanti_fk.py.
 
 Output columns are LEAN and grouped by stage. The join keys (rolls, app numbers)
 and FK match metadata are retained because (a) they are the table's reason to
@@ -65,27 +75,16 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import BQ_PROJECT, BQ_DATASET, BQ_LOCATION
-
-_EDS  = f"`{BQ_PROJECT}.{BQ_DATASET}`"
-_DIM  = f"`{BQ_PROJECT}.production_dbt_final.dim_student`"
-_DIMH = f"`{BQ_PROJECT}.production_dbt_final.dim_student_historical`"
-_OUT  = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_outcome_mapping"
-
-_RAW = Path(__file__).resolve().parent.parent / "raw"
-_POOJITA      = _RAW / "mapping_files" / "12th & 10 Marks Mapping (Poojita Data).xlsx"
-_JEE_2025_RAW = _RAW / "jee_mains" / "JEE 2025 - All JNV Candidates.xlsx"
-_JEE_2024_RAW = _RAW / "jee_mains" / "JEE Mains 2024.xlsx"
-# 2024 NEET file carries the same board crosswalk as the JEE-2024 file:
-# application_no → 10th roll (100%), 12th roll (94%). Student ID is only ~1.5%
-# populated so it's not a useful direct id — the ROLLS are the lever.
-_NEET_2024_RAW = _RAW / "neet" / "NEET 2024.xlsx"
+from sources import (BQ_PROJECT, BQ_LOCATION,
+                     POOJITA, JEE_2024_RAW, JEE_2025_RAW, NEET_2024_RAW)
 
 # Final column order: key → cohort → fk + match meta → program → 10th → 12th → jee → neet.
-_FINAL_COLS = [
+FINAL_COLS = [
     "student_key", "cohort_year", "fk_avanti_student_id",
     "match_confidence", "match_count",
     "student_program", "student_product",
+    # stage-availability flags (student-level)
+    "has_10th_data", "has_12th_data", "has_jee_mains_data", "has_jee_adv_data", "has_neet_data",
     # 10th
     "board_10th_exam_year", "board_10th_roll_number",
     "marks_10_obtained", "result_10",
@@ -149,6 +148,28 @@ def _unambiguous(df: pd.DataFrame, group_keys: list[str]) -> pd.DataFrame:
     return df[sz == 1]
 
 
+# Token-set Jaccard for the fuzzy FK tier (last resort in _match_fk). Catches
+# token reordering / extra-or-missing tokens that exact norm_name equality
+# misses (common between NTA and dim_student name variants). Always DOB-blocked,
+# so the candidate set per name is tiny → false positives stay low. Does NOT
+# catch initials-vs-full-name ('S DEVI' vs 'SUNILA DEVI' → Jaccard 1/3) — that
+# residual needs a different signal. Mirrors the DOB-blocked fuzzy idea first
+# prototyped at board-10th clean time (the retired _add_fk_student_id, which used
+# BQ EDIT_DISTANCE); here it runs in pandas so uses token Jaccard (no extra dep).
+_FUZZY_JACCARD_MIN = 0.5
+# Require ≥2 name tokens to agree. A single shared token — even at Jaccard 1.0,
+# e.g. 'RAHUL' vs 'RAHUL' — is coincidence-prone within a same-age DOB block
+# (JNV cohorts cluster on ~2 birth years), so single-token hits are dropped.
+_FUZZY_MIN_SHARED = 2
+
+
+def _fuzzy_ok(a: str, b: str) -> bool:
+    """Fuzzy name match: ≥ _FUZZY_MIN_SHARED shared tokens AND Jaccard ≥ threshold."""
+    ta, tb = set(a.split()), set(b.split())
+    inter = len(ta & tb)
+    return inter >= _FUZZY_MIN_SHARED and inter / len(ta | tb) >= _FUZZY_JACCARD_MIN
+
+
 def _ent_key(name, father, dob, exam, yr, app, avanti_id) -> str:
     """
     Identity key for an entrance-only record (no 12th/10th anchor) — 3-tier HYBRID:
@@ -208,7 +229,7 @@ def _read_sources(client) -> dict:
                 ANY_VALUE({nnc('father_name')})  AS norm_father,
                 ANY_VALUE({nnc('mother_name')})  AS norm_mother,
                 ANY_VALUE(roll_number_10th)      AS roll_number_10th
-            FROM {_EDS}.jnv_fact_board_results_12th
+            FROM `avantifellows.external_data_sources.jnv_fact_board_results_12th`
             WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
             GROUP BY 1, 2""",
         "b10": f"""
@@ -218,7 +239,7 @@ def _read_sources(client) -> dict:
                     ANY_VALUE(SAFE.PARSE_DATE('%d%m%Y', LPAD(date_of_birth, 8, '0')))) AS dob,
                 ANY_VALUE({nnc('father_name')}) AS norm_father,
                 ANY_VALUE({nnc('mother_name')}) AS norm_mother
-            FROM {_EDS}.jnv_fact_board_results_10th
+            FROM `avantifellows.external_data_sources.jnv_fact_board_results_10th`
             WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
             GROUP BY 1, 2""",
         "jee": f"""
@@ -227,7 +248,7 @@ def _read_sources(client) -> dict:
                 FORMAT_DATE('%Y-%m-%d', ANY_VALUE({dob_parse})) AS dob,
                 ANY_VALUE({nnc('father_name')}) AS norm_father,
                 ANY_VALUE({nnc('mother_name')}) AS norm_mother
-            FROM {_EDS}.jnv_fact_jee_results
+            FROM `avantifellows.external_data_sources.jnv_fact_jee_results`
             WHERE application_no IS NOT NULL
             GROUP BY 1, 2""",
         "neet": f"""
@@ -235,9 +256,8 @@ def _read_sources(client) -> dict:
                 ANY_VALUE({nnc('student_full_name')}) AS norm_name,
                 FORMAT_DATE('%Y-%m-%d', ANY_VALUE({dob_parse})) AS dob,
                 ANY_VALUE({nnc('father_name')}) AS norm_father,
-                ANY_VALUE({nnc('mother_name')}) AS norm_mother,
-                ANY_VALUE(student_id)           AS avanti_id
-            FROM {_EDS}.jnv_fact_neet_results
+                ANY_VALUE({nnc('mother_name')}) AS norm_mother
+            FROM `avantifellows.external_data_sources.jnv_fact_neet_results`
             WHERE application_no IS NOT NULL
             GROUP BY 1, 2""",
     }
@@ -252,40 +272,52 @@ def _read_sources(client) -> dict:
 
 
 def _read_avanti(client) -> pd.DataFrame:
-    """JNV grade-12 students from dim_student (+ historical), with DOB & swapped DOB."""
+    """
+    JNV grade-12 students from dim_student (+ historical), with DOB & swapped DOB.
+
+    The Avanti id is `COALESCE(pk_student_id, apaar_id)`: some students (mostly JNV
+    NVS) have NO pk_student_id, only an apaar_id, so we fall back to apaar so they can
+    still be linked. This means `fk_avanti_student_id` in the output holds a pk for
+    most rows but an apaar_id for pk-less students — join on
+    `COALESCE(pk_student_id, apaar_id)`. (See schema note in student_journey_mapping.md.)
+    """
     name = r"UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\s+', ' ')))"
     swap = ("SAFE.DATE(EXTRACT(YEAR FROM date_of_birth),"
             " EXTRACT(DAY FROM date_of_birth), EXTRACT(MONTH FROM date_of_birth))")
-    years = "'2021-2022','2022-2023','2023-2024','2024-2025','2025-2026','2026-2027'"
+    years = "'2020-2021','2021-2022','2022-2023','2023-2024','2024-2025','2025-2026','2026-2027'"
     filt = (f"(LOWER(COALESCE(student_school,'')) LIKE '%jnv%'"
             f" OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')"
             f" AND student_grade = 12 AND academic_year IN ({years})"
             f" AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL")
     sql = f"""
-        SELECT DISTINCT pk_student_id,
+        SELECT DISTINCT COALESCE(pk_student_id, apaar_id) AS pk_student_id,
             FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
             {name} AS norm_name,
             FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped
-        FROM {_DIM}  WHERE {filt}
+        FROM `avantifellows.production_dbt_final.dim_student`  WHERE {filt}
         UNION ALL
-        SELECT DISTINCT pk_student_id,
+        SELECT DISTINCT COALESCE(pk_student_id, apaar_id) AS pk_student_id,
             FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
             {name} AS norm_name,
             FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped
-        FROM {_DIMH} WHERE {filt}
+        FROM `avantifellows.production_dbt_final.dim_student_historical` WHERE {filt}
     """
     df = client.query(sql).to_dataframe().drop_duplicates()
     for c in df.columns:
         df[c] = _S(df[c])  # dob / dob_swapped kept as 'YYYY-MM-DD' strings
 
-    # Full pk_student_id universe (NO JNV/grade filter) — used to validate a
-    # DIRECT FK (e.g. a production-supplied student_id may sit under a non-JNV
-    # label). Name/DOB matching still uses the tighter `df` frame above.
+    # Full id universe (NO JNV/grade filter) — used to validate a DIRECT FK (e.g. a
+    # production-supplied student_id may sit under a non-JNV label). Same
+    # COALESCE(pk_student_id, apaar_id) as above so apaar-only students validate too.
+    # Name/DOB matching still uses the tighter `df` frame above.
     all_ids = client.query(
-        f"SELECT pk_student_id FROM {_DIM} WHERE pk_student_id IS NOT NULL "
-        f"UNION DISTINCT SELECT pk_student_id FROM {_DIMH} WHERE pk_student_id IS NOT NULL"
+        "SELECT COALESCE(pk_student_id, apaar_id) AS id FROM `avantifellows.production_dbt_final.dim_student` "
+        "WHERE COALESCE(pk_student_id, apaar_id) IS NOT NULL "
+        "UNION DISTINCT "
+        "SELECT COALESCE(pk_student_id, apaar_id) FROM `avantifellows.production_dbt_final.dim_student_historical` "
+        "WHERE COALESCE(pk_student_id, apaar_id) IS NOT NULL"
     ).to_dataframe()
-    all_ids = set(_S(all_ids["pk_student_id"]).dropna())
+    all_ids = set(_S(all_ids["id"]).dropna())
     print(f"  read avanti {len(df):>6,} rows  ({len(all_ids):,} total pk ids)")
     return df, all_ids
 
@@ -300,7 +332,7 @@ def _read_marks(client) -> dict:
                 MAX(IF(UPPER(subject_name) LIKE '%MATH%',    SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_math,
                 MAX(IF(UPPER(subject_name) LIKE '%SCIENCE%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_science,
                 MAX(IF(UPPER(subject_name) LIKE '%ENGLISH%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_english
-            FROM {_EDS}.jnv_fact_board_results_10th
+            FROM `avantifellows.external_data_sources.jnv_fact_board_results_10th`
             WHERE roll_number IS NOT NULL AND exam_year IS NOT NULL GROUP BY 1, 2""",
         "b12_marks": f"""
             SELECT exam_year AS board_12th_exam_year, roll_number AS board_12th_roll_number,
@@ -310,7 +342,7 @@ def _read_marks(client) -> dict:
                 MAX(IF(UPPER(subject_name) LIKE '%CHEMIS%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_chemistry,
                 MAX(IF(UPPER(subject_name) LIKE '%MATH%',   SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_maths,
                 MAX(IF(UPPER(subject_name) LIKE '%BIOLOG%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_biology
-            FROM {_EDS}.jnv_fact_board_results_12th
+            FROM `avantifellows.external_data_sources.jnv_fact_board_results_12th`
             WHERE roll_number IS NOT NULL AND exam_year IS NOT NULL GROUP BY 1, 2""",
         "jee_results": f"""
             SELECT test_year AS jee_test_year, application_no AS jee_application_no,
@@ -322,7 +354,7 @@ def _read_marks(client) -> dict:
                 ANY_VALUE(adv_all_india_rank)     AS jee_adv_all_india_rank,
                 ANY_VALUE(adv_category_rank)      AS jee_adv_category_rank,
                 ANY_VALUE(adv_prep_category_rank) AS jee_adv_prep_category_rank
-            FROM {_EDS}.jnv_fact_jee_results
+            FROM `avantifellows.external_data_sources.jnv_fact_jee_results`
             WHERE application_no IS NOT NULL AND test_year IS NOT NULL GROUP BY 1, 2""",
         "neet_results": f"""
             SELECT test_year AS neet_test_year, application_no AS neet_application_no,
@@ -330,20 +362,24 @@ def _read_marks(client) -> dict:
                 ANY_VALUE(neet_all_india_rank) AS neet_air,
                 ANY_VALUE(neet_category_rank)  AS neet_category_rank,
                 ANY_VALUE(neet_qualified)      AS neet_qualified
-            FROM {_EDS}.jnv_fact_neet_results
+            FROM `avantifellows.external_data_sources.jnv_fact_neet_results`
             WHERE application_no IS NOT NULL AND test_year IS NOT NULL GROUP BY 1, 2""",
         "program_lookup": f"""
             SELECT fk_avanti_student_id, student_program, student_product FROM (
-                SELECT fk_avanti_student_id, student_program, student_product,
-                       ROW_NUMBER() OVER (PARTITION BY fk_avanti_student_id ORDER BY src) AS rn
-                FROM (
-                    SELECT pk_student_id AS fk_avanti_student_id, student_program,
-                           COALESCE(student_product_corrected, student_product) AS student_product, 1 AS src
-                    FROM {_DIM}
-                    UNION ALL
-                    SELECT pk_student_id, student_program, student_product, 2 AS src FROM {_DIMH}
-                )
-            ) WHERE rn = 1 AND fk_avanti_student_id IS NOT NULL""",
+                SELECT COALESCE(pk_student_id, apaar_id) AS fk_avanti_student_id, student_program,
+                       COALESCE(student_product_corrected, student_product) AS student_product,
+                       academic_year, 1 AS src
+                FROM `avantifellows.production_dbt_final.dim_student`
+                UNION ALL
+                SELECT COALESCE(pk_student_id, apaar_id), student_program, student_product, academic_year, 2 AS src
+                FROM `avantifellows.production_dbt_final.dim_student_historical`
+            )
+            WHERE fk_avanti_student_id IS NOT NULL
+            -- one row per student: prefer current dim over historical (src), then the
+            -- latest enrollment (academic_year) — matters for the 54k pks that appear
+            -- in multiple historical rows.
+            QUALIFY ROW_NUMBER() OVER (
+                PARTITION BY fk_avanti_student_id ORDER BY src, academic_year DESC) = 1""",
     }
     out = {}
     for k, sql in q.items():
@@ -396,27 +432,27 @@ def _read_prod_fk(client) -> dict:
 
 def _read_refs() -> dict:
     """Local Excel crosswalks — no upload."""
-    p24 = pd.read_excel(_POOJITA, sheet_name="Mapped Data (2024 Students)", dtype=str).rename(
+    p24 = pd.read_excel(POOJITA, sheet_name="Mapped Data (2024 Students)", dtype=str).rename(
         columns={"JEE application No": "jee_app_no", "NEET Application No": "neet_app_no",
                  "10th Roll No": "roll_10th", "12th Roll No": "roll_12th"})
     p24 = p24[["jee_app_no", "neet_app_no", "roll_10th", "roll_12th"]]
 
-    p25 = pd.read_excel(_POOJITA, sheet_name="Mapped Data (2025 Students)", dtype=str).rename(
+    p25 = pd.read_excel(POOJITA, sheet_name="Mapped Data (2025 Students)", dtype=str).rename(
         columns={"Avanti Student ID": "avanti_student_id", "10th Roll Number": "roll_10th"})
     p25 = p25[["avanti_student_id", "roll_10th"]]
 
-    j25 = pd.read_excel(_JEE_2025_RAW, sheet_name="JEE 2025 - All JNV Candidates",
+    j25 = pd.read_excel(JEE_2025_RAW.local_path, sheet_name=JEE_2025_RAW.sheet,
                         usecols=["JEEApplicationNumber", "avanti_studentid"], dtype=str).rename(
         columns={"JEEApplicationNumber": "application_no", "avanti_studentid": "avanti_student_id"})
 
-    j24 = pd.read_excel(_JEE_2024_RAW, sheet_name="JEE Mains",
+    j24 = pd.read_excel(JEE_2024_RAW.local_path, sheet_name=JEE_2024_RAW.sheet,
                         usecols=["Application Number", "10th Roll Number", "12th Roll Number", "Student ID"],
                         dtype=str).rename(
         columns={"Application Number": "application_no", "10th Roll Number": "roll_10",
                  "12th Roll Number": "roll_12", "Student ID": "student_id"})
 
     # NEET-2024 board crosswalk — same shape as jee24x (app → 10th/12th roll, Student ID).
-    n24 = pd.read_excel(_NEET_2024_RAW, sheet_name="Sheet1",
+    n24 = pd.read_excel(NEET_2024_RAW.local_path, sheet_name=NEET_2024_RAW.sheet,
                         usecols=["Application Number", "10th Roll Number", "12th Roll Number", "Student ID"],
                         dtype=str).rename(
         columns={"Application Number": "application_no", "10th Roll Number": "roll_10",
@@ -447,11 +483,13 @@ def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: s
     jee["avanti_id"] = _coalesce(jee["prod_sid"], jee["avanti_student_id"], jee["student_id"])
     jee = jee.drop(columns=["prod_sid", "avanti_student_id", "student_id"])
 
-    # NEET avanti id: production → jnv_fact source student_id → NEET-2024 file Student ID.
+    # NEET avanti id: production → NEET-2024 file Student ID.
+    # (jnv_fact_neet_results.student_id was dropped — it was only ~1.5% populated,
+    # all 2024, i.e. fully redundant with the NEET-2024 file that neet24x reads.)
     neet = (neet.merge(prod["neet"], on=["test_year", "application_no"], how="left")
                 .merge(n24x[["application_no", "student_id"]].rename(columns={"student_id": "n24_sid"}),
                        on="application_no", how="left"))
-    neet["avanti_id"] = _coalesce(neet["prod_sid"], neet["avanti_id"], neet["n24_sid"])
+    neet["avanti_id"] = _coalesce(neet["prod_sid"], neet["n24_sid"])
     neet = neet.drop(columns=["prod_sid", "n24_sid"])
 
     # ── b12 → b10 link ────────────────────────────────────────────────────────
@@ -721,7 +759,22 @@ def _match_fk(sid: pd.DataFrame, avanti: pd.DataFrame, all_ids: set) -> pd.DataF
     nd  = _name_match("dob", 2, "name_dob")
     nds = _name_match("dob_swapped", 3, "name_dob_swapped")
 
-    cand = pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols]], ignore_index=True)
+    # ── fuzzy tier (LAST RESORT): exact-DOB block + token-Jaccard on name ──────
+    # Only for student_keys still unresolved by direct / name_dob / name_dob_swapped.
+    # DOB-blocked → tiny candidate set per name → low false-positive risk. Keeps
+    # the same cnt==1 unambiguous discipline (>1 distinct pk ⇒ FK withheld). See
+    # the _fuzzy_ok note above for what it does and doesn't catch.
+    resolved = set(pd.concat([direct, nd, nds]).loc[lambda d: d.fk.notna(), "student_key"])
+    fsid = sid[sid.norm_name.notna() & sid.dob.notna() & ~sid.student_key.isin(resolved)]
+    fm = fsid.merge(avanti[["pk_student_id", "norm_name", "dob"]], on="dob", suffixes=("", "_av"))
+    fm = fm[[_fuzzy_ok(n, a) for n, a in zip(fm.norm_name, fm.norm_name_av)]]
+    fg = fm.groupby("student_key").agg(cnt=("pk_student_id", "nunique"),
+                                       cand=("pk_student_id", "first")).reset_index()
+    fz = pd.DataFrame({"student_key": fg.student_key, "fk": fg.cand.where(fg.cnt == 1),
+                       "pri": 4, "conf": "name_dob_fuzzy", "cnt": fg.cnt})
+
+    cand = pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols], fz[cand_cols]],
+                     ignore_index=True)
     # prefer candidates with a real fk (fk-present first), then lowest priority.
     cand["fk_isnull"] = cand.fk.isna()
     cand = cand.sort_values(["student_key", "fk_isnull", "pri"]).drop_duplicates("student_key", keep="first")
@@ -738,10 +791,26 @@ def _enrich(spine: pd.DataFrame, marks: dict) -> pd.DataFrame:
           .merge(marks["jee_results"], on=["jee_test_year", "jee_application_no"], how="left")
           .merge(marks["neet_results"], on=["neet_test_year", "neet_application_no"], how="left")
           .merge(marks["program_lookup"], on="fk_avanti_student_id", how="left"))
-    for c in _FINAL_COLS:
+
+    # Stage-availability flags — STUDENT-LEVEL (true if the student has that stage in
+    # ANY of their attempt-year rows), broadcast across the student's rows so a single
+    # row is enough to filter on (e.g. WHERE has_10th_data AND has_12th_data AND
+    # (has_jee_mains_data OR has_neet_data)).
+    flags = {
+        "has_10th_data":      df["board_10th_exam_year"].notna(),
+        "has_12th_data":      df["board_12th_exam_year"].notna(),
+        "has_jee_mains_data": df["jee_application_no"].notna(),
+        "has_jee_adv_data":   df[["jee_adv_all_india_rank", "jee_adv_category_rank",
+                                  "jee_adv_prep_category_rank"]].notna().any(axis=1),
+        "has_neet_data":      df["neet_application_no"].notna(),
+    }
+    for col, s in flags.items():
+        df[col] = s.astype(int).groupby(df["student_key"]).transform("max").astype(bool)
+
+    for c in FINAL_COLS:
         if c not in df:
             df[c] = pd.NA
-    return df[_FINAL_COLS]
+    return df[FINAL_COLS]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -759,7 +828,7 @@ def main() -> None:
     args = parser.parse_args()
     year = str(args.year) if args.year else None
 
-    for f in (_POOJITA, _JEE_2025_RAW, _JEE_2024_RAW):
+    for f in (POOJITA, JEE_2025_RAW.local_path, JEE_2024_RAW.local_path, NEET_2024_RAW.local_path):
         if not f.exists():
             print(f"ERROR: reference file not found: {f}")
             sys.exit(1)
@@ -779,34 +848,34 @@ def main() -> None:
     out = _enrich(_resolve(src, refs, avanti, prod, all_ids), marks)
 
     if year is None:
-        print(f"\nFull rebuild → {_OUT}: {len(out):,} rows, {out.student_key.nunique():,} students")
+        print(f"\nFull rebuild → avantifellows.external_data_sources.jnv_student_outcome_mapping: {len(out):,} rows, {out.student_key.nunique():,} students")
         client.load_table_from_dataframe(
-            out, _OUT,
+            out, "avantifellows.external_data_sources.jnv_student_outcome_mapping",
             job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
         ).result()
     else:
         out = out[out.cohort_year == year]
-        print(f"\nRefreshing cohort {year} → {_OUT}: {len(out):,} rows, "
+        print(f"\nRefreshing cohort {year} → avantifellows.external_data_sources.jnv_student_outcome_mapping: {len(out):,} rows, "
               f"{out.student_key.nunique():,} students")
         # create fresh if table is absent / old schema; else idempotent delete+insert.
         try:
-            cols = {f.name for f in client.get_table(_OUT).schema}
+            cols = {f.name for f in client.get_table("avantifellows.external_data_sources.jnv_student_outcome_mapping").schema}
             new_schema = {"cohort_year", "student_key"} <= cols
         except NotFound:
             new_schema = False
         if not new_schema:
             print("  (table absent or old schema — creating fresh with just this cohort)")
             client.load_table_from_dataframe(
-                out, _OUT,
+                out, "avantifellows.external_data_sources.jnv_student_outcome_mapping",
                 job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
             ).result()
         else:
-            client.query(f"DELETE FROM `{_OUT}` WHERE cohort_year = '{year}'").result()
+            client.query(f"DELETE FROM `avantifellows.external_data_sources.jnv_student_outcome_mapping` WHERE cohort_year = '{year}'").result()
             # force df → existing table schema so an all-null column can't drift the type.
             client.load_table_from_dataframe(
-                out, _OUT,
+                out, "avantifellows.external_data_sources.jnv_student_outcome_mapping",
                 job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_APPEND,
-                                         schema=client.get_table(_OUT).schema),
+                                         schema=client.get_table("avantifellows.external_data_sources.jnv_student_outcome_mapping").schema),
             ).result()
 
     # coverage summary (all cohorts in the table)
@@ -819,7 +888,7 @@ def main() -> None:
             COUNTIF(jee_test_year  IS NOT NULL)       AS has_jee,
             COUNTIF(neet_test_year IS NOT NULL)       AS has_neet,
             COUNTIF(fk_avanti_student_id IS NOT NULL) AS has_fk
-        FROM `{_OUT}` GROUP BY 1 ORDER BY cohort_year
+        FROM `avantifellows.external_data_sources.jnv_student_outcome_mapping` GROUP BY 1 ORDER BY cohort_year
     """
     print(f"\n{'cohort':<7} {'rows':>8} {'students':>9} {'b10':>8} {'b12':>8} "
           f"{'jee':>8} {'neet':>8} {'fk':>8}")

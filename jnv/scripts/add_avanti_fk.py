@@ -4,6 +4,11 @@ Enrich the four JNV source tables with the resolved Avanti foreign key from
 `jnv_student_outcome_mapping`. Adds three columns to each table:
     fk_avanti_student_id, match_confidence, match_count
 
+⚠️ fk_avanti_student_id semantics: it is `pk_student_id` for MOST students, but for
+   students who have NO pk_student_id in dim_student (only an apaar_id — mostly JNV
+   NVS), it holds their `apaar_id` instead. To join back to dim_student, match on
+   `COALESCE(pk_student_id, apaar_id) = fk_avanti_student_id`, NOT pk_student_id alone.
+
 Keyed back on each table's own grain:
     jnv_fact_jee_results        (test_year, application_no) → (jee_test_year,  jee_application_no)
     jnv_fact_neet_results       (test_year, application_no) → (neet_test_year, neet_application_no)

@@ -30,8 +30,6 @@ columns:
     type: gender
   - name: category
     type: category
-  - name: student_id
-    type: str
   - name: school_code
     type: str
   - name: student_state
