@@ -146,6 +146,7 @@ def _raw_file(files, filename):
     return next(f for f in files if f.file == filename)
 
 POOJITA       = JNV_DIR / "raw" / "mapping_files" / "12th & 10 Marks Mapping (Poojita Data).xlsx"
+TENTH_SCORE   = JNV_DIR / "raw" / "mapping_files" / "All Years JNV 10th Score.xlsx"
 JEE_2024_RAW  = _raw_file(RAW_MAINS_FILES, "JEE Mains 2024.xlsx")
 JEE_2025_RAW  = _raw_file(RAW_MAINS_FILES, "JEE 2025 - All JNV Candidates.xlsx")
 NEET_2024_RAW = _raw_file(RAW_NEET_FILES,  "NEET 2024.xlsx")

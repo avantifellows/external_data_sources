@@ -43,7 +43,9 @@ Linkage priority (lowest number wins; "candidate-emit then keep-lowest-pri"):
     2. roll_number_10th    (12th 2025 file → 10th direct) / JEE-2024 file rolls
     3. name (+father)      (12th→10th / 12th→JEE/NEET, unambiguous only)
   Avanti FK (= COALESCE(pk_student_id, apaar_id) — see note below):
-    1. direct_student_id   (JEE 2025 avanti_studentid, NEET student_id, Poojita)
+    1. direct_student_id   (JEE 2025 avanti_studentid, NEET student_id, Poojita,
+                            and the 10th-score crosswalk's (10th year, roll)→Avanti id,
+                            which fills a direct id for b10-anchored students)
     2. name + DOB          (DOB from board_10th — richest identity source)
     3. name + DOB swapped  (DD/MM transposition)
     4. name_dob_fuzzy      (exact-DOB block + ≥2 shared name tokens AND token-
@@ -76,7 +78,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import (BQ_PROJECT, BQ_LOCATION,
-                     POOJITA, JEE_2024_RAW, JEE_2025_RAW, NEET_2024_RAW)
+                     POOJITA, TENTH_SCORE, JEE_2024_RAW, JEE_2025_RAW, NEET_2024_RAW)
 
 # Final column order: key → cohort → fk + match meta → program → 10th → 12th → jee → neet.
 FINAL_COLS = [
@@ -168,6 +170,19 @@ def _fuzzy_ok(a: str, b: str) -> bool:
     ta, tb = set(a.split()), set(b.split())
     inter = len(ta & tb)
     return inter >= _FUZZY_MIN_SHARED and inter / len(ta | tb) >= _FUZZY_JACCARD_MIN
+
+
+def _name_agree(a: str, b: str) -> bool:
+    """Looser name agreement for crosswalk corroboration: equal ignoring spaces/dots,
+    or token-set Jaccard ≥ 0.5. Accepts 'MANVITHA K T' ≈ 'MANVITHA KT' and token
+    reorders; rejects genuinely different people. (Single-token exact still passes via
+    the strip-equal test, unlike _fuzzy_ok which needs ≥2 shared tokens.)"""
+    if not a or not b:
+        return False
+    if a.replace(" ", "").replace(".", "") == b.replace(" ", "").replace(".", ""):
+        return True
+    ta, tb = set(a.replace(".", " ").split()), set(b.replace(".", " ").split())
+    return bool(ta) and bool(tb) and len(ta & tb) / len(ta | tb) >= _FUZZY_JACCARD_MIN
 
 
 def _ent_key(name, father, dob, exam, yr, app, avanti_id) -> str:
@@ -309,17 +324,24 @@ def _read_avanti(client) -> pd.DataFrame:
     # Full id universe (NO JNV/grade filter) — used to validate a DIRECT FK (e.g. a
     # production-supplied student_id may sit under a non-JNV label). Same
     # COALESCE(pk_student_id, apaar_id) as above so apaar-only students validate too.
-    # Name/DOB matching still uses the tighter `df` frame above.
-    all_ids = client.query(
-        "SELECT COALESCE(pk_student_id, apaar_id) AS id FROM `avantifellows.production_dbt_final.dim_student` "
-        "WHERE COALESCE(pk_student_id, apaar_id) IS NOT NULL "
-        "UNION DISTINCT "
-        "SELECT COALESCE(pk_student_id, apaar_id) FROM `avantifellows.production_dbt_final.dim_student_historical` "
-        "WHERE COALESCE(pk_student_id, apaar_id) IS NOT NULL"
+    # Name/DOB matching still uses the tighter `df` frame above. We also carry the
+    # student's name here (one extra column on this already-run scan, NOT a new query)
+    # so the 10th-score crosswalk can be name-corroborated against ALL grades — the 2027
+    # frontier ids are grade 11 now, so the grade-12 `df` frame above wouldn't cover them.
+    id_names = client.query(
+        f"SELECT COALESCE(pk_student_id, apaar_id) AS id, {name} AS nm "
+        f"FROM `avantifellows.production_dbt_final.dim_student` "
+        f"WHERE COALESCE(pk_student_id, apaar_id) IS NOT NULL "
+        f"UNION DISTINCT "
+        f"SELECT COALESCE(pk_student_id, apaar_id), {name} "
+        f"FROM `avantifellows.production_dbt_final.dim_student_historical` "
+        f"WHERE COALESCE(pk_student_id, apaar_id) IS NOT NULL"
     ).to_dataframe()
-    all_ids = set(_S(all_ids["id"]).dropna())
-    print(f"  read avanti {len(df):>6,} rows  ({len(all_ids):,} total pk ids)")
-    return df, all_ids
+    for c in id_names.columns:
+        id_names[c] = _S(id_names[c])
+    all_ids = set(id_names["id"].dropna())
+    print(f"  read avanti {len(df):>6,} rows  ({len(all_ids):,} total pk ids, {len(id_names):,} id×name)")
+    return df, all_ids, id_names
 
 
 def _read_marks(client) -> dict:
@@ -458,12 +480,64 @@ def _read_refs() -> dict:
         columns={"Application Number": "application_no", "10th Roll Number": "roll_10",
                  "12th Roll Number": "roll_12", "Student ID": "student_id"})
 
-    refs = {"poojita24": p24, "poojita25": p25, "jee25_avanti": j25, "jee24x": j24, "neet24x": n24}
+    # 10th-roll → Avanti id crosswalk (Physical Mapping sheet). Gives a DIRECT Avanti
+    # student id keyed on the (10th year, 10th roll) PAIR — used to fill an id for
+    # b10-anchored students that the entrance side didn't supply.
+    r10 = pd.read_excel(TENTH_SCORE, sheet_name="Physical Mapping", dtype=str).rename(
+        columns={"10th Year": "yr10", "10th Roll No": "roll10", "Avanti Student ID": "avanti_id"})
+    r10 = r10[["yr10", "roll10", "avanti_id"]]
+
+    refs = {"poojita24": p24, "poojita25": p25, "jee25_avanti": j25, "jee24x": j24,
+            "neet24x": n24, "roll10x": r10}
     for name, df in refs.items():
         for c in df.columns:
             df[c] = _S(df[c]).replace("nan", pd.NA)
         print(f"  read ref {name:<13} {len(df):>7,} rows")
+
+    # roll10x: keep only rows with all three keys, and only (yr10, roll10) pairs that map
+    # to exactly ONE id — a roll is unique only WITHIN a year, and an ambiguous pair must
+    # not guess (mirrors the roll/app (year, key) rule used throughout this build).
+    rx = refs["roll10x"]
+    rx = rx[rx.yr10.notna() & rx.roll10.notna() & rx.avanti_id.notna()]
+    n_uniq = rx.groupby(["yr10", "roll10"]).avanti_id.transform("nunique")
+    refs["roll10x"] = rx[n_uniq == 1].drop_duplicates(["yr10", "roll10"]).reset_index(drop=True)
+    print(f"  roll10x → {len(refs['roll10x']):,} unambiguous (yr10, roll10)→id pairs")
     return refs
+
+
+def _corroborate_roll10x(roll10x: pd.DataFrame, b10: pd.DataFrame, id_names: pd.DataFrame) -> pd.DataFrame:
+    """Keep only crosswalk (yr10, roll10)→avanti_id rows whose identity is CORROBORATED:
+    the 10th-board name for that (year, roll) must agree with dim_student's name for that
+    Avanti id. The Physical-Mapping sheet has row-alignment errors — a shifted NVS block
+    where each roll mapped to a NEIGHBOUR's id, plus scattered wrong roll→id rows — that
+    would otherwise inject links to the wrong student. A board name that disagrees with the
+    id's dim name is the signal that flags them. Same-person rows whose DOBs merely differ
+    (data-entry noise) are KEPT — their names still agree, and those are exactly the gap the
+    crosswalk exists to fill (name+DOB missed them BECAUSE the DOBs disagree).
+
+    `id_names` is the in-memory (id, nm) frame from _read_avanti — NO extra BQ query."""
+    if roll10x.empty:
+        return roll10x
+    bn = (b10[["yr10", "roll10", "norm_name"]]
+          .dropna(subset=["norm_name"]).rename(columns={"norm_name": "board_name"}))
+    r = roll10x.merge(bn, on=["yr10", "roll10"], how="left")
+
+    # dim_student name(s) per crosswalk id (all grades — the (id, nm) frame already
+    # covers both dim tables; 2027 frontier ids are grade 11 so grade-12-only wouldn't do).
+    xids = set(r.avanti_id.dropna())
+    sub = id_names[id_names["id"].isin(xids) & id_names["nm"].notna()]
+    names_by_id = sub.groupby("id")["nm"].apply(set).to_dict()
+
+    def _ok(board_nm, aid):
+        if board_nm is None or (isinstance(board_nm, float) and pd.isna(board_nm)) or board_nm is pd.NA:
+            return False
+        return any(_name_agree(str(board_nm), dm) for dm in names_by_id.get(aid, ()))
+
+    keep = pd.Series([_ok(b, a) for b, a in zip(r.board_name, r.avanti_id)], index=r.index)
+    out = r[keep][["yr10", "roll10", "avanti_id"]].reset_index(drop=True)
+    print(f"  roll10x corroborated → {len(out):,} of {len(roll10x):,} kept "
+          f"(board name agrees with dim id; {len(roll10x) - len(out):,} dropped as uncorroborated)")
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -473,6 +547,7 @@ def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: s
     b12, b10, jee, neet = src["b12"], src["b10"], src["jee"], src["neet"]
     p24, p25 = refs["poojita24"], refs["poojita25"]
     j25, j24x, n24x = refs["jee25_avanti"], refs["jee24x"], refs["neet24x"]
+    roll10x = refs["roll10x"]
 
     # Direct-Avanti-id, highest trust first:
     #   1. production dbt's application_no→student_id (Avanti's own authoritative link)
@@ -694,13 +769,34 @@ def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: s
         })
         return out[idc_cols]
 
+    # Attach the (yr10, roll10)→Avanti-id crosswalk. roll10x is deduped to one row per
+    # pair, so a left merge is 1:1 (no row multiplication) and its keys are all non-null,
+    # so a b10-less row (null yr10/roll10) can't spuriously match.
+    def _x10(df):
+        return df.merge(roll10x.rename(columns={"avanti_id": "x10_id"}),
+                        on=["yr10", "roll10"], how="left")
+
     idc_b12 = _idc(b12, "b12:" + b12.yr12 + ":" + b12.roll12, "b12", has_dob=False)
     b10l = (b10_link.merge(b10, on=["yr10", "roll10"])
             .merge(p25[["roll_10th", "avanti_student_id"]], left_on="roll10", right_on="roll_10th", how="left"))
+    b10l = _x10(b10l)
     idc_b10l = _idc(b10l, "b12:" + b10l.yr12 + ":" + b10l.roll12, "b10", avanti_col="avanti_student_id")
     no12b = no12[["roll_10th"]].drop_duplicates().merge(b10[b10.yr10 == "2022"], left_on="roll_10th", right_on="roll10")
+    no12b = _x10(no12b)
     idc_no12 = _idc(no12b, "b10:2022:" + no12b.roll_10th, "b10")
-    idc_fr = _idc(fr, "b10:" + fr.yr10 + ":" + fr.roll10, "b10")
+    frx = _x10(fr)
+    idc_fr = _idc(frx, "b10:" + frx.yr10 + ":" + frx.roll10, "b10")
+
+    # 10th-score crosswalk id kept in a SEPARATE, LOWER-priority channel — NOT the pri-1
+    # direct tier. Even after name-corroboration (see _corroborate_roll10x) it feeds a
+    # fill-only tier so it can never override an exact name+DOB match; it only fills where
+    # name/DOB (and fuzzy) found nothing, or breaks an ambiguous tie. See _match_fk tier 5.
+    x10_contrib = pd.concat([
+        pd.DataFrame({"student_key": "b12:" + b10l.yr12 + ":" + b10l.roll12, "roll10_avanti_id": b10l.x10_id}),
+        pd.DataFrame({"student_key": "b10:2022:" + no12b.roll_10th,          "roll10_avanti_id": no12b.x10_id}),
+        pd.DataFrame({"student_key": "b10:" + frx.yr10 + ":" + frx.roll10,   "roll10_avanti_id": frx.x10_id}),
+    ], ignore_index=True)
+    x10_contrib = x10_contrib[_ne(x10_contrib.roll10_avanti_id)].drop_duplicates("student_key")
     jmj = jmap.merge(jee, left_on=["jee_application_no", "jee_test_year"], right_on=["application_no", "test_year"])
     idc_jee = _idc(jmj, jmj.student_key, "jee", avanti_col="avanti_id")
     nmj = nmap.merge(neet, left_on=["neet_application_no", "neet_test_year"], right_on=["application_no", "test_year"])
@@ -714,8 +810,9 @@ def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: s
     sid["dob"] = _coalesce_by_source(id_contrib, "dob", ["b10", "jee", "neet"], is_date=True)
     sid["source_avanti_student_id"] = _coalesce_by_source(id_contrib, "avanti_id", ["jee", "neet", "b10"])
     sid = sid.reset_index()
+    sid = sid.merge(x10_contrib, on="student_key", how="left")  # fill-only crosswalk id
 
-    # ── Avanti FK (priority: direct id → name+dob → name+dob-swapped) ──────────
+    # ── Avanti FK (priority: direct id → name+dob → name+dob-swapped → fuzzy → crosswalk)
     fk_resolved = _match_fk(sid, avanti, all_ids)
 
     # ── student master (disjoint spine keys → concat) ──────────────────────────
@@ -773,7 +870,18 @@ def _match_fk(sid: pd.DataFrame, avanti: pd.DataFrame, all_ids: set) -> pd.DataF
     fz = pd.DataFrame({"student_key": fg.student_key, "fk": fg.cand.where(fg.cnt == 1),
                        "pri": 4, "conf": "name_dob_fuzzy", "cnt": fg.cnt})
 
-    cand = pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols], fz[cand_cols]],
+    # ── 10th-score crosswalk tier (pri 5, LOWEST — fill-only) ──────────────────
+    # Trusted BELOW every name/DOB tier: the sheet is name-corroborated upstream
+    # (_corroborate_roll10x drops rows whose board name disagrees with the id), but it can
+    # still be row-misaligned, so it only fills where nothing else matched or breaks an
+    # ambiguous tie — it can never override an exact name+DOB match. Validated vs all_ids.
+    x10 = pd.DataFrame(columns=cand_cols)
+    if "roll10_avanti_id" in sid:
+        xr = sid[_ne(sid.roll10_avanti_id) & sid.roll10_avanti_id.isin(all_ids)]
+        x10 = pd.DataFrame({"student_key": xr.student_key, "fk": xr.roll10_avanti_id,
+                            "pri": 5, "conf": "roll10_crosswalk", "cnt": 1})
+
+    cand = pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols], fz[cand_cols], x10[cand_cols]],
                      ignore_index=True)
     # prefer candidates with a real fk (fk-present first), then lowest priority.
     cand["fk_isnull"] = cand.fk.isna()
@@ -828,7 +936,7 @@ def main() -> None:
     args = parser.parse_args()
     year = str(args.year) if args.year else None
 
-    for f in (POOJITA, JEE_2025_RAW.local_path, JEE_2024_RAW.local_path, NEET_2024_RAW.local_path):
+    for f in (POOJITA, TENTH_SCORE, JEE_2025_RAW.local_path, JEE_2024_RAW.local_path, NEET_2024_RAW.local_path):
         if not f.exists():
             print(f"ERROR: reference file not found: {f}")
             sys.exit(1)
@@ -839,9 +947,14 @@ def main() -> None:
     refs = _read_refs()
     print("Reading source frames from BigQuery (aggregated) ...")
     src = _read_sources(client)
-    avanti, all_ids = _read_avanti(client)
+    avanti, all_ids, id_names = _read_avanti(client)
     prod = _read_prod_fk(client)
     marks = _read_marks(client)
+
+    # Name-corroborate the 10th-score crosswalk against dim ids (no new BQ query — reuses
+    # the id×name frame from _read_avanti) so a row-misaligned sheet row can't inject a
+    # wrong link. Feeds the fill-only crosswalk tier in _match_fk.
+    refs["roll10x"] = _corroborate_roll10x(refs["roll10x"], src["b10"], id_names)
 
     # Resolve the entire cross-year identity universe ONCE; slice afterwards.
     print(f"\nResolving student identities (pandas) ...")
