@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -45,6 +46,11 @@ def _read_and_clean(table: Table) -> pd.DataFrame:
             f"Download from https://dashboard.aishe.gov.in/hedirectory/#/hedirectory "
             f"and place in aishe/raw/ as '{table.raw_file}'."
         )
+
+    # Extract source snapshot date from the dashboard-generated header row
+    _hdr = pd.read_excel(table.raw_path, header=None, nrows=2, dtype=str)
+    _match = re.search(r"(\d{1,2}-\d{1,2}-\d{4})", _hdr.iloc[1, 0] or "")
+    _as_on_date = pd.to_datetime(_match.group(1), dayfirst=True) if _match else pd.NaT
 
     df = pd.read_excel(
         table.raw_path,
@@ -79,6 +85,14 @@ def _read_and_clean(table: Table) -> pd.DataFrame:
     # Normalise unknown year values ('-') to None
     if "year_of_establishment" in df.columns:
         df["year_of_establishment"] = df["year_of_establishment"].replace("-", None)
+
+    # Normalise management '-' to None
+    if "management" in df.columns:
+        df["management"] = df["management"].replace("-", None)
+
+    # Provenance columns
+    df["aishe_as_on_date"] = _as_on_date   # when the AISHE dashboard snapshot was taken
+    df["ingested_at"] = pd.Timestamp.utcnow()  # when this pipeline run processed it
 
     return df
 

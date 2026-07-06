@@ -126,9 +126,10 @@
     - name: college_type
       type: STRING
       description: >
-        The college's relationship to its parent university:
-        'Affiliated College', 'Constituent College', or 'Autonomous College'.
-        See schemas/README.md for definitions.
+        The college's relationship to its parent university or regulatory body.
+        Values as in the raw data: 'Affiliated College', 'Autonomous College',
+        'Constituent / University College', 'PG Center / Off-Campus Center',
+        'Recognized Center'. See schemas/README.md for definitions.
 
     - name: management
       type: STRING

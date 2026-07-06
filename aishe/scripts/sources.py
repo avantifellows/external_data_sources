@@ -83,11 +83,13 @@ UNIVERSITIES_RENAMES = {
     "Website": "website",
     "Year Of Establishment": "year_of_establishment",
     "Location": "location",
+    "University Type": "university_type",
 }
 
 STANDALONE_RENAMES = {
     "Aishe Code": "aishe_code",
     "Name": "name",
+    "Web Url": "website",
     "State": "state",
     "District": "district",
     "Year Of Establishment": "year_of_establishment",
@@ -115,37 +117,37 @@ PM_VIDYALAXMI_RENAMES = {
 
 TABLES: list[Table] = [
     Table(
-        bq_name="aishe_fact_colleges",
+        bq_name="aishe_dim_colleges",
         raw_file="College-ALL COLLEGE.xlsx",
-        parquet="aishe_fact_colleges.parquet",
+        parquet="aishe_dim_colleges.parquet",
         header_row=2,  # rows 0-1 are title/date; row 2 is the header
         column_renames=COLLEGES_RENAMES,
     ),
     Table(
-        bq_name="aishe_fact_universities",
+        bq_name="aishe_dim_universities",
         raw_file="University-ALL UNIVERSITIES.xlsx",
-        parquet="aishe_fact_universities.parquet",
+        parquet="aishe_dim_universities.parquet",
         header_row=2,
         column_renames=UNIVERSITIES_RENAMES,
     ),
     Table(
-        bq_name="aishe_fact_standalone_institutions",
-        raw_file="Standalone-ALL STANDALONE.xlsx",
-        parquet="aishe_fact_standalone_institutions.parquet",
+        bq_name="aishe_dim_standalone_institutions",
+        raw_file="Standalone-ALL_STANDALONE_with_URLs.xlsx",
+        parquet="aishe_dim_standalone_institutions.parquet",
         header_row=2,
         column_renames=STANDALONE_RENAMES,
     ),
     Table(
-        bq_name="aishe_fact_research_institutions",
+        bq_name="aishe_dim_research_institutions",
         raw_file="R & D Institutes.xlsx",
-        parquet="aishe_fact_research_institutions.parquet",
+        parquet="aishe_dim_research_institutions.parquet",
         header_row=2,
         column_renames=RD_RENAMES,
     ),
     Table(
-        bq_name="aishe_fact_pm_vidyalaxmi_eligible_institutions",
+        bq_name="aishe_dim_pm_vidyalaxmi_eligible_institutions",
         raw_file="vidya_lakshmiAll.xlsx",
-        parquet="aishe_fact_pm_vidyalaxmi_eligible_institutions.parquet",
+        parquet="aishe_dim_pm_vidyalaxmi_eligible_institutions.parquet",
         header_row=2,
         column_renames=PM_VIDYALAXMI_RENAMES,
     ),
