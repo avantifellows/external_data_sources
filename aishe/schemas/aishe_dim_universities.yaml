@@ -1,0 +1,62 @@
+# aishe_dim_universities
+#
+# Live registry of all universities in India, as published by the AISHE HE
+# Directory dashboard (dashboard.aishe.gov.in/hedirectory). One row per
+# university. WRITE_TRUNCATE on each refresh.
+#
+# Source: MoE / AISHE. Download: University → ALL UNIVERSITIES from the dashboard.
+# Pipeline: build_institution_directory.py → upload_to_gcs.py → load_bq.py
+
+table: aishe_dim_universities
+grain: one row per university (aishe_code)
+row_count_approx: 1420
+
+core_columns:
+  - name: aishe_code
+    type: STRING
+    description: Unique AISHE institution code (e.g. "U-0001")
+  - name: name
+    type: STRING
+    description: Name of the university
+  - name: state
+    type: STRING
+    description: State where the university is located
+  - name: district
+    type: STRING
+    description: District where the university is located
+  - name: website
+    type: STRING
+    description: University website URL (may be null or empty)
+  - name: year_of_establishment
+    type: STRING
+    description: Year the university was established; null if unknown
+  - name: location
+    type: STRING
+    description: Rural / Urban / Semi-Urban
+  - name: university_type
+    type: STRING
+    description: >
+      Type of university: Central University, State Public University,
+      State Private University, Deemed University - Government,
+      Deemed University - Private, Institute of National Importance, etc.
+  - name: aishe_as_on_date
+    type: TIMESTAMP
+    description: Date of the AISHE dashboard snapshot (extracted from file header)
+  - name: ingested_at
+    type: TIMESTAMP
+    description: UTC timestamp when this pipeline run wrote the parquet
+
+sample_queries:
+  - label: Universities by type
+    sql: |
+      SELECT university_type, COUNT(*) AS count
+      FROM `avantifellows.external_data_sources.aishe_dim_universities`
+      GROUP BY 1
+      ORDER BY 2 DESC
+  - label: Join colleges to their university type
+    sql: |
+      SELECT c.name AS college, c.state, u.university_type
+      FROM `avantifellows.external_data_sources.aishe_dim_colleges` c
+      LEFT JOIN `avantifellows.external_data_sources.aishe_dim_universities` u
+        ON c.university_aishe_code = u.aishe_code
+      LIMIT 100
