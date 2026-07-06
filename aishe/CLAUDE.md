@@ -64,7 +64,12 @@ one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
 1. Add the new year's URL + path to `REPORT_URLS` / `REPORTS` in `sources.py`.
 2. `fetch.py` pulls the workbook into `raw/`.
 3. If the programme list changed, re-run `build_programme_map.py`.
-4. `clean_aishe.py` → `upload_to_gcs.py` → `load_bq.py --table aishe_fact_higher_ed_students`.
+4. `clean_aishe.py` → `upload_to_gcs.py --raw-only` → `upload_to_gcs.py --clean-only`
+   → `load_bq.py --table aishe_fact_higher_ed_students`.
+
+   (Bare `upload_to_gcs.py` runs the strict all-tables path — it requires *every*
+   table's parquet present locally, including the dim tables. Use the scoped flags
+   when refreshing only one pipeline.)
 
 ## Pipeline 2: institution directory
 
