@@ -78,10 +78,15 @@ def upload_institution_directory_raw(client, dry_run: bool) -> None:
         print(f"  ✓ {msg}")
 
 
-def upload_clean(client, dry_run: bool) -> None:
+def upload_clean(client, dry_run: bool, strict: bool = False) -> None:
     print("Clean → gs://{}/aishe/clean/ ...".format(GCS_BUCKET))
     for t in TABLES:
         if not t.local_path.exists():
+            if strict:
+                raise SystemExit(
+                    f"{t.parquet} not found — run the relevant build script first.\n"
+                    f"Use --clean-only to upload a partial set."
+                )
             print(f"  [skip] {t.parquet} not found — run the relevant build script first")
             continue
         size_mb = t.local_path.stat().st_size / 1e6
@@ -120,7 +125,7 @@ def main() -> None:
     else:
         upload_raw(client, args.dry_run)
         upload_institution_directory_raw(client, args.dry_run)
-        upload_clean(client, args.dry_run)
+        upload_clean(client, args.dry_run, strict=True)
     print("✓ done.")
 
 
