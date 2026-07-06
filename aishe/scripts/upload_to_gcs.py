@@ -2,16 +2,16 @@
 """
 Upload AISHE data to GCS.
 
-Uploads (mirrors the jnv/ convention):
-  - Raw:   each source sheet the parser consumes → parquet
-           gs://avantifellows-external-data/aishe/raw/<year>/<sheet>.parquet
-           (faithful cell-grid dump, header=None — for traceability only;
-            not loaded to BQ)
-  - Clean: each parsed table → parquet
-           gs://avantifellows-external-data/aishe/clean/<table>.parquet
-           (these are what load_bq.py loads)
+Uploads:
+  - Raw Final Report sheets → parquet (for traceability; NOT loaded to BQ)
+      gs://avantifellows-external-data/aishe/raw/<year>/<sheet>.parquet
+  - Raw institution directory xlsx files (as-is, for archival)
+      gs://avantifellows-external-data/aishe/raw/institution_directory/<file>.xlsx
+  - Clean parquets → GCS (these are what load_bq.py loads)
+      gs://avantifellows-external-data/aishe/clean/<table>.parquet
 
-Run clean_aishe.py first to produce clean/*.parquet before uploading clean.
+Run clean_aishe.py / build_institution_directory.py first to produce
+clean/*.parquet before uploading clean files.
 
 Usage:
   python3 scripts/upload_to_gcs.py                 # upload raw + clean
@@ -29,7 +29,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import GCS_BUCKET, RAW_SHEETS, TABLES, RawSheet, Table
+from sources import GCS_BUCKET, GCS_PREFIX, INSTITUTION_DIRECTORY_RAW_FILES, RAW, RAW_SHEETS, TABLES, RawSheet, Table
 
 
 def _resolve_sheet(rs: RawSheet) -> str:
@@ -61,11 +61,34 @@ def upload_raw(client, dry_run: bool) -> None:
         print(f"  ✓ {msg}")
 
 
-def upload_clean(client, dry_run: bool) -> None:
+def upload_institution_directory_raw(client, dry_run: bool) -> None:
+    print(f"Institution directory raw xlsx → gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/institution_directory/ ...")
+    for filename in INSTITUTION_DIRECTORY_RAW_FILES:
+        path = RAW / "institution_directory" / filename
+        if not path.exists():
+            print(f"  [skip] {filename} not found in raw/institution_directory/ — download from dashboard first")
+            continue
+        size_kb = path.stat().st_size // 1024
+        gcs_path = f"{GCS_PREFIX}/raw/institution_directory/{filename}"
+        msg = f"{filename} ({size_kb} KB) → gs://{GCS_BUCKET}/{gcs_path}"
+        if dry_run:
+            print(f"  [dry-run] {msg}")
+            continue
+        client.bucket(GCS_BUCKET).blob(gcs_path).upload_from_filename(str(path))
+        print(f"  ✓ {msg}")
+
+
+def upload_clean(client, dry_run: bool, strict: bool = False) -> None:
     print("Clean → gs://{}/aishe/clean/ ...".format(GCS_BUCKET))
     for t in TABLES:
         if not t.local_path.exists():
-            raise SystemExit(f"missing local parquet: {t.local_path}\nRun scripts/clean_aishe.py first.")
+            if strict:
+                raise SystemExit(
+                    f"{t.parquet} not found — run the relevant build script first.\n"
+                    f"Use --clean-only to upload a partial set."
+                )
+            print(f"  [skip] {t.parquet} not found — run the relevant build script first")
+            continue
         size_mb = t.local_path.stat().st_size / 1e6
         msg = f"{t.parquet} ({size_mb:.2f} MB) → {t.gcs_uri}"
         if dry_run:
@@ -80,8 +103,10 @@ def upload_clean(client, dry_run: bool) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     group = ap.add_mutually_exclusive_group()
-    group.add_argument("--raw-only", action="store_true", help="Upload only the raw sheets")
+    group.add_argument("--raw-only", action="store_true", help="Upload only the Final Report raw sheets")
     group.add_argument("--clean-only", action="store_true", help="Upload only the clean tables")
+    group.add_argument("--institution-directory-raw-only", action="store_true",
+                       help="Upload only the institution directory xlsx files")
     ap.add_argument("--dry-run", action="store_true", help="Print plan; don't upload")
     args = ap.parse_args()
 
@@ -92,11 +117,15 @@ def main() -> None:
 
     if args.raw_only:
         upload_raw(client, args.dry_run)
+        upload_institution_directory_raw(client, args.dry_run)
     elif args.clean_only:
         upload_clean(client, args.dry_run)
+    elif args.institution_directory_raw_only:
+        upload_institution_directory_raw(client, args.dry_run)
     else:
         upload_raw(client, args.dry_run)
-        upload_clean(client, args.dry_run)
+        upload_institution_directory_raw(client, args.dry_run)
+        upload_clean(client, args.dry_run, strict=True)
     print("✓ done.")
 
 

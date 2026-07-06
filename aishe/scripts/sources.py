@@ -1,25 +1,24 @@
 """
 AISHE source configuration — the single source of truth.
 
-Everything downstream (clean_aishe.py, upload_to_gcs.py, load_bq.py) reads from
-here.
+Everything downstream (clean_aishe.py, build_institution_directory.py,
+upload_to_gcs.py, load_bq.py) reads from here.
 
-One denormalized fact:
-  aishe_fact_higher_ed_students — student ENROLMENT + GRADUATES (out-turn), unified across
-  AISHE Tables 33 (graduates by state × level), 34a (graduates by programme ×
-  social category), and 12 + 35 (UG enrolment + graduates by discipline,
-  2019-20 → 2021-22). Each row is tagged with `cut` (the published slice) and
-  `metric` (enrolment | graduates). Dimensions that don't apply to a given cut
-  carry the sentinel "All" (as AISHE itself does with Total / All Categories).
+Two pipelines:
 
-Exploratory analysis (discipline × social-category rollup, 2025-26 projection,
-discipline → wage-bucket grouping) runs locally / lives in bq-assistant analysis
-intents — not in this repo. The programme→discipline codemap stays a committed
-CSV in codemaps/.
+1. Higher-ed students (aishe_fact_higher_ed_students)
+   Student enrolment + graduates from AISHE Final Report workbooks (Tables 33,
+   34a, 12+35). Parsed by clean_aishe.py.
 
-GCS layout (mirrors the jnv/ convention):
-    gs://avantifellows-external-data/aishe/raw/<year>/<sheet>.parquet   (traceability)
-    gs://avantifellows-external-data/aishe/clean/<table>.parquet        (loaded to BQ)
+2. Institution directory (aishe_dim_colleges, aishe_dim_universities, etc.)
+   Live registry of all HE institutions downloaded from the AISHE HE Directory
+   dashboard (dashboard.aishe.gov.in/hedirectory). Parsed by
+   build_institution_directory.py. One row per institution.
+
+GCS layout:
+    aishe/raw/<year>/<sheet>.parquet   — Final Report raw sheets (traceability)
+    aishe/raw/institution_directory/   — Institution directory raw xlsx files
+    aishe/clean/<table>.parquet        — loaded to BQ
 """
 from __future__ import annotations
 
@@ -85,13 +84,156 @@ class Table:
 
 
 TABLES: list[Table] = [
+    # ── Pipeline 1: higher-ed students (from Final Report workbooks) ───────────
     Table(
         bq_name="aishe_fact_higher_ed_students",
         parquet="higher_ed.parquet",
         grain="(cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)",
     ),
+    # ── Pipeline 2: institution directory (from HE Directory dashboard xlsx) ───
+    Table(
+        bq_name="aishe_dim_colleges",
+        parquet="aishe_dim_colleges.parquet",
+        grain="(aishe_code)",
+    ),
+    Table(
+        bq_name="aishe_dim_universities",
+        parquet="aishe_dim_universities.parquet",
+        grain="(aishe_code)",
+    ),
+    Table(
+        bq_name="aishe_dim_standalone_institutions",
+        parquet="aishe_dim_standalone_institutions.parquet",
+        grain="(aishe_code)",
+    ),
+    Table(
+        bq_name="aishe_dim_research_institutions",
+        parquet="aishe_dim_research_institutions.parquet",
+        grain="(aishe_code)",
+    ),
+    Table(
+        bq_name="aishe_dim_pm_vidyalaxmi_eligible_institutions",
+        parquet="aishe_dim_pm_vidyalaxmi_eligible_institutions.parquet",
+        grain="(aishe_code)",
+    ),
 ]
 
+# Convenience lookups
+TABLE_BY_NAME: dict[str, Table] = {t.bq_name: t for t in TABLES}
+
+
+# ─── Institution directory — per-table config for build_institution_directory.py ─
+# Separate dataclass because these tables have xlsx-specific fields (raw filename,
+# header row, column renames) that the higher-ed pipeline doesn't need.
+
+@dataclass(frozen=True)
+class DirectoryTable:
+    bq_name: str                          # must match a bq_name in TABLES
+    raw_file: str                         # xlsx filename under raw/institution_directory/
+    header_row: int                       # 0-based row of the column header in the xlsx
+    column_renames: dict[str, str]        # raw Excel header → snake_case BQ column name
+
+    @property
+    def raw_path(self) -> Path:
+        return RAW / "institution_directory" / self.raw_file
+
+    @property
+    def clean_path(self) -> Path:
+        return CLEAN / f"{self.bq_name}.parquet"
+
+
+COLLEGES_RENAMES = {
+    "Aishe Code": "aishe_code",
+    "Name": "name",
+    "State": "state",
+    "District": "district",
+    "Website": "website",
+    "Year Of Establishment": "year_of_establishment",
+    "Location": "location",
+    "College Type": "college_type",
+    "Manegement": "management",
+    "University Aishe Code": "university_aishe_code",
+    "University Name": "university_name",
+    "University Type": "university_type",
+}
+
+UNIVERSITIES_RENAMES = {
+    "Aishe Code": "aishe_code",
+    "Name": "name",
+    "State": "state",
+    "District": "district",
+    "Website": "website",
+    "Year Of Establishment": "year_of_establishment",
+    "Location": "location",
+    "University Type": "university_type",
+}
+
+STANDALONE_RENAMES = {
+    "Aishe Code": "aishe_code",
+    "Name": "name",
+    "Web Url": "website",
+    "State": "state",
+    "District": "district",
+    "Year Of Establishment": "year_of_establishment",
+    "Location": "location",
+    "Standalone Type": "standalone_type",
+    "Manegement": "management",
+}
+
+RD_RENAMES = {
+    "S. No.": "sno",
+    "AISHE Code": "aishe_code",
+    "Institute Name": "institute_name",
+    "State Name": "state_name",
+    "District Name": "district_name",
+    "Administrative Ministry": "administrative_ministry",
+}
+
+PM_VIDYALAXMI_RENAMES = {
+    "S. No.": "sno",
+    "AISHE Code": "aishe_code",
+    "Institute Name": "institute_name",
+    "State Name": "state_name",
+    "Management Type": "management_type",
+}
+
+DIRECTORY_TABLES: list[DirectoryTable] = [
+    DirectoryTable(
+        bq_name="aishe_dim_colleges",
+        raw_file="College-ALL COLLEGE.xlsx",
+        header_row=2,
+        column_renames=COLLEGES_RENAMES,
+    ),
+    DirectoryTable(
+        bq_name="aishe_dim_universities",
+        raw_file="University-ALL UNIVERSITIES.xlsx",
+        header_row=2,
+        column_renames=UNIVERSITIES_RENAMES,
+    ),
+    DirectoryTable(
+        bq_name="aishe_dim_standalone_institutions",
+        raw_file="Standalone-ALL_STANDALONE_with_URLs.xlsx",
+        header_row=2,
+        column_renames=STANDALONE_RENAMES,
+    ),
+    DirectoryTable(
+        bq_name="aishe_dim_research_institutions",
+        raw_file="R & D Institutes.xlsx",
+        header_row=2,
+        column_renames=RD_RENAMES,
+    ),
+    DirectoryTable(
+        bq_name="aishe_dim_pm_vidyalaxmi_eligible_institutions",
+        raw_file="vidya_lakshmiAll.xlsx",
+        header_row=2,
+        column_renames=PM_VIDYALAXMI_RENAMES,
+    ),
+]
+
+DIRECTORY_TABLE_BY_NAME: dict[str, DirectoryTable] = {t.bq_name: t for t in DIRECTORY_TABLES}
+
+# Institution directory raw Excel files — for upload_to_gcs.py
+INSTITUTION_DIRECTORY_RAW_FILES: list[str] = [t.raw_file for t in DIRECTORY_TABLES]
 
 # ─── Raw sheets (uploaded to GCS raw/ as parquet for traceability; NOT in BQ) ──
 @dataclass(frozen=True)

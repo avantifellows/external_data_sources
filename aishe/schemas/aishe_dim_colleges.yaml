@@ -1,0 +1,70 @@
+# aishe_dim_colleges
+#
+# Live registry of all colleges affiliated to universities in India, as
+# published by the AISHE HE Directory dashboard (dashboard.aishe.gov.in/
+# hedirectory). One row per college. WRITE_TRUNCATE on each refresh.
+#
+# Source: MoE / AISHE. Download: College → ALL COLLEGE from the dashboard.
+# Pipeline: build_institution_directory.py → upload_to_gcs.py → load_bq.py
+
+table: aishe_dim_colleges
+grain: one row per college (aishe_code)
+row_count_approx: 53559
+
+core_columns:
+  - name: aishe_code
+    type: STRING
+    description: Unique AISHE institution code (e.g. "C-12345")
+  - name: name
+    type: STRING
+    description: Name of the college
+  - name: state
+    type: STRING
+    description: State where the college is located
+  - name: district
+    type: STRING
+    description: District where the college is located
+  - name: website
+    type: STRING
+    description: College website URL (may be null or empty)
+  - name: year_of_establishment
+    type: STRING
+    description: Year the college was established; null if unknown ("-" in source)
+  - name: location
+    type: STRING
+    description: Rural / Urban / Semi-Urban
+  - name: college_type
+    type: STRING
+    description: Type of college (e.g. Arts & Science, Engineering, Medical)
+  - name: management
+    type: STRING
+    description: Management type (Government / Private Aided / Private Unaided / etc.)
+  - name: university_aishe_code
+    type: STRING
+    description: AISHE code of the affiliating university
+  - name: university_name
+    type: STRING
+    description: Name of the affiliating university
+  - name: university_type
+    type: STRING
+    description: Type of the affiliating university (Central / State / Deemed / etc.)
+  - name: aishe_as_on_date
+    type: TIMESTAMP
+    description: Date of the AISHE dashboard snapshot (extracted from file header)
+  - name: ingested_at
+    type: TIMESTAMP
+    description: UTC timestamp when this pipeline run wrote the parquet
+
+sample_queries:
+  - label: Colleges by state
+    sql: |
+      SELECT state, COUNT(*) AS colleges
+      FROM `avantifellows.external_data_sources.aishe_dim_colleges`
+      GROUP BY 1
+      ORDER BY 2 DESC
+  - label: All colleges affiliated to a given university
+    sql: |
+      SELECT name, district, college_type, management
+      FROM `avantifellows.external_data_sources.aishe_dim_colleges`
+      WHERE university_aishe_code = 'U-0001'
+      ORDER BY name

@@ -1,0 +1,48 @@
+# aishe_dim_pm_vidyalaxmi_eligible_institutions
+#
+# Registry of higher-education institutions eligible for the PM Vidya Lakshmi
+# scheme (education loan portal for students), as published by the AISHE HE
+# Directory dashboard. One row per institution. WRITE_TRUNCATE on each refresh.
+#
+# Source: MoE / AISHE. Download: PM Vidya Lakshmi / vidya_lakshmiAll.xlsx.
+# Pipeline: build_institution_directory.py → upload_to_gcs.py → load_bq.py
+
+table: aishe_dim_pm_vidyalaxmi_eligible_institutions
+grain: one row per institution (aishe_code)
+row_count_approx: 1051
+
+core_columns:
+  - name: sno
+    type: INT64
+    description: Serial number in the source file
+  - name: aishe_code
+    type: STRING
+    description: Unique AISHE institution code
+  - name: institute_name
+    type: STRING
+    description: Name of the institution
+  - name: state_name
+    type: STRING
+    description: State where the institution is located
+  - name: management_type
+    type: STRING
+    description: Management type of the institution
+  - name: aishe_as_on_date
+    type: TIMESTAMP
+    description: Date of the AISHE dashboard snapshot (extracted from file header)
+  - name: ingested_at
+    type: TIMESTAMP
+    description: UTC timestamp when this pipeline run wrote the parquet
+
+sample_queries:
+  - label: PM Vidya Lakshmi eligible institutions by state
+    sql: |
+      SELECT state_name, COUNT(*) AS count
+      FROM `avantifellows.external_data_sources.aishe_dim_pm_vidyalaxmi_eligible_institutions`
+      GROUP BY 1
+      ORDER BY 2 DESC
+  - label: Cross-check eligibility for a known institution
+    sql: |
+      SELECT v.institute_name, v.state_name
+      FROM `avantifellows.external_data_sources.aishe_dim_pm_vidyalaxmi_eligible_institutions` v
+      WHERE v.aishe_code = 'C-12345'

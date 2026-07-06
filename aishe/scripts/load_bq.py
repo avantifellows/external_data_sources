@@ -1,18 +1,18 @@
 """
 Load AISHE parquet files from GCS into BigQuery.
 
-Each parquet listed in sources.py is loaded via load_table_from_uri with
-WRITE_TRUNCATE — fully replaces the destination table on every run. Idempotent.
+Loads all tables registered in sources.py via WRITE_TRUNCATE. Covers both
+pipelines:
+  - aishe_fact_higher_ed_students  (from clean_aishe.py)
+  - aishe_dim_colleges / universities / standalone / research / pm_vidyalaxmi
+    (from build_institution_directory.py)
 
-Pre-reqs (one-time):
-  bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
-  (Parquet files must already be in gs://avantifellows-external-data/aishe/
-   — see scripts/upload_to_gcs.py.)
+Parquet files must already be in GCS — run upload_to_gcs.py first.
 
 Usage:
-  python3 scripts/load_bq.py                                  # load all tables
-  python3 scripts/load_bq.py --table aishe_fact_higher_ed
-  python3 scripts/load_bq.py --dry-run                        # show plan only
+  python3 scripts/load_bq.py                                         # all tables
+  python3 scripts/load_bq.py --table aishe_dim_colleges              # one only
+  python3 scripts/load_bq.py --dry-run                               # plan only
 """
 from __future__ import annotations
 
