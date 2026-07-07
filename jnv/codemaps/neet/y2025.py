@@ -20,6 +20,8 @@ CODEMAP = {
         "application_no":           ["APPLICATION NUMBER"],
         "roll_no":                  ["ROLL"],
         "student_full_name":        ["CANDIDATE NAME"],
+        "father_name":              ["FATHER'S NAME"],
+        "mother_name":              ["MOTHER'S NAME"],
         "dob":                      ["DOB"],
         "student_gender":           ["GENDER"],
         "category":                 ["CATEGORY"],

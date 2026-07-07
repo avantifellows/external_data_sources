@@ -108,8 +108,39 @@ python3 -m venv .venv
 | `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
 | `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
 | `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
-| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~3.6M |
-| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~2.5M |
+| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.1M |
+| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.2M |
+
+Plus the cross-exam identity map `jnv_student_outcome_mapping` (one row per
+student × entrance attempt; see [`student_journey_mapping.md`](student_journey_mapping.md)).
+
+## Student journey mapping + Avanti FK enrichment
+
+`scripts/build_student_journey_mapping.py` resolves a single student across
+10th/12th/JEE/NEET and to Avanti's `dim_student`. **It runs entirely in pandas**:
+the four sources are read from BQ already aggregated, identity resolution + FK
+matching happen as DataFrame merges, and the finished table is uploaded (no
+server-side CTE graph → no planner-complexity errors). One in-memory pass builds
+**all cohorts** (2021–2027); `--year` refreshes just one. `scripts/add_avanti_fk.py`
+then keys the resolved `fk_avanti_student_id`, `match_confidence`, `match_count`
+**back onto the four source tables** (jee, neet, board 10th/12th) on each table's grain.
+
+> ⚠️ **`fk_avanti_student_id` = `COALESCE(pk_student_id, apaar_id)`.** It's a
+> `pk_student_id` for most students, but an `apaar_id` for students who have no pk in
+> `dim_student` (only an apaar — mostly JNV NVS). Join back with
+> `COALESCE(pk_student_id, apaar_id) = fk_avanti_student_id`, not `pk_student_id` alone.
+
+```bash
+.venv/bin/python scripts/build_student_journey_mapping.py            # rebuild ALL cohorts
+.venv/bin/python scripts/build_student_journey_mapping.py --year 2026 # refresh one cohort
+.venv/bin/python scripts/add_avanti_fk.py                           # write fk back to source tables
+```
+
+⚠️ **Run order matters.** `load_bq.py` rebuilds the source tables with
+`WRITE_TRUNCATE`, which **drops the fk columns**. After any reload, re-run in
+order: **`load_bq.py` → `build_student_journey_mapping.py` (each cohort) →
+`add_avanti_fk.py`**. (No circularity — the mapping reads names/rolls/apps, never
+the fk it later writes back.)
 
 ## Adding a new JEE year
 

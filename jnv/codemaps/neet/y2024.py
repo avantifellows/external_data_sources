@@ -19,10 +19,11 @@ CODEMAP = {
     "columns": {
         "application_no":            ["Application Number"],
         "student_full_name":         ["Student Name"],
+        "father_name":               ["Father Name", "FNAME"],
+        "mother_name":               ["Mother Name", "MNAME"],
         "dob":                       ["DoB"],
         "student_gender":            ["Gender"],
         "category":                  ["Category"],
-        "student_id":                ["Student ID"],
         "jnv_name":                  ["JNV Name"],
         # 10th board
         "year_of_passing_10":        ["Year of Passing 10th"],

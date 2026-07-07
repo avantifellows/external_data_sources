@@ -28,6 +28,8 @@ CODEMAP = {
         "application_no":           ["Application Number", "APPNO"],
         "program":                  ["12th Program", "Final Program", "Program Model"],
         "student_full_name":        ["Student Name", "CNAME"],
+        "father_name":              ["Father Name", "FNAME"],
+        "mother_name":              ["Mother Name", "MNAME"],
         "dob":                      ["DoB", "DOB"],
         "student_gender":           ["Gender", "GENDER"],
         "_pwd_raw":                 ["PWD", "PwD"],
