@@ -118,13 +118,14 @@ The rest of this section documents `dakshana_fact_ncst_results`. Key column grou
 
 | Group | Columns |
 |---|---|
-| Core | `test_year`, `roll_no`, `student_full_name`, `student_gender`, `category`, `stream` |
+| Core | `test_year`, `roll_no`, `student_full_name`, `father_name`, `mother_name`, `student_gender`, `category`, `stream` |
 | Demographics | `physically_disabled`, `dob`, `staff_ward`, `is_father_late` |
 | Location | `school_name`, `school_code`, `nvs_region`, `state` |
 | Socioeconomic | `annual_family_income`, `father_annual_income`, `mother_annual_income` |
 | Preference | `coaching_preference_1`, `coaching_preference_2`, `coaching_preference_3` |
 | Scores | `physics_effective_score`, `chemistry_effective_score`, `math_bio_effective_score`, `reasoning_effective_score`, `total_effective_score` |
 | 2025 only | `march_total_effective_score`, `dec_total_effective_score` |
+| Avanti linkage | `fk_avanti_student_id`, `match_confidence`, `match_count` (written by `jnv/scripts/add_avanti_fk.py`; identity-derived) |
 
 Column availability by year:
 
@@ -135,10 +136,20 @@ Column availability by year:
 | nvs_region | ✓ | ✓ | — | — |
 | state | — | — | ✓ | — |
 | dob | ✓ | — | — | — |
+| father_name | — | ✓ | ✓ | — |
+| mother_name | — | — | — | — |
 | school_code | — | — | — | ✓ |
 | father/mother income | ✓ | — | ✓ | — |
 | is_father_late | ✓ | ✓ | ✓ | — |
 | march/dec total | — | — | — | ✓ |
+
+**Avanti linkage** — `fk_avanti_student_id` / `match_confidence` / `match_count` are keyed onto this
+table by `jnv/scripts/add_avanti_fk.py` from `jnv_student_outcome_mapping`. NCST has no roll that bridges
+to the board/JEE/NEET keys, so the fk is IDENTITY-derived: name+DOB, name+father, or (2024 only) a direct
+`Avanti ID` read from the raw Excel. So `father_name` also does double duty as a match key — it is what
+lets the DOB-less 2023/2024 rows link at all. fk counts: 2022 ≈1,217 · 2023 ≈245 · 2024 ≈2,616 · 2025 = 0
+(no DOB/father) · (nvs 2026 ≈6,729). ⚠️ Re-run order after any NCST reload: `load_bq` →
+`build_student_journey_mapping.py` → `add_avanti_fk.py` (load_bq WRITE_TRUNCATE drops the fk columns).
 
 ## Codemap architecture
 

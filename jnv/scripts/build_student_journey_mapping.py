@@ -78,15 +78,18 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import (BQ_PROJECT, BQ_LOCATION,
-                     POOJITA, TENTH_SCORE, JEE_2024_RAW, JEE_2025_RAW, NEET_2024_RAW)
+                     POOJITA, TENTH_SCORE, JEE_2024_RAW, JEE_2025_RAW, NEET_2024_RAW,
+                     NCST_2024_RAW_CANDIDATES, NCST_2024_RAW_SHEET)
 
-# Final column order: key → cohort → fk + match meta → program → 10th → 12th → jee → neet.
+# Final column order: key → cohort → fk + match meta → program → ncst → 10th → 12th → jee → neet.
 FINAL_COLS = [
     "student_key", "cohort_year", "fk_avanti_student_id",
     "match_confidence", "match_count",
     "student_program", "student_product",
     # stage-availability flags (student-level)
-    "has_10th_data", "has_12th_data", "has_jee_mains_data", "has_jee_adv_data", "has_neet_data",
+    "has_ncst_data", "has_10th_data", "has_12th_data", "has_jee_mains_data", "has_jee_adv_data", "has_neet_data",
+    # NCST (selection test — Stage 1, upstream of 10th board)
+    "ncst_source", "ncst_test_year", "ncst_roll_no",
     # 10th
     "board_10th_exam_year", "board_10th_roll_number",
     "marks_10_obtained", "result_10",
@@ -340,8 +343,36 @@ def _read_avanti(client) -> pd.DataFrame:
     for c in id_names.columns:
         id_names[c] = _S(id_names[c])
     all_ids = set(id_names["id"].dropna())
-    print(f"  read avanti {len(df):>6,} rows  ({len(all_ids):,} total pk ids, {len(id_names):,} id×name)")
-    return df, all_ids, id_names
+
+    # Broader JNV frame — ALL grades (not just 12) — for NCST name+DOB matching.
+    # NCST is sat ~grade 10; its students (esp. the nvs 2026 cohort, currently grade
+    # 10/11) are NOT in the grade-12 `df` frame, so matching NCST against `df` would
+    # miss almost all of them. Same JNV + year + dob filters, minus the grade=12 clause.
+    fname = r"UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\s+', ' ')))"
+    filt_all = (f"(LOWER(COALESCE(student_school,'')) LIKE '%jnv%'"
+                f" OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')"
+                f" AND academic_year IN ({years})"
+                f" AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL")
+    avanti_ncst = client.query(f"""
+        SELECT DISTINCT COALESCE(pk_student_id, apaar_id) AS pk_student_id,
+            FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
+            {name} AS norm_name, {fname} AS norm_father,
+            FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped
+        FROM `avantifellows.production_dbt_final.dim_student`  WHERE {filt_all}
+        UNION DISTINCT
+        SELECT DISTINCT COALESCE(pk_student_id, apaar_id),
+            FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)),
+            {name}, {fname},
+            FORMAT_DATE('%Y-%m-%d', {swap})
+        FROM `avantifellows.production_dbt_final.dim_student_historical` WHERE {filt_all}
+    """).to_dataframe().drop_duplicates()
+    for c in avanti_ncst.columns:
+        avanti_ncst[c] = _S(avanti_ncst[c])
+    avanti_ncst["norm_father"] = avanti_ncst["norm_father"].where(_ne(avanti_ncst["norm_father"]))
+
+    print(f"  read avanti {len(df):>6,} rows  ({len(all_ids):,} total pk ids, "
+          f"{len(id_names):,} id×name, {len(avanti_ncst):,} JNV all-grade for ncst)")
+    return df, all_ids, id_names, avanti_ncst
 
 
 def _read_marks(client) -> dict:
@@ -540,10 +571,209 @@ def _corroborate_roll10x(roll10x: pd.DataFrame, b10: pd.DataFrame, id_names: pd.
     return out
 
 
+def _read_ncst(client) -> pd.DataFrame:
+    """
+    NCST (Navodaya CoE Selection Test) records from both external tables (dakshana +
+    nvs) in BigQuery, one row per (ncst_source, ncst_test_year, ncst_roll_no) with
+    normalised identity fields (name, DOB, father).
+
+    NCST is a Stage-1 selection test with NO roll/app that bridges to the board /
+    JEE / NEET keys, so it can only be linked to a resolved student by IDENTITY:
+    name+DOB, name+father, or the 2024 direct Avanti id crosswalk. DOB is present only
+    for dakshana 2022 and nvs 2026; father_name for dakshana 2023/2024 and nvs 2026 —
+    so the DOB-less dakshana 2023/2024 reach an fk via name+father, while 2025 (no DOB,
+    no father) can only match through the 2024 direct-id crosswalk (which it lacks) →
+    2025 gets no fk. Reads father_name from BigQuery, so the NCST tables must carry it
+    (load dakshana/ + nvs/ clean → BQ before rebuilding — see run order below).
+    """
+    name = r"UPPER(TRIM(REGEXP_REPLACE({c}, r'\s+', ' ')))"
+    nnc  = lambda c: name.format(c=f"COALESCE({c},'')")
+    # normalise dob to 'YYYY-MM-DD' (the clean tables already store it that way; the
+    # SAFE.PARSE_DATE round-trips valid values and nulls anything unexpected).
+    dob = "FORMAT_DATE('%Y-%m-%d', SAFE.PARSE_DATE('%Y-%m-%d', dob))"
+    sql = f"""
+        SELECT 'dakshana' AS ncst_source, test_year AS ncst_test_year, roll_no AS ncst_roll_no,
+               {nnc('student_full_name')} AS norm_name, {nnc('father_name')} AS norm_father,
+               {dob} AS dob
+        FROM `avantifellows.external_data_sources.dakshana_fact_ncst_results`
+        WHERE roll_no IS NOT NULL
+        UNION ALL
+        SELECT 'nvs', test_year, roll_no,
+               {nnc('student_full_name')}, {nnc('father_name')}, {dob}
+        FROM `avantifellows.external_data_sources.nvs_fact_ncst_results`
+        WHERE roll_no IS NOT NULL
+    """
+    df = client.query(sql).to_dataframe()
+    for c in df.columns:
+        df[c] = _S(df[c])
+    df["dob"] = df["dob"].where(_ne(df["dob"]))
+    df["norm_father"] = df["norm_father"].where(_ne(df["norm_father"]))
+    print(f"  read ncst {len(df):>8,} rows "
+          f"({(df.ncst_source=='dakshana').sum():,} dakshana, {(df.ncst_source=='nvs').sum():,} nvs; "
+          f"{df.dob.notna().sum():,} with dob, {_ne(df.norm_father).sum():,} with father)")
+    return df
+
+
+def _read_ncst_avanti_id() -> pd.DataFrame:
+    """
+    The Dakshana NCST-2024 raw Excel carries a direct 'Avanti ID' keyed on
+    'Dakshana Roll Number' (= the table's roll_no for 2024). Read as a
+    highest-confidence direct-id crosswalk: (ncst_test_year='2024', ncst_roll_no)
+    → ncst_avanti_id. Kept only where a single id maps to the roll. Missing raw is
+    non-fatal — the direct tier is simply skipped and matching falls back to name+DOB.
+    """
+    cols = ["ncst_test_year", "ncst_roll_no", "ncst_avanti_id"]
+    for path in NCST_2024_RAW_CANDIDATES:
+        if not path.exists():
+            continue
+        d = pd.read_excel(path, sheet_name=NCST_2024_RAW_SHEET, dtype=str)
+        out = pd.DataFrame({
+            "ncst_test_year": "2024",
+            "ncst_roll_no":   _S(d["Dakshana Roll Number"]),
+            "ncst_avanti_id": _S(d["Avanti ID"]),
+        })
+        out = out[_ne(out.ncst_avanti_id) & _ne(out.ncst_roll_no)]
+        # keep only rolls that map to exactly one id (drop contested rolls)
+        n = out.groupby("ncst_roll_no").ncst_avanti_id.transform("nunique")
+        out = out[n == 1].drop_duplicates("ncst_roll_no").reset_index(drop=True)
+        print(f"  read ncst_2024 direct-id crosswalk {len(out):>5,} rows  ({path})")
+        return out[cols]
+    print("  WARNING: NCST 2024 raw not found in any candidate path — direct-id tier skipped")
+    return pd.DataFrame(columns=cols)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NCST resolution — attach to resolved students, seed Avanti-linked orphans
+# ─────────────────────────────────────────────────────────────────────────────
+def _resolve_ncst(ncst: pd.DataFrame, ncst_aid: pd.DataFrame, sid: pd.DataFrame,
+                  avanti_ncst: pd.DataFrame, all_ids: set, fk_resolved: pd.DataFrame):
+    """
+    Link each NCST record to a resolved student (decision 2026-07-10,
+    "attach + seed Avanti-linked orphans"), in three modes:
+
+      ATTACH (identity) — the NCST identity matches EXACTLY ONE already-resolved
+        student (`sid`) by name+DOB, else name+father; the NCST roll/year/source
+        decorate that existing student_key. Ambiguous (>1) matches are dropped.
+
+      ATTACH (fk) — an NCST record with no `sid` identity match still resolves to an
+        Avanti fk (below) that ALREADY belongs to a spine student. Decorate that
+        existing student_key rather than minting a new one — this avoids counting
+        one Avanti person as two students when their NCST identity (name/DOB from
+        the NCST file) differs from their board/JEE/NEET-derived identity.
+
+      SEED — an NCST record with no `sid` match whose Avanti fk is NOT already on a
+        spine student is seeded as a NEW student. fk from an unambiguous match to the
+        JNV (all-grade) dim frame, priority: direct 2024 id → name+DOB → name+DOB-
+        swapped → name+father. name+father is what lets the DOB-less dakshana 2023/
+        2024 rows reach an fk at all (2025 has neither DOB nor father → no fk). Never
+        floods the table with the ~85k non-Avanti test-takers, never drops an
+        Avanti-linked one. Seed key = `ncst:<source>:<year>:<roll>`, cohort_year =
+        ncst_test_year + 2 (verified: dakshana NCST 2022 → 12th board 2024).
+
+    Returns (ncst_key, seed_master, seed_fk):
+      ncst_key    — student_key → (ncst_source, ncst_test_year, ncst_roll_no), one per key
+      seed_master — new spine rows for seeded orphans (master_cols shape, board/* null)
+      seed_fk     — student_key → (fk_avanti_student_id, match_confidence, match_count)
+    """
+    KEYS = ["ncst_source", "ncst_test_year", "ncst_roll_no"]
+    ncst = ncst.merge(ncst_aid, on=["ncst_test_year", "ncst_roll_no"], how="left")
+
+    def _uniq(left, right, rid, left_cols, right_cols, conf):
+        """Per NCST key, count/pick the matched right-id on (left_cols == right_cols).
+        Blank/NA keys on either side are excluded, so an empty father/name never joins."""
+        sub = left
+        for c in left_cols:
+            sub = sub[_ne(sub[c])]
+        r = right
+        for c in right_cols:
+            r = r[_ne(r[c])]
+        r = r[[rid] + right_cols].drop_duplicates()
+        mm = sub.merge(r, left_on=left_cols, right_on=right_cols)
+        gg = mm.groupby(KEYS).agg(cnt=(rid, "nunique"), cand=(rid, "first")).reset_index()
+        gg["conf"] = conf
+        return gg[KEYS + ["cnt", "cand", "conf"]]
+
+    # ── ATTACH (identity): NCST → resolved student (sid) by name+DOB, then name+father ──
+    a = pd.concat([
+        _uniq(ncst, sid, "student_key", ["norm_name", "dob"], ["norm_name", "dob"], "name_dob"),
+        _uniq(ncst, sid, "student_key", ["norm_name", "norm_father"], ["norm_name", "norm_father"], "name_father"),
+    ], ignore_index=True)
+    matched_any = set(map(tuple, a[KEYS].itertuples(index=False, name=None)))
+    a["amb"] = a.cnt != 1
+    a["pri"] = a.conf.map({"name_dob": 1, "name_father": 2})
+    a = a.sort_values(KEYS + ["amb", "pri"]).drop_duplicates(KEYS, keep="first")
+    attached = a[a.cnt == 1][KEYS + ["cand"]].rename(columns={"cand": "student_key"})
+
+    # ── resolve an Avanti fk for records with NO sid match (candidates to seed) ──
+    orphan = ncst[~pd.Series(list(zip(ncst.ncst_source, ncst.ncst_test_year, ncst.ncst_roll_no)),
+                             index=ncst.index).isin(matched_any)]
+
+    # direct 2024 Avanti id (validated against the full pk/apaar universe)
+    direct = orphan[_ne(orphan.ncst_avanti_id) & orphan.ncst_avanti_id.isin(all_ids)]
+    direct = pd.DataFrame({**{k: direct[k] for k in KEYS},
+                           "fk": direct.ncst_avanti_id, "conf": "direct_avanti_id", "cnt": 1})
+
+    def _seed(left_cols, right_cols, conf):
+        g = _uniq(orphan, avanti_ncst, "pk_student_id", left_cols, right_cols, conf)
+        return pd.DataFrame({**{k: g[k] for k in KEYS},
+                             "fk": g["cand"].where(g.cnt == 1), "conf": conf, "cnt": g.cnt})
+
+    pri = {"direct_avanti_id": 1, "name_dob": 2, "name_dob_swapped": 3, "name_father": 4}
+    cand = pd.concat([
+        direct,
+        _seed(["norm_name", "dob"], ["norm_name", "dob"], "name_dob"),
+        _seed(["norm_name", "dob"], ["norm_name", "dob_swapped"], "name_dob_swapped"),
+        _seed(["norm_name", "norm_father"], ["norm_name", "norm_father"], "name_father"),
+    ], ignore_index=True)
+    cand["fk_isnull"] = cand.fk.isna()
+    cand["pri"] = cand.conf.map(pri)
+    cand = cand.sort_values(KEYS + ["fk_isnull", "pri"]).drop_duplicates(KEYS, keep="first")
+    resolved = cand[cand.fk.notna()].copy()
+
+    # split resolved orphans: fk already on a spine student → attach to that key;
+    # otherwise → mint a new seed key.
+    fk2key = (fk_resolved[fk_resolved.fk_avanti_student_id.notna()]
+              .drop_duplicates("fk_avanti_student_id")
+              .set_index("fk_avanti_student_id")["student_key"])
+    resolved["student_key"] = resolved.fk.map(fk2key)
+    fk_attach = resolved[resolved.student_key.notna()]
+    seed = resolved[resolved.student_key.isna()].copy()
+    seed["student_key"] = ("ncst:" + seed.ncst_source + ":" + seed.ncst_test_year
+                           + ":" + seed.ncst_roll_no)
+
+    # ── ncst_key: one NCST sitting per student_key (earliest year) ──────────────
+    ncst_key = pd.concat([attached[["student_key"] + KEYS],
+                          fk_attach[["student_key"] + KEYS],
+                          seed[["student_key"] + KEYS]], ignore_index=True)
+    ncst_key = (ncst_key.sort_values(["student_key", "ncst_test_year"])
+                        .drop_duplicates("student_key", keep="first").reset_index(drop=True))
+
+    seed_master = pd.DataFrame({
+        "student_key": seed.student_key,
+        "cohort_year": _year_shift(seed.ncst_test_year, 2),
+        "cohort_year_source": "ncst",
+        "board_12th_exam_year": pd.NA, "board_12th_roll_number": pd.NA,
+        "board_10th_exam_year": pd.NA, "board_10th_roll_number": pd.NA,
+        "board_10th_link_source": pd.NA,
+    })
+    seed_fk = pd.DataFrame({
+        "student_key": seed.student_key, "fk_avanti_student_id": seed.fk,
+        "match_confidence": seed.conf, "match_count": seed.cnt,
+    })
+    print(f"  ncst → {len(attached):,} attached (identity), {len(fk_attach):,} attached (fk), "
+          f"{len(seed):,} seeded as new Avanti-linked orphans "
+          f"(direct_id {(seed.conf=='direct_avanti_id').sum():,}, "
+          f"name_dob {(seed.conf=='name_dob').sum():,}, "
+          f"swapped {(seed.conf=='name_dob_swapped').sum():,}, "
+          f"name_father {(seed.conf=='name_father').sum():,})")
+    return ncst_key, seed_master, seed_fk
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # identity resolution (all pandas)
 # ─────────────────────────────────────────────────────────────────────────────
-def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: set) -> pd.DataFrame:
+def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: set,
+             ncst: pd.DataFrame, ncst_aid: pd.DataFrame, avanti_ncst: pd.DataFrame) -> pd.DataFrame:
     b12, b10, jee, neet = src["b12"], src["b10"], src["jee"], src["neet"]
     p24, p25 = refs["poojita24"], refs["poojita25"]
     j25, j24x, n24x = refs["jee25_avanti"], refs["jee24x"], refs["neet24x"]
@@ -826,9 +1056,19 @@ def _resolve(src: dict, refs: dict, avanti: pd.DataFrame, prod: dict, all_ids: s
             master[c] = pd.NA
     master = master[master_cols].drop_duplicates("student_key")
 
-    # attach FK + explode to attempts
+    # ── NCST (selection test): attach to resolved students, seed Avanti-linked orphans ──
+    ncst_key, ncst_seed_master, ncst_seed_fk = _resolve_ncst(
+        ncst, ncst_aid, sid, avanti_ncst, all_ids, fk_resolved)
+    # seeded orphans join the spine as brand-new students (disjoint ncst:* keys)
+    master = pd.concat([master, ncst_seed_master[master_cols]], ignore_index=True) \
+               .drop_duplicates("student_key")
+    fk_resolved = pd.concat([fk_resolved, ncst_seed_fk], ignore_index=True) \
+                    .drop_duplicates("student_key")
+
+    # attach FK + explode to attempts (+ NCST sitting, student-level)
     spine = master.merge(fk_resolved, on="student_key", how="left") \
-                  .merge(attempts, on="student_key", how="left")
+                  .merge(attempts, on="student_key", how="left") \
+                  .merge(ncst_key, on="student_key", how="left")
     spine["jee_test_year"]  = spine.attempt_year.where(spine.jee_application_no.notna())
     spine["neet_test_year"] = spine.attempt_year.where(spine.neet_application_no.notna())
     return spine
@@ -905,6 +1145,7 @@ def _enrich(spine: pd.DataFrame, marks: dict) -> pd.DataFrame:
     # row is enough to filter on (e.g. WHERE has_10th_data AND has_12th_data AND
     # (has_jee_mains_data OR has_neet_data)).
     flags = {
+        "has_ncst_data":      df["ncst_test_year"].notna(),
         "has_10th_data":      df["board_10th_exam_year"].notna(),
         "has_12th_data":      df["board_12th_exam_year"].notna(),
         "has_jee_mains_data": df["jee_application_no"].notna(),
@@ -947,9 +1188,11 @@ def main() -> None:
     refs = _read_refs()
     print("Reading source frames from BigQuery (aggregated) ...")
     src = _read_sources(client)
-    avanti, all_ids, id_names = _read_avanti(client)
+    avanti, all_ids, id_names, avanti_ncst = _read_avanti(client)
     prod = _read_prod_fk(client)
     marks = _read_marks(client)
+    ncst = _read_ncst(client)
+    ncst_aid = _read_ncst_avanti_id()
 
     # Name-corroborate the 10th-score crosswalk against dim ids (no new BQ query — reuses
     # the id×name frame from _read_avanti) so a row-misaligned sheet row can't inject a
@@ -958,7 +1201,7 @@ def main() -> None:
 
     # Resolve the entire cross-year identity universe ONCE; slice afterwards.
     print(f"\nResolving student identities (pandas) ...")
-    out = _enrich(_resolve(src, refs, avanti, prod, all_ids), marks)
+    out = _enrich(_resolve(src, refs, avanti, prod, all_ids, ncst, ncst_aid, avanti_ncst), marks)
 
     if year is None:
         print(f"\nFull rebuild → avantifellows.external_data_sources.jnv_student_outcome_mapping: {len(out):,} rows, {out.student_key.nunique():,} students")
@@ -996,6 +1239,7 @@ def main() -> None:
         SELECT cohort_year,
             COUNT(*)                                  AS total_rows,
             COUNT(DISTINCT student_key)               AS students,
+            COUNTIF(ncst_test_year IS NOT NULL)       AS has_ncst,
             COUNTIF(board_10th_exam_year IS NOT NULL) AS has_b10,
             COUNTIF(board_12th_exam_year IS NOT NULL) AS has_b12,
             COUNTIF(jee_test_year  IS NOT NULL)       AS has_jee,
@@ -1003,11 +1247,11 @@ def main() -> None:
             COUNTIF(fk_avanti_student_id IS NOT NULL) AS has_fk
         FROM `avantifellows.external_data_sources.jnv_student_outcome_mapping` GROUP BY 1 ORDER BY cohort_year
     """
-    print(f"\n{'cohort':<7} {'rows':>8} {'students':>9} {'b10':>8} {'b12':>8} "
+    print(f"\n{'cohort':<7} {'rows':>8} {'students':>9} {'ncst':>7} {'b10':>8} {'b12':>8} "
           f"{'jee':>8} {'neet':>8} {'fk':>8}")
-    print("-" * 70)
+    print("-" * 78)
     for r in client.query(summary_sql).result():
-        print(f"  {r.cohort_year:<5}  {r.total_rows:>8,}  {r.students:>9,}  {r.has_b10:>8,}  "
+        print(f"  {r.cohort_year:<5}  {r.total_rows:>8,}  {r.students:>9,}  {r.has_ncst:>7,}  {r.has_b10:>8,}  "
               f"{r.has_b12:>8,}  {r.has_jee:>8,}  {r.has_neet:>8,}  {r.has_fk:>8,}")
     print("\nDone.")
 
