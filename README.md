@@ -21,6 +21,7 @@ BigQuery for analysis. One folder per upstream source.
 | NMC (India) | [`nmc/`](nmc/) | Active | National Medical Commission MBBS seat matrix 2024-25 — all ~780 MBBS medical colleges (incl. AIIMS & JIPMER) with state, district, university, management, year of inception, and annual UG seat intake. PDF parse → GCS → BQ. → 1 table: `nmc_fact_mbbs_seats`. |
 | MoE Board Results | [`moe/`](moe/) | Active | Indian school board exam results (Class X + XII) from MoE RSHSE PDFs — pass figures across all 41–58 boards by year, gender, social category, and Class XII stream (2020–2024, no 2023 edition). PDF parse → GCS → BQ. → 1 table: `moe_fact_board_exam_results`. |
 | AISHE (India) | [`aishe/`](aishe/) | Active | All India Survey on Higher Education (MoE). Two pipelines: (1) Student enrolment + graduates from Final Report workbooks (Tables 33, 34a, 12+35) → `aishe_fact_higher_ed_students`; (2) Live institution directory from the AISHE HE Directory dashboard → 5 dim tables: `aishe_dim_colleges` (53k), `aishe_dim_universities` (1.4k), `aishe_dim_standalone_institutions` (17k), `aishe_dim_research_institutions` (279), `aishe_dim_pm_vidyalaxmi_eligible_institutions` (1k). |
+| KCET (Karnataka) | [`kcet/`](kcet/) | Active | Karnataka CET engineering cutoffs — closing ranks for every (college, course, category) seat bucket. Two KEA PDFs → parse → GCS → BQ → 1 `kcet_fact_cutoffs` table. 13,604 rows, 2025 Round 3. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables

@@ -1,0 +1,171 @@
+# kcet_fact_cutoffs
+#
+# Source parquet: gs://avantifellows-external-data/kcet/clean/kcet_fact_cutoffs.parquet
+# BQ table:       avantifellows.external_data_sources.kcet_fact_cutoffs
+
+description: |
+  KCET (Karnataka Common Entrance Test) engineering seat-allotment cutoffs —
+  the closing rank for every (college, course, category) seat bucket.
+  13,604 rows across 229 colleges. One row = one allotted seat bucket in one
+  round of one year. Blank/`--` cells are intentionally absent.
+
+  WHAT KCET IS. KCET is Karnataka's state-level engineering entrance exam,
+  administered by KEA (Karnataka Examinations Authority). It determines
+  admission to government, government-aided, and private engineering colleges
+  in Karnataka for Karnataka-domicile students. Two domicile pools exist:
+  GEN (Rest of Karnataka, the general pool) and HK (Hyderabad-Karnataka,
+  the Article 371(j) reserved pool for 7 NE Karnataka districts).
+
+  CATEGORY CODE SYSTEM. Each category code encodes vertical (reservation)
+  and horizontal (sub-group) dimensions in a compact code:
+    Vertical prefix: 1=Cat1(SC/ST), 2A=Cat2A(OBC), 2B=Cat2B(OBC),
+                     3A=Cat3A(OBC), 3B=Cat3B(OBC), GM=General Merit,
+                     SC=Scheduled Caste, ST=Scheduled Tribe, NRI, OPN, OTH
+    Horizontal suffix (GEN pool): G=General, K=Kannada Medium, R=Rural, P=PWD
+    HK pool adds H suffix: 1H, 2AH, GMH, SCH … (25 HK categories)
+  Total: 28 GEN categories + 25 HK categories = 53 possible codes;
+  only non-null allotments appear as rows (47 distinct codes in 2025 data).
+
+  GOTCHAS (read before writing SQL):
+  1. closing_rank is FLOAT, not INT — KEA publishes fractional ranks including
+     .5, .25, .75, and .875. Preserve the exact value for comparisons.
+  2. college_type is derived, not from the cutoff PDF directly. It comes from
+     KEA's June 2025 draft engineering seat-matrix annexures through an audited
+     code-level codemap. Only exact institution matches and documented
+     split-code exceptions are classified. The 28 unresolved codes are
+     'Unknown', never assumed Private.
+  3. course_name is formatting-normalized while course_name_raw preserves the
+     minimally repaired PDF label. Degree prefixes are program identity: a
+     college can publish both 'B TECH IN COMPUTER SCIENCE' and 'COMPUTER
+     SCIENCE' with different cutoffs, so do not strip or merge them.
+  4. This table is 2025 Third Round data (round=3). It is NOT the final
+     extended round — KEA may publish a later round. The round column tells
+     you which allotment snapshot this is.
+  5. HK category codes are distinct from GEN codes (1H vs 1G, GMH vs GM).
+     Never mix domicile_pool='GEN' and 'HK' rows without filtering by
+     domicile_pool first.
+
+rows: 13604
+grain: (college_code, course_name, domicile_pool, category_code, year, round)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State. Always 'KARNATAKA' in this table.
+
+  - name: cet_name
+    type: STRING
+    mode: REQUIRED
+    description: Entrance exam name. Always 'KCET' in this table.
+
+  - name: stream
+    type: STRING
+    mode: REQUIRED
+    description: Stream. Always 'engineering' in this table.
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: KCET admission year (2025).
+
+  - name: round
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      KEA counselling round within the year. 3 = Third Round (the round
+      published in this dataset). KEA may publish further rounds; if so,
+      re-run the pipeline with the updated PDF.
+
+  - name: college_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      KEA college code (e.g. 'E001'). The 'E' prefix denotes an engineering
+      college. Stable across years — use as the primary join key.
+
+  - name: college_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Full college name as published by KEA in the cutoff PDF. Names may
+      differ slightly from other KEA documents — use college_code for joins.
+
+  - name: college_type
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Analyst-facing normalized classification: 'Govt', 'Govt-Aided',
+      'Private', or 'Unknown'. See college_type_detail and GOTCHA #2.
+
+  - name: college_type_detail
+    type: STRING
+    mode: REQUIRED
+    description: >
+      KEA matrix annexure class: 'Government', 'Government-Aided', 'Private
+      Unaided', 'Private Unaided Minority', or 'Private University'.
+      'Unknown' means the code was omitted or not uniquely identifiable in the
+      June draft; it is not an inferred private classification.
+
+  - name: college_type_source
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Row-level provenance for college_type, including the raw source filename,
+      PDF page where applicable, and matching/disambiguation method. Unknown
+      codes use 'unclassified'; full evidence is in the committed codemap.
+
+  - name: course_name_raw
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Minimally repaired PDF label: line-wrap fragments are joined and
+      whitespace collapsed, but degree wording and source spelling are kept.
+
+  - name: course_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Formatting-normalized course label used in the table grain. Casing,
+      parenthesis spacing, known split words, and ENGG are normalized. Degree
+      prefixes and specialization wording are preserved to avoid merging
+      distinct source programs. See course_name_raw for auditing.
+
+  - name: domicile_pool
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Seat pool by domicile: 'GEN' (Rest of Karnataka — the general pool)
+      or 'HK' (Hyderabad-Karnataka, Article 371(j) — reserved for 7 NE
+      Karnataka districts). Always filter by domicile_pool before comparing
+      ranks; the two pools are separate merit lists.
+
+  - name: category_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Compact reservation + sub-group code. GEN pool examples: '1G' (Cat1
+      General), '2AG' (Cat2A General), 'GM' (General Merit), 'GMK'
+      (General Merit Kannada Medium), 'SCR' (SC Rural), 'NRI'.
+      HK pool examples: '1H', '2AH', 'GMH', 'SCH'. See table description
+      for the full encoding key.
+
+  - name: closing_rank
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      Closing rank for this seat bucket — the rank of the last candidate
+      allotted. FLOAT because KEA publishes fractional values. Only allotted
+      cells are stored, so this column is non-null. Lower rank is stronger.
+
+  - name: source_file
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Raw PDF filename in gs://avantifellows-external-data/kcet/raw/ from which
+      the row was parsed. GEN and HK use separate official PDFs.
+
+  - name: source_url
+    type: STRING
+    mode: REQUIRED
+    description: Official KEA URL for the source PDF.
