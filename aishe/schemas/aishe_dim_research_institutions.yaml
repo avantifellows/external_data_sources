@@ -1,0 +1,46 @@
+# aishe_dim_research_institutions
+#
+# Live registry of R&D / research institutes in India that have an AISHE code,
+# as published by the AISHE HE Directory dashboard. One row per institute.
+# WRITE_TRUNCATE on each refresh.
+#
+# Source: MoE / AISHE. Download: R & D Institutes from the dashboard.
+# Pipeline: build_institution_directory.py → upload_to_gcs.py → load_bq.py
+
+table: aishe_dim_research_institutions
+grain: one row per research institution (aishe_code)
+row_count_approx: 279
+
+core_columns:
+  - name: sno
+    type: INT64
+    description: Serial number in the source file
+  - name: aishe_code
+    type: STRING
+    description: Unique AISHE institution code (e.g. "R-12345")
+  - name: institute_name
+    type: STRING
+    description: Name of the research institution
+  - name: state_name
+    type: STRING
+    description: State where the institution is located
+  - name: district_name
+    type: STRING
+    description: District where the institution is located
+  - name: administrative_ministry
+    type: STRING
+    description: Central ministry that administers the institution (e.g. DST, CSIR, DRDO)
+  - name: aishe_as_on_date
+    type: TIMESTAMP
+    description: Date of the AISHE dashboard snapshot (extracted from file header)
+  - name: ingested_at
+    type: TIMESTAMP
+    description: UTC timestamp when this pipeline run wrote the parquet
+
+sample_queries:
+  - label: Research institutions by ministry
+    sql: |
+      SELECT administrative_ministry, COUNT(*) AS count
+      FROM `avantifellows.external_data_sources.aishe_dim_research_institutions`
+      GROUP BY 1
+      ORDER BY 2 DESC

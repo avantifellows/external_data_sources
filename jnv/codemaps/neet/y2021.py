@@ -19,6 +19,8 @@ CODEMAP = {
         "application_no":           ["APPNO"],
         "roll_no":                  ["ROLL"],
         "student_full_name":        ["CNAME"],
+        "father_name":              ["FNAME"],
+        "mother_name":              ["MNAME"],
         "dob":                      ["DOB_N"],
         "student_gender":           ["SEX_N"],
         "category":                 ["CAT"],

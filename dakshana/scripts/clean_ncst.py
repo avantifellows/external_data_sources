@@ -48,7 +48,9 @@ from codemaps.ncst.shared import (
     normalize_gender,
     normalize_stream,
 )
-from scripts.sources import NCST_CLEAN, RAW_NCST_FILES
+from scripts.sources import TABLES
+
+NCST_CLEAN = next(t for t in TABLES if t.bq_name == "dakshana_fact_ncst_results")
 
 
 def _match_column(raw_cols_lower: dict[str, str], candidates: list[str]) -> str | None:

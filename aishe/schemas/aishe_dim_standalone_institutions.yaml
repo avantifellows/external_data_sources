@@ -1,0 +1,55 @@
+# aishe_dim_standalone_institutions
+#
+# Live registry of all standalone institutions in India (institutions not
+# affiliated to any university), as published by the AISHE HE Directory
+# dashboard. One row per institution. WRITE_TRUNCATE on each refresh.
+#
+# Source: MoE / AISHE. Download: Standalone → ALL_STANDALONE_with_URLs.
+# Pipeline: build_institution_directory.py → upload_to_gcs.py → load_bq.py
+
+table: aishe_dim_standalone_institutions
+grain: one row per standalone institution (aishe_code)
+row_count_approx: 16795
+
+core_columns:
+  - name: aishe_code
+    type: STRING
+    description: Unique AISHE institution code (e.g. "S-12345")
+  - name: name
+    type: STRING
+    description: Name of the institution
+  - name: website
+    type: STRING
+    description: Institution website URL (may be null or empty)
+  - name: state
+    type: STRING
+    description: State where the institution is located
+  - name: district
+    type: STRING
+    description: District where the institution is located
+  - name: year_of_establishment
+    type: STRING
+    description: Year the institution was established; null if unknown
+  - name: location
+    type: STRING
+    description: Rural / Urban / Semi-Urban
+  - name: standalone_type
+    type: STRING
+    description: Type of standalone institution (e.g. B.Ed., Law, Engineering, Polytechnic)
+  - name: management
+    type: STRING
+    description: Management type (Government / Private Aided / Private Unaided / etc.)
+  - name: aishe_as_on_date
+    type: TIMESTAMP
+    description: Date of the AISHE dashboard snapshot (extracted from file header)
+  - name: ingested_at
+    type: TIMESTAMP
+    description: UTC timestamp when this pipeline run wrote the parquet
+
+sample_queries:
+  - label: Standalone institutions by type
+    sql: |
+      SELECT standalone_type, COUNT(*) AS count
+      FROM `avantifellows.external_data_sources.aishe_dim_standalone_institutions`
+      GROUP BY 1
+      ORDER BY 2 DESC

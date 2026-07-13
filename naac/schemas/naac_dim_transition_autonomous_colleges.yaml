@@ -1,0 +1,61 @@
+# naac_dim_transition_autonomous_colleges
+#
+# Colleges in NAAC's "Transition Autonomous" category as of 14-Aug-2025.
+# One row per college. Sourced from the "Transition Autonomous Colleges" sheet
+# of the official NAAC download: naac.gov.in → Accreditation Status.
+#
+# Background: these colleges were originally accredited by NAAC as affiliated
+# colleges (receiving a CGPA + grade under affiliated-college criteria). They
+# subsequently received UGC Autonomous Status, which means NAAC's affiliated-
+# college grade no longer applies — autonomous colleges are assessed under
+# different criteria. Rather than de-accrediting them immediately, NAAC extended
+# their old accreditation validity while they queue for reassessment under the
+# autonomous-college framework. Hence: no CGPA or grade in this sheet.
+#
+# ⚠️ No Track-Id or AISHE-Id in this sheet — the only join path to other
+# datasets is fuzzy name-matching. HEI Name often embeds the address and
+# includes "(Autonomous)" as part of the official name.
+#
+# ⚠️ Data quality: 2 dirty date values in source ("3112/2025", "31/122025")
+# are cleaned to 2025-12-31 during load. ~61 colleges had validity dates in
+# 2024 or earlier — their accreditation has already expired as of Aug 2025.
+#
+# Source xlsx: raw/ (committed to repo)
+# Source parquet: gs://avantifellows-external-data/naac/naac_dim_transition_autonomous_colleges.parquet
+# BQ table: avantifellows.external_data_sources.naac_dim_transition_autonomous_colleges
+
+description: Colleges with extended NAAC accreditation validity during transition to autonomous status — no CGPA or grade. Data as of 14-Aug-2025.
+rows: 290
+grain: (hei_name)  # no stable numeric key; hei_name is the only identifier in this sheet
+
+columns:
+  - name: sl_no
+    type: INTEGER
+    description: Serial number within this sheet (source ordering only).
+
+  - name: hei_name
+    type: STRING
+    description: |
+      Full name of the college, often including "(Autonomous)" and the
+      full address embedded after a newline in the source (cleaned to
+      a space on load). No separate address column exists in this sheet.
+
+  - name: state
+    type: STRING
+    description: |
+      Indian state or UT the college is located in.
+      Heavily concentrated: Maharashtra (113), Tamil Nadu (54),
+      Andhra Pradesh (40), Telangana (24), Karnataka (19).
+
+  - name: extended_validity_upto
+    type: DATE
+    description: |
+      Date until which NAAC has extended the old accreditation validity.
+      This is NOT a new accreditation — it is an extension of the prior
+      affiliated-college grade while the college awaits reassessment.
+      Colleges with a past date here have lapsed accreditation.
+      Source had 2 malformed values cleaned to 2025-12-31 on load.
+
+  - name: data_as_of
+    type: DATE
+    description: Date the source file was published on naac.gov.in (2025-08-14).

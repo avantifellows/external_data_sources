@@ -4,3 +4,4 @@ pyarrow
 google-cloud-bigquery
 google-cloud-storage
 openpyxl
+db-dtypes

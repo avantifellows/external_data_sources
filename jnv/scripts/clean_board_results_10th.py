@@ -25,6 +25,12 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import BOARD_RESULTS_10TH_CLEAN, RAW_BOARD_RESULTS_10TH_FILES
 
+# NOTE: the Avanti FK (fk_avanti_student_id / match_confidence / match_count) is
+# NOT resolved here. It is stamped onto this table post-load by add_avanti_fk.py
+# from jnv_student_outcome_mapping (the single, centralised identity resolver).
+# An earlier draft did clean-time FK matching in this file; that was retired once
+# the mapping became the source of truth (it overwrote these columns anyway).
+
 # ── Year configs ───────────────────────────────────────────────────────────────
 
 YEAR_CONFIGS = [
@@ -236,6 +242,8 @@ def main() -> None:
         sys.exit(1)
 
     out_df = pd.concat(frames, ignore_index=True)
+
+    # Avanti FK is added post-load by add_avanti_fk.py (see note at top of file).
 
     # Select and order output columns; fill missing ones with NA
     for col in OUTPUT_COLS:

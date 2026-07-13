@@ -131,5 +131,21 @@ Two patterns, two examples:
   `jnv_fact_neet_results`, `jnv_fact_selection_test_results`,
   `jnv_fact_ei_asset_test_results`, `jnv_fact_board_results_10th`,
   `jnv_fact_board_results_12th`.
+- [`aicte/`](aicte/) — API-based fetch. Scripted `fetch.py` pulls three cuts
+  (national, state, institution-type) from the AICTE dashboard JSON API into
+  raw panel CSVs; `clean_aicte.py` unifies them into one denormalized fact →
+  GCS → BQ. Use as the reference when upstream is a JSON API rather than a
+  file download. → 1 table: `aicte_fact_intake`.
+- [`nmc/`](nmc/) — PDF parse. Raw PDF downloaded from NMC → parsed with
+  pdfplumber → clean parquet → GCS → BQ. Use as the reference when upstream
+  is a structured PDF report. → 1 table: `nmc_fact_mbbs_seats`.
+- [`moe/`](moe/) — multi-PDF parse. Four annual MoE RSHSE PDFs (2020–2024)
+  parsed with pdfplumber across two extractors (overall + stream-wise), merged
+  into one denormalized fact with `cut` sentinel. Same shape as `nmc/` but
+  multi-year and multi-parser. → 1 table: `moe_fact_board_exam_results`.
+- [`aishe/`](aishe/) — xlsx parse. Three AISHE Final Report workbooks (2019-22)
+  parsed with openpyxl across three published cross-tabs (state×level, programme×social,
+  UG discipline), unified into one denormalized fact with `cut` sentinel. Follows
+  `plfs/` shape for parsing + `nirf/` shape for GCS staging. → 1 table: `aishe_fact_higher_ed_students`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.

@@ -11,16 +11,17 @@ import pandas as pd
 CANONICAL_COLS = [
     # core
     "test_year", "test_name", "application_no", "student_full_name",
+    "father_name", "mother_name",
     "dob", "student_gender", "category",
-    "school_code",
+    "school_code", "program",
     # location
-    "student_state", "district_12", "place_of_school",
+    "student_state", "district_12", "district_10", "place_of_school",
     "jnv_name", "jnv_region",
     # 12th board
-    "year_of_passing_12", "board_12",
+    "year_of_passing_12", "board_12", "roll_no_12",
     "marks_12_obtained", "marks_12_total", "marks_12_pct",
     # 10th board
-    "year_of_passing_10", "board_10",
+    "year_of_passing_10", "board_10", "roll_no_10",
     "marks_10_obtained", "marks_10_total", "marks_10_pct",
     # JEE Mains scores
     "roll_no_s1", "roll_no_s2",
@@ -63,14 +64,20 @@ COLUMN_TYPES = {
     "test_name":                    "constant",
     "application_no":               "str",
     "student_full_name":            "str",
+    "father_name":                  "str",
+    "mother_name":                  "str",
     "dob":                          "str",
     "student_gender":               "gender",
     "category":                     "category",
     "school_code":                  "str",
+    "program":                      "str",
     "roll_no_s1":                   "str",
     "roll_no_s2":                   "str",
+    "roll_no_10":                   "str",
+    "roll_no_12":                   "str",
     "student_state":                "str",
     "district_12":                  "str",
+    "district_10":                  "str",
     "place_of_school":              "str",
     "jnv_name":                     "str",
     "jnv_region":                   "str",
@@ -251,7 +258,7 @@ def apply_dtypes(df: "pd.DataFrame") -> "pd.DataFrame":
             df[col] = df[col].replace({"nan": None, "None": None, "<NA>": None})
 
     # ID columns: strip trailing .0 from numeric reads (e.g. "4411109202.0" → "4411109202")
-    for col in ("application_no", "roll_no_s1", "roll_no_s2", "school_code"):
+    for col in ("application_no", "roll_no_s1", "roll_no_s2", "roll_no_10", "roll_no_12", "school_code"):
         if col not in df.columns:
             continue
         def _clean_id(v):
@@ -264,3 +271,30 @@ def apply_dtypes(df: "pd.DataFrame") -> "pd.DataFrame":
         df[col] = df[col].apply(_clean_id)
 
     return df
+
+
+def derive_category_pwd_rank(out_df, raw_df, pwd_col_map):
+    """
+    Derive mains_category_pwd_rank from per-category PWD rank columns.
+
+    pwd_col_map: dict mapping normalized category value (e.g. "PWD-OBC")
+                 to the corresponding raw column name in raw_df.
+
+    Returns a list of floats (np.nan where category is not PWD or column missing).
+    """
+    cols_lower = {c.lower().strip(): c for c in raw_df.columns}
+
+    def _resolve(cat):
+        raw_name = pwd_col_map.get(str(cat), "")
+        actual = cols_lower.get(raw_name.lower(), "")
+        return actual if actual and actual in raw_df.columns else None
+
+    pwd_ranks = []
+    for cat, idx in zip(out_df["category"], out_df.index):
+        col = _resolve(cat)
+        val = raw_df.at[idx, col] if col else np.nan
+        try:
+            pwd_ranks.append(float(val) if not pd.isna(val) else np.nan)
+        except (TypeError, ValueError):
+            pwd_ranks.append(np.nan)
+    return pwd_ranks
