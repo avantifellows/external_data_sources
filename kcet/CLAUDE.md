@@ -18,12 +18,14 @@ This table carries only what KEA publishes plus one derived column:
 | college_code, college_name, course_name_raw, course_name | canonical college_id, NIRF rank |
 | category_code, closing_rank, domicile_pool | salary_tier, cutoff trends |
 | year, round, state, cet_name, stream | |
-| college_type (derived from KEA govt file) | |
+| college_type + detail (derived from KEA 2025 matrix) | |
 
-`college_type` is an optional historical annotation from KEA's 2024
-government-scope file. Explicit government wording in a KEA 2025 college name
-can also establish `Govt`. Other unmatched codes remain `Unknown`; absence from
-a partial government list is never treated as proof that a college is private.
+`college_type` is derived from KEA's June 2025 draft engineering seat matrix
+through the committed `codemaps/college_type_2025.csv`. The matrix's five
+annexure classes are preserved in `college_type_detail` and normalized to
+Govt/Govt-Aided/Private/Unknown in `college_type`. Only exact name matches and
+audited split-code exceptions are classified. The 28 unresolved codes remain
+`Unknown`; absence is never treated as proof that a college is private.
 
 ## Category code system
 
@@ -46,6 +48,7 @@ HK pool appends `H`: `1H`, `2AH`, `GMH`, `SCH` …
 ```bash
 # Copy raw files from futures-v2 output into raw/
 # Then:
+python3 scripts/build_college_type_map.py --check
 python3 scripts/build_clean.py --dry-run   # validate
 python3 scripts/build_clean.py             # write clean/kcet_fact_cutoffs.parquet
 python3 scripts/upload_to_gcs.py
@@ -71,8 +74,10 @@ python3 scripts/load_bq.py
   repaired source label; `course_name` normalizes extraction formatting only.
   Degree prefixes remain because the same college can publish prefixed and
   unprefixed programs with different cutoff series.
-- **college_type join.** KEA's main cutoff PDF has no college_type column.
-  Joined from the optional 2024 govt-scope file; unmatched = 'Unknown'.
+- **college_type join.** KEA's cutoff PDFs have no structured college_type
+  column. Join the audited 2025 code map; preserve the five-class matrix value
+  in `college_type_detail` and the four-class analyst value in `college_type`.
+  Unmatched/ambiguous codes remain `Unknown`.
 - **Round 3, not Extended Round.** 2025 Extended Round not yet published as
   of ingestion. Re-run pipeline when KEA publishes it; update `round` accordingly.
 - **WRITE_TRUNCATE.** Full replace on each pipeline run. Safe because the
@@ -85,3 +90,5 @@ python3 scripts/load_bq.py
 - **Don't erase degree prefixes.** `B TECH IN COMPUTER SCIENCE` and `COMPUTER
   SCIENCE` can be distinct seat buckets at one college.
 - **Don't commit `raw/` or `clean/`.** `.gitignore` enforces this.
+- **Don't hand-edit the college-type codemap.** Change the documented evidence
+  logic in `build_college_type_map.py`, regenerate, and run `--check`.

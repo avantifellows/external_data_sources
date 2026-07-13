@@ -15,11 +15,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "raw"      # gitignored — drop source CSV here before running
 CLEAN = ROOT / "clean"  # gitignored — clean parquet written here
+CODEMAPS = ROOT / "codemaps"
 
 RAW_FILES = [
     "KA_engg_2025_GEN_R3.pdf",
     "KA_engg_2025_HK_R3.pdf",
     "KA_engg_2025_all_cutoffs_R3.csv",
+    "KA_engg_2025_draft_seat_matrix.pdf",
 ]
 OPTIONAL_RAW_FILES = ["KA_engg_closing_ranks_govt_2024.csv"]
 

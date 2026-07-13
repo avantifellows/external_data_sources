@@ -29,11 +29,11 @@ description: |
   GOTCHAS (read before writing SQL):
   1. closing_rank is FLOAT, not INT — KEA publishes fractional ranks including
      .5, .25, .75, and .875. Preserve the exact value for comparisons.
-  2. college_type is derived, not from the cutoff PDF directly. It is
-     sourced from KEA's separate govt-scope cutoff file and joined on
-     college_code. The reference is historical (2024); an explicitly named
-     government college can also be classified from its KEA 2025 source name.
-     Other unmatched codes are 'Unknown', never assumed Private.
+  2. college_type is derived, not from the cutoff PDF directly. It comes from
+     KEA's June 2025 draft engineering seat-matrix annexures through an audited
+     code-level codemap. Only exact institution matches and documented
+     split-code exceptions are classified. The 28 unresolved codes are
+     'Unknown', never assumed Private.
   3. course_name is formatting-normalized while course_name_raw preserves the
      minimally repaired PDF label. Degree prefixes are program identity: a
      college can publish both 'B TECH IN COMPUTER SCIENCE' and 'COMPUTER
@@ -95,16 +95,25 @@ columns:
     type: STRING
     mode: REQUIRED
     description: >
-      Historical classification from KEA's 2024 government-scope file when a
-      college_code matches. Explicit government wording in the 2025 KEA name
-      can also establish 'Govt'; otherwise 'Unknown'. See GOTCHA #2.
+      Analyst-facing normalized classification: 'Govt', 'Govt-Aided',
+      'Private', or 'Unknown'. See college_type_detail and GOTCHA #2.
+
+  - name: college_type_detail
+    type: STRING
+    mode: REQUIRED
+    description: >
+      KEA matrix annexure class: 'Government', 'Government-Aided', 'Private
+      Unaided', 'Private Unaided Minority', or 'Private University'.
+      'Unknown' means the code was omitted or not uniquely identifiable in the
+      June draft; it is not an inferred private classification.
 
   - name: college_type_source
     type: STRING
     mode: REQUIRED
     description: >
-      Provenance for college_type: KEA 2024 government-scope file, explicit
-      government wording in the KEA 2025 college name, or unclassified.
+      Row-level provenance for college_type, including the raw source filename,
+      PDF page where applicable, and matching/disambiguation method. Unknown
+      codes use 'unclassified'; full evidence is in the committed codemap.
 
   - name: course_name_raw
     type: STRING

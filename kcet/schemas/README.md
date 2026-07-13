@@ -19,5 +19,7 @@ the exact FLOAT value. `course_name_raw` supports source auditing;
 `course_name` repairs extraction formatting while preserving meaningful degree
 prefixes and specialization wording.
 
-For reproducibility, both official PDFs, the parsed tall CSV, and the clean
-Parquet live under `gs://avantifellows-external-data/kcet/`.
+For reproducibility, both cutoff PDFs, the official 2025 draft seat-matrix PDF,
+the parsed tall CSV, and the clean Parquet live under
+`gs://avantifellows-external-data/kcet/`. The committed college-type codemap is
+derived from those raw files; unresolved codes deliberately remain Unknown.

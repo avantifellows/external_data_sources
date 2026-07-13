@@ -2,18 +2,19 @@
 
 The authoritative raw cutoff CSV is produced from the two official KEA Round
 3 PDFs by ``parse_KA_2025.py`` in ``avantifellows/futures-v2``. This step adds
-warehouse metadata and provenance, optionally enriches known 2024 government
-scope, validates source anchors and declared grain, and writes deterministic
+warehouse metadata and provenance, joins the audited 2025 KEA college-type
+codemap, validates source anchors and declared grain, and writes deterministic
 Parquet bytes for GCS/BigQuery.
 
 Raw files in ``kcet/raw/``:
   KA_engg_2025_all_cutoffs_R3.csv       required parsed fact
   KA_engg_2025_GEN_R3.pdf               required official GEN PDF
   KA_engg_2025_HK_R3.pdf                required official HK PDF
-  KA_engg_closing_ranks_govt_2024.csv   optional historical classification
+  KA_engg_2025_draft_seat_matrix.pdf    required classification source
+  KA_engg_closing_ranks_govt_2024.csv   optional historical reference only
 
-An unmatched 2024 classification is ``Unknown``—absence from a government-only
-file is not evidence that a 2025 college is private.
+The committed ``codemaps/college_type_2025.csv`` is reproducibly derived by
+``build_college_type_map.py``. Unresolved codes remain ``Unknown``.
 """
 from __future__ import annotations
 
@@ -24,10 +25,10 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import CLEAN, RAW
+from sources import CLEAN, CODEMAPS, RAW
 
 CUTOFFS_GLOB = "KA_engg_*_all_cutoffs_R*.csv"
-GOVT_GLOB = "KA_engg_closing_ranks_govt_*.csv"
+COLLEGE_TYPE_CODEMAP = CODEMAPS / "college_type_2025.csv"
 
 SOURCE_URLS = {
     "GEN": "https://cetonline.karnataka.gov.in/keawebentry456/ugcet2025/PROF_CODE_E_R_11092025english.pdf",
@@ -44,7 +45,8 @@ RAW_REQUIRED = [
 ]
 OUTPUT_COLS = [
     "state", "cet_name", "stream", "year", "round",
-    "college_code", "college_name", "college_type", "college_type_source",
+    "college_code", "college_name", "college_type", "college_type_detail",
+    "college_type_source",
     "course_name_raw", "course_name", "domicile_pool", "category_code",
     "closing_rank", "source_file", "source_url",
 ]
@@ -64,32 +66,44 @@ def _find_one(pattern: str, *, required: bool = True) -> Path | None:
     return matches[0]
 
 
-def _college_type_map(path: Path | None) -> pd.Series:
-    if path is None:
-        print("No 2024 government-scope file found; college_type will be 'Unknown'.")
-        return pd.Series(dtype="string")
+def _college_types() -> pd.DataFrame:
+    codemap = pd.read_csv(COLLEGE_TYPE_CODEMAP, dtype={"college_code": "string"})
+    required = {
+        "college_code", "college_name_2025", "college_type",
+        "college_type_detail", "classification_method",
+        "classification_source_file", "classification_source_page",
+    }
+    if not required.issubset(codemap.columns):
+        raise ValueError(
+            f"{COLLEGE_TYPE_CODEMAP.name} is missing columns "
+            f"{sorted(required - set(codemap.columns))}"
+        )
+    if len(codemap) != 229 or codemap["college_code"].duplicated().any():
+        raise ValueError("College-type codemap must contain 229 unique college codes")
 
-    govt = pd.read_csv(path, dtype={"college_code": "string"})
-    required = {"college_code", "college_type"}
-    if not required.issubset(govt.columns):
-        raise ValueError(f"{path.name} is missing columns {sorted(required - set(govt.columns))}")
-
-    conflicts = govt.groupby("college_code")["college_type"].nunique().loc[lambda s: s > 1]
-    if not conflicts.empty:
-        raise ValueError(f"Conflicting college_type values for: {conflicts.index.tolist()}")
-
-    print(f"Reading optional classification: {path.name}")
-    return (
-        govt[["college_code", "college_type"]]
-        .dropna()
-        .drop_duplicates("college_code")
-        .set_index("college_code")["college_type"]
+    page = codemap["classification_source_page"].map(
+        lambda value: "" if pd.isna(value) else f" p.{int(value)}"
     )
+    codemap["college_type_source"] = (
+        codemap["classification_source_file"]
+        + page
+        + " ("
+        + codemap["classification_method"]
+        + ")"
+    )
+    unknown = codemap["college_type"] == "Unknown"
+    codemap.loc[unknown, "college_type_source"] = "unclassified"
+    print(f"Reading classification codemap: {COLLEGE_TYPE_CODEMAP.name}")
+    return codemap[
+        [
+            "college_code", "college_name_2025", "college_type",
+            "college_type_detail", "college_type_source",
+        ]
+    ]
 
 
 def build() -> pd.DataFrame:
     cutoffs_path = _find_one(CUTOFFS_GLOB)
-    govt_path = _find_one(GOVT_GLOB, required=False)
 
     print(f"Reading: {cutoffs_path.name}")
     df = pd.read_csv(cutoffs_path, dtype={"college_code": "string"})
@@ -103,21 +117,23 @@ def build() -> pd.DataFrame:
     if df["closing_rank"].isna().any():
         raise ValueError("closing_rank contains null or non-numeric values")
 
-    college_types = _college_type_map(govt_path)
-    mapped_type = df["college_code"].map(college_types)
-    explicit_government_name = df["college_name"].str.contains(
-        r"(?i)(?:^|\b)GOVT\.?|\bGOVERNMENT ENGINEERING COLLEGE\b",
-        regex=True,
-        na=False,
+    college_types = _college_types()
+    df = df.merge(
+        college_types,
+        on="college_code",
+        how="left",
+        validate="many_to_one",
     )
-    df["college_type"] = mapped_type
-    df["college_type_source"] = "KEA 2024 government-scope file"
-    inferred = mapped_type.isna() & explicit_government_name
-    df.loc[inferred, "college_type"] = "Govt"
-    df.loc[inferred, "college_type_source"] = "explicit KEA 2025 college name"
-    unknown = df["college_type"].isna()
-    df.loc[unknown, "college_type"] = "Unknown"
-    df.loc[unknown, "college_type_source"] = "unclassified"
+    if df["college_type"].isna().any():
+        missing = sorted(df.loc[df["college_type"].isna(), "college_code"].unique())
+        raise ValueError(f"Codes missing from college-type codemap: {missing}")
+    name_mismatch = df["college_name"] != df["college_name_2025"]
+    if name_mismatch.any():
+        sample = df.loc[
+            name_mismatch, ["college_code", "college_name", "college_name_2025"]
+        ].drop_duplicates().head(10)
+        raise ValueError(f"Codemap college labels are stale:\n{sample.to_string(index=False)}")
+    df = df.drop(columns="college_name_2025")
     df["state"] = "KARNATAKA"
     df["cet_name"] = "KCET"
     df["stream"] = "engineering"
@@ -132,6 +148,17 @@ def build() -> pd.DataFrame:
         raise ValueError(f"Unexpected domicile pools: {sorted(df['domicile_pool'].unique())}")
     if set(df["year"]) != {2025} or set(df["round"]) != {3}:
         raise ValueError("Expected only KCET 2025 Round 3")
+    expected_type_counts = {
+        "Private": 174, "Unknown": 28, "Govt": 24, "Govt-Aided": 3,
+    }
+    actual_type_counts = (
+        df.drop_duplicates("college_code")["college_type"].value_counts().to_dict()
+    )
+    if actual_type_counts != expected_type_counts:
+        raise ValueError(
+            f"College-type anchors changed: expected {expected_type_counts}, "
+            f"got {actual_type_counts}"
+        )
 
     duplicates = df.duplicated(GRAIN, keep=False)
     if duplicates.any():
