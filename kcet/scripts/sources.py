@@ -57,8 +57,6 @@ TABLES: list[Table] = [
     Table(
         bq_name="kcet_fact_cutoffs",
         parquet="kcet_fact_cutoffs.parquet",
-        # Preserve the existing BQ table's clustering contract so idempotent
-        # WRITE_TRUNCATE loads do not require destructive table recreation.
-        clustering_fields=["year", "domicile_pool", "college_type"],
+        clustering_fields=["year", "domicile_pool", "category_code", "college_code"],
     ),
 ]

@@ -59,6 +59,6 @@ python3 scripts/load_bq.py
 
 | Table | Grain | Rows | Clustering |
 |---|---|---:|---|
-| `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 13,604 | year, domicile_pool, college_type |
+| `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 13,604 | year, domicile_pool, category_code, college_code |
 
 Column docs: [`schemas/kcet_fact_cutoffs.yaml`](schemas/kcet_fact_cutoffs.yaml).
