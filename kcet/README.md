@@ -1,8 +1,8 @@
 # kcet/
 
 KCET (Karnataka Common Entrance Test) engineering seat-allotment cutoffs —
-closing ranks for every (college, course, category) seat bucket. 13,357 rows,
-227 colleges, 2025 Third Round.
+closing ranks for every (college, course, category) seat bucket. 13,604 rows,
+229 colleges, 2025 Third Round.
 
 ## Pipeline shape
 
@@ -11,8 +11,10 @@ futures-v2/.../parse_KA_2025.py        scrape + parse KEA PDFs
        │
        ▼
 kcet/raw/KA_engg_2025_all_cutoffs_R3.csv          (gitignored)
-kcet/raw/KA_engg_closing_ranks_govt_2024.csv      (gitignored, for college_type join)
-       │  scripts/build_clean.py                  join college_type + add constants
+kcet/raw/KA_engg_2025_GEN_R3.pdf                  (gitignored, official source)
+kcet/raw/KA_engg_2025_HK_R3.pdf                   (gitignored, official source)
+kcet/raw/KA_engg_closing_ranks_govt_2024.csv      (optional historical classification)
+       │  scripts/build_clean.py                  validate + add provenance
        ▼
 kcet/clean/kcet_fact_cutoffs.parquet              (gitignored)
        │  scripts/upload_to_gcs.py
@@ -36,9 +38,9 @@ URLs (2025 Third Round, published 11 Sep 2025):
 ## Commands
 
 ```bash
-# 1. Copy raw files from futures-v2 scraper output
+# 1. Copy parsed CSV and the two official PDFs from futures-v2
 cp /path/to/futures-v2/state_cet/scrape/extracted_data/KA_engg_2025_all_cutoffs_R3.csv raw/
-cp /path/to/futures-v2/state_cet/scrape/extracted_data/KA_engg_closing_ranks_govt_2024.csv raw/
+cp /path/to/futures-v2/state_cet/scrape/source/KA/engineering/KA_engg_2025_{GEN,HK}_R3.pdf raw/
 
 # 2. Build clean parquet
 python3 scripts/build_clean.py --dry-run
@@ -57,6 +59,6 @@ python3 scripts/load_bq.py
 
 | Table | Grain | Rows | Clustering |
 |---|---|---:|---|
-| `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 13,357 | year, domicile_pool, college_type |
+| `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 13,604 | year, domicile_pool, category_code, college_code |
 
 Column docs: [`schemas/kcet_fact_cutoffs.yaml`](schemas/kcet_fact_cutoffs.yaml).

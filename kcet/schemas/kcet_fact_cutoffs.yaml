@@ -6,7 +6,8 @@
 description: |
   KCET (Karnataka Common Entrance Test) engineering seat-allotment cutoffs —
   the closing rank for every (college, course, category) seat bucket.
-  13,357 rows. One row = one allotted seat bucket in one round of one year.
+  13,604 rows across 229 colleges. One row = one allotted seat bucket in one
+  round of one year. Blank/`--` cells are intentionally absent.
 
   WHAT KCET IS. KCET is Karnataka's state-level engineering entrance exam,
   administered by KEA (Karnataka Examinations Authority). It determines
@@ -26,15 +27,17 @@ description: |
   only non-null allotments appear as rows (47 distinct codes in 2025 data).
 
   GOTCHAS (read before writing SQL):
-  1. closing_rank is FLOAT, not INT — KEA uses .5 values as tie-breakers
-     (e.g. 76685.5). Cast with ROUND() if you need integer ranks.
+  1. closing_rank is FLOAT, not INT — KEA publishes fractional ranks including
+     .5, .25, .75, and .875. Preserve the exact value for comparisons.
   2. college_type is derived, not from the cutoff PDF directly. It is
      sourced from KEA's separate govt-scope cutoff file and joined on
-     college_code. Colleges absent from the govt file are classified
-     'Private' by convention.
-  3. course_name comes verbatim from the PDF. The same course at different
-     colleges may have minor spelling variations due to PDF column-width
-     wrapping. Use LIKE / REGEXP for cross-college course matching.
+     college_code. The reference is historical (2024); an explicitly named
+     government college can also be classified from its KEA 2025 source name.
+     Other unmatched codes are 'Unknown', never assumed Private.
+  3. course_name is formatting-normalized while course_name_raw preserves the
+     minimally repaired PDF label. Degree prefixes are program identity: a
+     college can publish both 'B TECH IN COMPUTER SCIENCE' and 'COMPUTER
+     SCIENCE' with different cutoffs, so do not strip or merge them.
   4. This table is 2025 Third Round data (round=3). It is NOT the final
      extended round — KEA may publish a later round. The round column tells
      you which allotment snapshot this is.
@@ -42,7 +45,7 @@ description: |
      Never mix domicile_pool='GEN' and 'HK' rows without filtering by
      domicile_pool first.
 
-rows: 13357
+rows: 13604
 grain: (college_code, course_name, domicile_pool, category_code, year, round)
 
 columns:
@@ -92,17 +95,32 @@ columns:
     type: STRING
     mode: REQUIRED
     description: >
-      Classification of the college: 'Govt', 'Govt-Aided', or 'Private'.
-      Derived by joining on college_code to KEA's govt-scope cutoff file.
-      Colleges not in the govt file default to 'Private'. See GOTCHA #2.
+      Historical classification from KEA's 2024 government-scope file when a
+      college_code matches. Explicit government wording in the 2025 KEA name
+      can also establish 'Govt'; otherwise 'Unknown'. See GOTCHA #2.
+
+  - name: college_type_source
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Provenance for college_type: KEA 2024 government-scope file, explicit
+      government wording in the KEA 2025 college name, or unclassified.
+
+  - name: course_name_raw
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Minimally repaired PDF label: line-wrap fragments are joined and
+      whitespace collapsed, but degree wording and source spelling are kept.
 
   - name: course_name
     type: STRING
     mode: REQUIRED
     description: >
-      Course/branch name as in the PDF (e.g. 'COMPUTER SCIENCE AND
-      ENGINEERING', 'ARTIFICIAL INTELLIGENCE AND DATA SCIENCE'). May have
-      minor spelling variations across colleges. Use LIKE for matching.
+      Formatting-normalized course label used in the table grain. Casing,
+      parenthesis spacing, known split words, and ENGG are normalized. Degree
+      prefixes and specialization wording are preserved to avoid merging
+      distinct source programs. See course_name_raw for auditing.
 
   - name: domicile_pool
     type: STRING
@@ -125,16 +143,20 @@ columns:
 
   - name: closing_rank
     type: FLOAT
-    mode: NULLABLE
-    description: >
-      Closing rank for this seat bucket — the rank of the last candidate
-      allotted. FLOAT because KEA uses .5 values as tie-breakers.
-      NULL means no allotment was made for this bucket in this round.
-      Lower rank = stronger candidate (rank 1 is the topper).
-
-  - name: ingested_at
-    type: TIMESTAMP
     mode: REQUIRED
     description: >
-      UTC timestamp of when build_clean.py ran and wrote this parquet.
-      Useful for tracking when the pipeline last refreshed.
+      Closing rank for this seat bucket — the rank of the last candidate
+      allotted. FLOAT because KEA publishes fractional values. Only allotted
+      cells are stored, so this column is non-null. Lower rank is stronger.
+
+  - name: source_file
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Raw PDF filename in gs://avantifellows-external-data/kcet/raw/ from which
+      the row was parsed. GEN and HK use separate official PDFs.
+
+  - name: source_url
+    type: STRING
+    mode: REQUIRED
+    description: Official KEA URL for the source PDF.

@@ -16,6 +16,13 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "raw"      # gitignored — drop source CSV here before running
 CLEAN = ROOT / "clean"  # gitignored — clean parquet written here
 
+RAW_FILES = [
+    "KA_engg_2025_GEN_R3.pdf",
+    "KA_engg_2025_HK_R3.pdf",
+    "KA_engg_2025_all_cutoffs_R3.csv",
+]
+OPTIONAL_RAW_FILES = ["KA_engg_closing_ranks_govt_2024.csv"]
+
 # ─── GCS ────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"
 GCS_PREFIX = "kcet"     # gs://{bucket}/{prefix}/clean/*.parquet
@@ -50,6 +57,6 @@ TABLES: list[Table] = [
     Table(
         bq_name="kcet_fact_cutoffs",
         parquet="kcet_fact_cutoffs.parquet",
-        clustering_fields=["year", "domicile_pool", "college_type"],
+        clustering_fields=["year", "domicile_pool", "category_code", "college_code"],
     ),
 ]

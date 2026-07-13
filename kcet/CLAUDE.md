@@ -15,14 +15,15 @@ This table carries only what KEA publishes plus one derived column:
 
 | Stays in `kcet/` (neutral fact) | Stays in downstream enrichment |
 |---|---|
-| college_code, college_name, course_name | canonical college_id, NIRF rank |
+| college_code, college_name, course_name_raw, course_name | canonical college_id, NIRF rank |
 | category_code, closing_rank, domicile_pool | salary_tier, cutoff trends |
 | year, round, state, cet_name, stream | |
 | college_type (derived from KEA govt file) | |
 
-`college_type` is the one exception — it is derived by joining the main cutoff
-CSV to KEA's separate govt-scope file on `college_code`. This is acceptable
-because the source is still KEA's own published data, not Avanti opinion.
+`college_type` is an optional historical annotation from KEA's 2024
+government-scope file. Explicit government wording in a KEA 2025 college name
+can also establish `Govt`. Other unmatched codes remain `Unknown`; absence from
+a partial government list is never treated as proof that a college is private.
 
 ## Category code system
 
@@ -55,7 +56,7 @@ python3 scripts/load_bq.py
 
 | Table | Rows | Grain | Clustering |
 |---|---:|---|---|
-| `kcet_fact_cutoffs` | 13,357 | (college_code, course_name, domicile_pool, category_code, year, round) | year, domicile_pool, college_type |
+| `kcet_fact_cutoffs` | 13,604 | (college_code, course_name, domicile_pool, category_code, year, round) | year, domicile_pool, category_code, college_code |
 
 ## Design decisions
 
@@ -64,10 +65,14 @@ python3 scripts/load_bq.py
   to query and consistent with how JoSAA data is stored.
 - **Only non-null ranks stored.** `--` in the PDF means no allotment; those
   are dropped. The table only contains rows where a seat was actually allotted.
-- **Float closing_rank.** KEA uses `.5` values as tie-breakers (e.g. 76685.5).
-  Stored as FLOAT, not INT. Use ROUND() when integer ranks are needed.
+- **Float closing_rank.** KEA publishes fractions including `.5`, `.25`, `.75`,
+  and `.875`. Preserve the exact FLOAT; rounding changes source values.
+- **Raw + normalized course labels.** `course_name_raw` preserves the minimally
+  repaired source label; `course_name` normalizes extraction formatting only.
+  Degree prefixes remain because the same college can publish prefixed and
+  unprefixed programs with different cutoff series.
 - **college_type join.** KEA's main cutoff PDF has no college_type column.
-  Joined from the separate govt-scope file; fill NA = 'Private'.
+  Joined from the optional 2024 govt-scope file; unmatched = 'Unknown'.
 - **Round 3, not Extended Round.** 2025 Extended Round not yet published as
   of ingestion. Re-run pipeline when KEA publishes it; update `round` accordingly.
 - **WRITE_TRUNCATE.** Full replace on each pipeline run. Safe because the
@@ -77,6 +82,6 @@ python3 scripts/load_bq.py
 
 - **Don't mix GEN and HK pools.** Always filter by `domicile_pool` first —
   they are separate merit lists with different category codes.
-- **Don't equality-match `course_name`.** PDF word-wrap creates minor spelling
-  variations. Use LIKE / REGEXP_CONTAINS for cross-college matching.
+- **Don't erase degree prefixes.** `B TECH IN COMPUTER SCIENCE` and `COMPUTER
+  SCIENCE` can be distinct seat buckets at one college.
 - **Don't commit `raw/` or `clean/`.** `.gitignore` enforces this.
