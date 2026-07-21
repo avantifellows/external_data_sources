@@ -63,7 +63,7 @@ and 35 reconcile exactly).
 Exploratory analysis — the discipline × social-category rollup, the 2025-26
 projection, and the discipline → wage-bucket grouping for the cross-source RoI /
 wage-curve work — runs locally; the analysis *intents* are documented in
-`bq-assistant/docs/analyses/external_data_sources.yaml`. Only the
+`data-assistant/docs/analyses/external_data_sources.yaml`. Only the
 programme→discipline **codemap stays a committed CSV**
 (`codemaps/programme_to_discipline.csv`), the audit interface those rollups read.
 
