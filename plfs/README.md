@@ -51,7 +51,7 @@ scale up to India-wide population estimates (~1.4B).
 ## 2. What this gets used for
 
 The kinds of questions this dataset answers (analysis intents now live in
-`bq-assistant/docs/analyses/external_data_sources.yaml`; the exploratory scripts
+`data-assistant/docs/analyses/external_data_sources.yaml`; the exploratory scripts
 run locally):
 
 - **Engineering jobs longitudinal** — engineering grads age 20-24 in regular
