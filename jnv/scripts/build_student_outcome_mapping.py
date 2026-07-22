@@ -90,6 +90,9 @@ OUT_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_outcome_mapping"
 FINAL_COLS = [
     "student_key", "cohort_year", "fk_avanti_student_id",
     "match_confidence", "match_count",
+    # resolved student identity — coalesced across the student's linked records
+    # (same values the STEP-6 fk matcher keyed on; see _build_sid).
+    "student_name", "father_name", "mother_name", "student_dob",
     "student_program", "student_product",
     # stage-availability flags — STUDENT-LEVEL (true if the student has that stage
     # in ANY of their rows, broadcast onto every row so one row is enough to filter).
@@ -915,9 +918,50 @@ def _read_avanti_reference(client) -> tuple:
     return avanti_g12, avanti_all, all_ids
 
 
+def _read_dim_passthrough(client) -> pd.DataFrame:
+    """Grade-12 JNV `dim_student` students, to seed the ones with NO exam/board/NCST
+    record as size-1 'dim-only' rows — roster completeness for enrolled students whose
+    outcomes are not in our exam data (NVS/Enable content-only programs, CLAT/CUET/CA
+    aspirants, not-yet-sat). Same school-JNV + grade-12 universe as _read_avanti_reference
+    so 'already resolved' compares apples-to-apples. `_build_rows` keeps a row ONLY if it
+    is neither fk-resolved NOR identity-present (name+dob) in the graph, so a matched or
+    matchable (recall-miss) student is never re-created as a phantom dim-only duplicate.
+    Scope note: current-snapshot AYs 2024-25/2025-26 (cohorts 2025/2026 — the validated
+    dim-only window); extend `years` to add the incoming 2026-27 cohort or historical AYs."""
+    name = r"UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\s+', ' ')))"
+    fname = r"UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\s+', ' ')))"
+    mname = r"UPPER(TRIM(REGEXP_REPLACE(COALESCE(mother_name,''), r'\s+', ' ')))"
+    years = "'2024-2025','2025-2026'"
+    filt = (f"(LOWER(COALESCE(student_school,'')) LIKE '%jnv%'"
+            f" OR LOWER(COALESCE(student_school,'')) LIKE '%navodaya%')"
+            f" AND CAST(student_grade AS STRING) = '12'"
+            f" AND academic_year IN ({years})"
+            f" AND student_full_name IS NOT NULL AND date_of_birth IS NOT NULL")
+    sql = f"""
+        SELECT DISTINCT
+            COALESCE(pk_student_id, apaar_id) AS fk_avanti_student_id,
+            {name} AS student_name, {fname} AS father_name, {mname} AS mother_name,
+            FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS student_dob,
+            student_program, student_product,
+            CAST(SUBSTR(CAST(academic_year AS STRING), 6, 4) AS INT64) AS cohort_year
+        FROM `avantifellows.production_dbt_final.dim_student`
+        WHERE {filt}
+    """
+    df = client.query(sql).to_dataframe()
+    for c in df.columns:
+        df[c] = _S(df[c])
+    df["father_name"] = df.father_name.where(_present(df.father_name))
+    df["mother_name"] = df.mother_name.where(_present(df.mother_name))
+    df["cohort_year"] = pd.to_numeric(df.cohort_year, errors="coerce").astype("Int64")
+    df = df[_present(df.fk_avanti_student_id) & _present(df.student_dob)]
+    # a grade-12 repeater can appear in both AYs — keep the later cohort
+    return df.sort_values("cohort_year").drop_duplicates("fk_avanti_student_id", keep="last")
+
+
 _COALESCE_NAME_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
 _COALESCE_DOB_ORDER = ["b10", "jee", "neet", "ncst"]   # 12th board carries no usable DOB (verified empty)
 _COALESCE_FATHER_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
+_COALESCE_MOTHER_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
 
 
 def _coalesce_by_source(contrib: pd.DataFrame, col: str, order: list) -> pd.Series:
@@ -944,7 +988,7 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame) ->
     to the coalesce fixes that with no separate code path. Direct ids reuse the
     SAME crosswalks (jee25/jee24/neet24/roll10x/ncst24) v2 already loads."""
     def assign(stage):
-        df = nodes[stage][["node_id", "norm_name", "norm_father", "dob"]].copy()
+        df = nodes[stage][["node_id", "norm_name", "norm_father", "norm_mother", "dob"]].copy()
         df["student_key"] = df.node_id.map(n2k)
         df["src"] = stage
         return df.dropna(subset=["student_key"])
@@ -955,6 +999,7 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame) ->
     sid["norm_name"] = _coalesce_by_source(contrib, "norm_name", _COALESCE_NAME_ORDER)
     sid["dob"] = _coalesce_by_source(contrib, "dob", _COALESCE_DOB_ORDER)
     sid["norm_father"] = _coalesce_by_source(contrib, "norm_father", _COALESCE_FATHER_ORDER)
+    sid["norm_mother"] = _coalesce_by_source(contrib, "norm_mother", _COALESCE_MOTHER_ORDER)
     sid = sid.reset_index()
 
     # direct avanti id — jee (jee25+jee24) then neet (neet24) then b10 then ncst;
@@ -1255,7 +1300,7 @@ def _one_per_student(assigned: pd.DataFrame, val_cols: list[str]) -> pd.DataFram
 
 def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataFrame,
                 avanti_all: pd.DataFrame, all_ids: set, ncst24: pd.DataFrame,
-                marks: dict) -> pd.DataFrame:
+                marks: dict, dim_pt: pd.DataFrame) -> pd.DataFrame:
     n2k = key.set_index("node_id")["student_key"]
 
     def assign(stage):
@@ -1294,12 +1339,20 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     sid = _build_sid(nodes, n2k, refs, ncst24)
     fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids)
 
+    # resolved per-student identity (name / parents / dob) for the output — the
+    # SAME source-coalesced values the STEP-6 matcher used (see _build_sid), so
+    # the emitted identity is consistent with what the fk match keyed on.
+    ident = sid[["student_key", "norm_name", "norm_father", "norm_mother", "dob"]].rename(
+        columns={"norm_name": "student_name", "norm_father": "father_name",
+                 "norm_mother": "mother_name", "dob": "student_dob"})
+
     # ── assemble the spine of all students, then attach attempts ──────────────
     students = pd.DataFrame({"student_key": key.student_key.unique()})
     students = (students.merge(ncst_p, on="student_key", how="left")
                         .merge(b10_p, on="student_key", how="left")
                         .merge(b12_p, on="student_key", how="left")
-                        .merge(fk_df, on="student_key", how="left"))
+                        .merge(fk_df, on="student_key", how="left")
+                        .merge(ident, on="student_key", how="left"))
 
     # cohort_year = COALESCE(12th, 10th+2, ncst+2, earliest entrance year)
     first_ent = (attempts.groupby("student_key")["attempt_year"].min()
@@ -1350,7 +1403,37 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
             rows[c] = pd.NA
     # attempt_year is dropped from FINAL_COLS (v1 parity) but drives the sort order.
     rows = rows.sort_values(["cohort_year", "student_key", "attempt_year"]).reset_index(drop=True)
-    return rows[FINAL_COLS]
+    exam_rows = rows[FINAL_COLS]
+
+    # ── dim-passthrough spine: enrolled grade-12 JNV students with NO exam/board/
+    # NCST record → size-1 'dim-only' rows (roster completeness). Gate on BOTH: not
+    # fk-resolved AND identity-absent (name+dob) from the graph, so a matched or
+    # matchable (recall-miss) student is never re-created as a phantom duplicate.
+    # fk = the student's own pk/apaar (a certain self-link).
+    resolved = set(exam_rows.fk_avanti_student_id.dropna().astype(str)) - {"", "nan", "<NA>", "None"}
+    # identity-present set: raw node (name,dob) UNION the component-coalesced (name,dob)
+    # of every exam student. The coalesced half catches same-person collisions the raw
+    # nodes miss — a student's emitted name/dob is coalesced across sources, so it can
+    # differ from any single node's pair.
+    present_nd = set()
+    for st in STAGES:
+        nd = nodes[st][["norm_name", "dob"]].dropna()
+        present_nd |= set(zip(nd.norm_name, nd.dob))
+    ex_nd = exam_rows[["student_name", "student_dob"]].dropna()
+    present_nd |= set(zip(ex_nd.student_name, ex_nd.student_dob))
+    cand = dim_pt[~dim_pt.fk_avanti_student_id.astype(str).isin(resolved)].copy()
+    cand = cand[[(nm, db) not in present_nd for nm, db in zip(cand.student_name, cand.student_dob)]].copy()
+    cand["student_key"] = "dim:" + cand.fk_avanti_student_id.astype(str)
+    cand["match_confidence"], cand["match_count"] = "dim_passthrough", 1
+    for f in ("has_ncst_data", "has_10th_data", "has_12th_data",
+              "has_jee_mains_data", "has_jee_adv_data", "has_neet_data"):
+        cand[f] = False
+    for c in FINAL_COLS:
+        if c not in cand:
+            cand[c] = pd.NA
+    print(f"  dim-passthrough: seeded {len(cand):,} dim-only students "
+          f"({len(dim_pt) - len(cand):,} of {len(dim_pt):,} candidates already present in the graph)")
+    return pd.concat([exam_rows, cand[FINAL_COLS]], ignore_index=True)
 
 
 def _resolve(client) -> pd.DataFrame:
@@ -1361,10 +1444,11 @@ def _resolve(client) -> pd.DataFrame:
     ncst24 = _read_ncst_avanti_id()
     avanti_g12, avanti_all, all_ids = _read_avanti_reference(client)
     marks = _read_marks(client)
+    dim_pt = _read_dim_passthrough(client)
     print("Steps 2–3 — edges + union-find ...")
     key = _cluster(nodes, refs, ncst24)
     print("Steps 4–7 — cohort_year + avanti fk + explode to (student × attempt_year) + outcome marks ...")
-    return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks)
+    return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks, dim_pt)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
