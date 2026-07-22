@@ -85,15 +85,25 @@ One table in `avantifellows.external_data_sources`:
 
 | Table | Grain | ~Rows | Columns |
 |---|---|---:|---:|
-| `nvs_fact_ncst_results` | (test_year, roll_no) | ~43k (2026) | 86 |
+| `nvs_fact_ncst_results` | (test_year, roll_no) | ~43k (2026) | 91 |
 
-The first 24 columns share the same names as `dakshana_fact_ncst_results`
-(up to and including `coaching_preference_3`), enabling SQL UNIONs for
-multi-year analysis. Column names diverge after that: dakshana uses
-`*_effective_score` (penalty-adjusted raw); nvs uses `*_normalized_score`
-(per-QP-set equated). Additionally, nvs has per-subject raw question counts,
-academic history, extended family info, home address, and household wealth
-data that did not exist in pre-2026 cohorts.
+The shared identity/demographic/coaching prefix (through `coaching_preference_3`,
+now including `father_name`/`mother_name`) shares names with
+`dakshana_fact_ncst_results`, enabling SQL UNIONs for multi-year analysis. Column
+names diverge after that: dakshana uses `*_effective_score` (penalty-adjusted raw);
+nvs uses `*_normalized_score` (per-QP-set equated). Additionally, nvs has per-subject
+raw question counts, academic history, extended family info, home address, and
+household wealth data that did not exist in pre-2026 cohorts. Both tables also carry
+the same trailing **Avanti-linkage** columns (`fk_avanti_student_id`,
+`match_confidence`, `match_count`).
+
+**Avanti linkage** — `fk_avanti_student_id` (= `COALESCE(pk_student_id, apaar_id)`),
+`match_confidence`, `match_count` are keyed on by `jnv/scripts/add_avanti_fk.py` from
+`jnv_student_outcome_mapping`. NCST has no roll bridge to board/JEE/NEET, so the fk is
+IDENTITY-derived (name+DOB, name+father). ~8,108 of the ~43k 2026 test-takers resolve
+to an Avanti student. ⚠️ Re-run order after any reload: `load_bq` →
+`build_student_outcome_mapping.py` → `add_avanti_fk.py` (load_bq WRITE_TRUNCATE drops
+the fk columns, so re-key them last).
 
 See `schemas/nvs_fact_ncst_results.yaml` for full column documentation.
 

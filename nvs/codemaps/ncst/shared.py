@@ -20,6 +20,8 @@ CANONICAL_COLS: list[str] = [
     "test_year",
     "roll_no",
     "student_full_name",
+    "father_name",         # for identity matching to Avanti
+    "mother_name",
     # demographics
     "student_gender",
     "category",
@@ -127,6 +129,8 @@ COLUMN_TYPES: dict[str, str] = {
     "test_year":                     "constant",
     "roll_no":                       "str",
     "student_full_name":             "str",
+    "father_name":                   "str",
+    "mother_name":                   "str",
     "student_gender":                "str",
     "category":                      "str",
     "physically_disabled":           "bool",

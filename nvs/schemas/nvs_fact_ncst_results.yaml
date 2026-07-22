@@ -49,6 +49,16 @@ columns:
   - name: student_full_name
     type: str
 
+  - name: father_name
+    type: str
+    description: >
+      Father's name (~99.6% populated). Used for the name+father identity tier
+      when linking NCST test-takers to Avanti students.
+
+  - name: mother_name
+    type: str
+    description: Mother's name (~99.3% populated).
+
   - name: student_gender
     type: str
     description: Normalised to Male / Female.
@@ -374,3 +384,23 @@ columns:
   - name: submission_type
     type: str
     description: How the application form was submitted.
+
+  # ── Avanti linkage (written by jnv/scripts/add_avanti_fk.py from
+  #    jnv_student_outcome_mapping; identity-derived — name+DOB / name+father) ──
+  - name: fk_avanti_student_id
+    type: str
+    description: >
+      Resolved Avanti student id = COALESCE(pk_student_id, apaar_id) — join back to
+      dim_student on COALESCE(pk_student_id, apaar_id), NOT pk alone. Non-null for the
+      ~6,729 of ~43k 2026 test-takers who are Avanti students; NULL otherwise.
+
+  - name: match_confidence
+    type: str
+    description: >
+      fk resolution tier: 'name_dob' / 'name_dob_swapped' / 'name_dob_fuzzy' /
+      'name_father' / 'direct_student_id' / 'roll10_crosswalk' / 'ambiguous'
+      (matched >1, fk withheld) / null.
+
+  - name: match_count
+    type: int
+    description: How many Avanti students the identity matched (1 = clean; >1 = ambiguous, fk withheld).

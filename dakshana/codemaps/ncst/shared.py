@@ -14,6 +14,8 @@ CANONICAL_COLS: list[str] = [
     "test_year",
     "roll_no",
     "student_full_name",
+    "father_name",         # for identity matching to Avanti — 2023/2024
+    "mother_name",         # null for dakshana (not in source); kept for union-symmetry with nvs
     # demographics
     "student_gender",
     "category",
@@ -52,6 +54,8 @@ COLUMN_TYPES: dict[str, str] = {
     "test_year":                    "constant",
     "roll_no":                      "str",
     "student_full_name":            "str",
+    "father_name":                  "str",
+    "mother_name":                  "str",
     "student_gender":               "str",
     "category":                     "str",
     "physically_disabled":          "bool",

@@ -150,3 +150,15 @@ TENTH_SCORE   = JNV_DIR / "raw" / "mapping_files" / "All Years JNV 10th Score.xl
 JEE_2024_RAW  = _raw_file(RAW_MAINS_FILES, "JEE Mains 2024.xlsx")
 JEE_2025_RAW  = _raw_file(RAW_MAINS_FILES, "JEE 2025 - All JNV Candidates.xlsx")
 NEET_2024_RAW = _raw_file(RAW_NEET_FILES,  "NEET 2024.xlsx")
+
+# NCST 2024 (Dakshana) raw carries a direct "Avanti ID" keyed on "Dakshana Roll
+# Number" — read as a highest-confidence direct-id crosswalk for NCST identity
+# resolution. The id is deliberately NOT persisted as a column on
+# dakshana_fact_ncst_results; it only feeds fk_avanti_student_id in the build.
+# Local raw is gitignored; try both the flat and nested layouts.
+_DAKSHANA_RAW = JNV_DIR.parent / "dakshana" / "raw"
+NCST_2024_RAW_CANDIDATES = [
+    _DAKSHANA_RAW / "NCST 2024.xlsx",
+    _DAKSHANA_RAW / "ncst" / "NCST 2024.xlsx",
+]
+NCST_2024_RAW_SHEET = "Result"

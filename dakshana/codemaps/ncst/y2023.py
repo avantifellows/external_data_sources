@@ -20,6 +20,7 @@ CODEMAP = {
     "columns": {
         "roll_no":                   ["NCST Roll No"],
         "student_full_name":         ["Student Name"],
+        "father_name":               ["father_full_name"],
         "student_gender":            ["Gender"],
         "category":                  ["Caste"],
         "physically_disabled":       ["P.D."],

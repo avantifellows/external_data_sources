@@ -86,6 +86,8 @@ CODEMAP = {
         # identity / demographics
         "roll_no":                    ["NCST Roll Number (12-Digit)"],
         "student_full_name":          ["Name"],
+        "father_name":                ["Father's Name"],
+        "mother_name":                ["Mother's Name"],
         "student_gender":             ["Gender(Male/Female)"],
         "category":                   ["Category (GEN/GEN-EWS/OBC-NCL/SC/ST)"],
         "physically_disabled":        ["Physically Disabled (Yes/No)"],

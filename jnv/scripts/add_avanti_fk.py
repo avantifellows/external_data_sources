@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enrich the four JNV source tables with the resolved Avanti foreign key from
+Enrich the six JNV source tables with the resolved Avanti foreign key from
 `jnv_student_outcome_mapping`. Adds three columns to each table:
     fk_avanti_student_id, match_confidence, match_count
 
@@ -10,10 +10,18 @@ Enrich the four JNV source tables with the resolved Avanti foreign key from
    `COALESCE(pk_student_id, apaar_id) = fk_avanti_student_id`, NOT pk_student_id alone.
 
 Keyed back on each table's own grain:
-    jnv_fact_jee_results        (test_year, application_no) → (jee_test_year,  jee_application_no)
-    jnv_fact_neet_results       (test_year, application_no) → (neet_test_year, neet_application_no)
-    jnv_fact_board_results_10th (exam_year, roll_number)    → (board_10th_exam_year, board_10th_roll_number)
-    jnv_fact_board_results_12th (exam_year, roll_number)    → (board_12th_exam_year, board_12th_roll_number)
+    jnv_fact_jee_results         (test_year, application_no) → (jee_test_year,  jee_application_no)
+    jnv_fact_neet_results        (test_year, application_no) → (neet_test_year, neet_application_no)
+    jnv_fact_board_results_10th  (exam_year, roll_number)    → (board_10th_exam_year, board_10th_roll_number)
+    jnv_fact_board_results_12th  (exam_year, roll_number)    → (board_12th_exam_year, board_12th_roll_number)
+    dakshana_fact_ncst_results   (test_year, roll_no)        → (ncst_test_year, ncst_roll_no)
+    nvs_fact_ncst_results        (test_year, roll_no)        → (ncst_test_year, ncst_roll_no)
+
+The NCST fk is IDENTITY-derived in the mapping build (name+DOB / 2024 direct id),
+not roll-bridged — NCST has no roll that joins to board/JEE/NEET. Their (year, roll)
+is unique across the two tables (dakshana = 2022–2025, nvs = 2026), so no collision.
+⚠️ These two are external tables loaded by dakshana/ and nvs/ load_bq.py — those
+   loads (and the mapping rebuild carrying ncst_* columns) must run BEFORE this.
 
 Safety: the lookup deduplicates on `student_key` and only assigns when a source
 key maps to EXACTLY ONE student (HAVING COUNT(DISTINCT student_key)=1) — so a
@@ -24,7 +32,7 @@ match_confidence='ambiguous' when the student matched >1 Avanti record).
 Idempotent: CREATE OR REPLACE re-derives the columns each run (drops prior copies
 via SELECT * EXCEPT).
 
-⚠️ RUN ORDER: load_bq.py → build_student_journey_mapping.py → add_avanti_fk.py
+⚠️ RUN ORDER: load_bq.py → build_student_outcome_mapping.py → add_avanti_fk.py
    `load_bq.py` WRITE_TRUNCATEs these tables, so re-run this AFTER any reload or
    the fk columns disappear. No circularity: the mapping reads names/rolls/apps,
    never the fk written here.
@@ -45,11 +53,15 @@ _ADDED = ["fk_avanti_student_id", "match_confidence", "match_count"]
 _LEGACY = ["fk_match_confidence", "fk_match_count"]
 
 # table -> (src_year_col, src_key_col, map_year_col, map_key_col)
+# NCST tables are keyed on (test_year, roll_no) → (ncst_test_year, ncst_roll_no);
+# their fk is IDENTITY-derived (name+DOB / 2024 direct id), not roll-bridged.
 TABLES = {
     "jnv_fact_jee_results":        ("test_year", "application_no", "jee_test_year",        "jee_application_no"),
     "jnv_fact_neet_results":       ("test_year", "application_no", "neet_test_year",       "neet_application_no"),
     "jnv_fact_board_results_10th": ("exam_year", "roll_number",    "board_10th_exam_year", "board_10th_roll_number"),
     "jnv_fact_board_results_12th": ("exam_year", "roll_number",    "board_12th_exam_year", "board_12th_roll_number"),
+    "dakshana_fact_ncst_results":  ("test_year", "roll_no",        "ncst_test_year",       "ncst_roll_no"),
+    "nvs_fact_ncst_results":       ("test_year", "roll_no",        "ncst_test_year",       "ncst_roll_no"),
 }
 
 
@@ -83,8 +95,12 @@ def main() -> None:
             GROUP BY 1, 2
             HAVING COUNT(DISTINCT student_key) = 1
         ) m
-          ON CAST(t.{syr} AS STRING) = m.k1
-         AND CAST(t.{skey} AS STRING) = m.k2
+          -- source *_year is STRING, the mapping's *_test_year/*_exam_year are
+          -- INTEGER → cast the source year to INT64 to match (SAFE_CAST so a
+          -- non-numeric year falls to NULL rather than erroring). The app/roll
+          -- key is STRING on both sides, so no cast there.
+          ON SAFE_CAST(t.{syr} AS INT64) = m.k1
+         AND t.{skey} = m.k2
         """
         client.query(sql).result()
 

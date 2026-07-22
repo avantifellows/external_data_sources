@@ -8,8 +8,10 @@ description: >
 
   Note: 2026 onward is a separate table — nvs_fact_ncst_results — because
   from 2026 NCST was conducted at national scale by NVS directly (not
-  Dakshana-administered). The first 27 columns in nvs_fact_ncst_results
-  match this schema exactly to enable cross-year SQL UNIONs.
+  Dakshana-administered). The shared identity/demographic/coaching-preference
+  prefix (through coaching_preference_3), plus father_name/mother_name and the
+  Avanti-linkage columns (fk_avanti_student_id/match_confidence/match_count),
+  match nvs_fact_ncst_results column-for-column to enable cross-year SQL UNIONs.
 
 grain: (test_year, roll_no)
 
@@ -32,6 +34,21 @@ columns:
 
   - name: student_full_name
     type: str
+
+  - name: father_name
+    type: str
+    description: >
+      Father's name. Present for 2023 and 2024 (100%); null for 2022 and 2025
+      (not in those source files). Used for identity matching to Avanti students
+      (the name+father tier), which is the only way the DOB-less 2023/2024 rows
+      reach an fk. Not personally-identifying beyond what the source already holds.
+
+  - name: mother_name
+    type: str
+    description: >
+      Mother's name. Null for all dakshana years (not in the source files); kept
+      for column parity with nvs_fact_ncst_results (which does carry it) so the two
+      tables UNION cleanly.
 
   - name: student_gender
     type: str
@@ -145,3 +162,27 @@ columns:
     description: >
       Total effective score from the December 2024 sitting.
       Non-null for 2025 only.
+
+  # ── Avanti linkage (written by jnv/scripts/add_avanti_fk.py from
+  #    jnv_student_outcome_mapping; NCST has no roll bridge, so the fk is
+  #    IDENTITY-derived: name+DOB / name+father / 2024 direct Avanti-id crosswalk) ──
+  - name: fk_avanti_student_id
+    type: str
+    description: >
+      Resolved Avanti student id = COALESCE(pk_student_id, apaar_id) — join back to
+      dim_student on COALESCE(pk_student_id, apaar_id), NOT pk alone. Non-null only
+      for NCST test-takers matched to an Avanti student: ~1,217 (2022), 245 (2023),
+      2,616 (2024), 0 (2025 — no DOB/father), 6,729 (nvs 2026). NULL = not an Avanti
+      student, or unresolved.
+
+  - name: match_confidence
+    type: str
+    description: >
+      How the fk was resolved: 'direct_student_id' / 'name_dob' / 'name_dob_swapped'
+      / 'name_dob_fuzzy' / 'name_father' / 'roll10_crosswalk' / 'ambiguous' (matched
+      >1, fk withheld) / null. For NCST rows attached to an existing mapping student
+      this reflects that student's tier; for NCST-seeded students it is the NCST tier.
+
+  - name: match_count
+    type: int
+    description: How many Avanti students the identity matched (1 = clean; >1 = ambiguous, fk withheld).
