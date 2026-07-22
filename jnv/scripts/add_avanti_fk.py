@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enrich the four JNV source tables with the resolved Avanti foreign key from
+Enrich the six JNV source tables with the resolved Avanti foreign key from
 `jnv_student_outcome_mapping`. Adds three columns to each table:
     fk_avanti_student_id, match_confidence, match_count
 
@@ -32,7 +32,7 @@ match_confidence='ambiguous' when the student matched >1 Avanti record).
 Idempotent: CREATE OR REPLACE re-derives the columns each run (drops prior copies
 via SELECT * EXCEPT).
 
-⚠️ RUN ORDER: load_bq.py → build_student_journey_mapping.py → add_avanti_fk.py
+⚠️ RUN ORDER: load_bq.py → build_student_outcome_mapping.py → add_avanti_fk.py
    `load_bq.py` WRITE_TRUNCATEs these tables, so re-run this AFTER any reload or
    the fk columns disappear. No circularity: the mapping reads names/rolls/apps,
    never the fk written here.
@@ -95,8 +95,12 @@ def main() -> None:
             GROUP BY 1, 2
             HAVING COUNT(DISTINCT student_key) = 1
         ) m
-          ON CAST(t.{syr} AS STRING) = m.k1
-         AND CAST(t.{skey} AS STRING) = m.k2
+          -- source *_year is STRING, the mapping's *_test_year/*_exam_year are
+          -- INTEGER → cast the source year to INT64 to match (SAFE_CAST so a
+          -- non-numeric year falls to NULL rather than erroring). The app/roll
+          -- key is STRING on both sides, so no cast there.
+          ON SAFE_CAST(t.{syr} AS INT64) = m.k1
+         AND t.{skey} = m.k2
         """
         client.query(sql).result()
 

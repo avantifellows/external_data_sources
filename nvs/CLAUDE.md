@@ -100,9 +100,9 @@ the same trailing **Avanti-linkage** columns (`fk_avanti_student_id`,
 **Avanti linkage** — `fk_avanti_student_id` (= `COALESCE(pk_student_id, apaar_id)`),
 `match_confidence`, `match_count` are keyed on by `jnv/scripts/add_avanti_fk.py` from
 `jnv_student_outcome_mapping`. NCST has no roll bridge to board/JEE/NEET, so the fk is
-IDENTITY-derived (name+DOB, name+father). ~6,729 of the ~43k 2026 test-takers resolve
+IDENTITY-derived (name+DOB, name+father). ~8,108 of the ~43k 2026 test-takers resolve
 to an Avanti student. ⚠️ Re-run order after any reload: `load_bq` →
-`build_student_journey_mapping.py` → `add_avanti_fk.py` (load_bq WRITE_TRUNCATE drops
+`build_student_outcome_mapping.py` → `add_avanti_fk.py` (load_bq WRITE_TRUNCATE drops
 the fk columns, so re-key them last).
 
 See `schemas/nvs_fact_ncst_results.yaml` for full column documentation.

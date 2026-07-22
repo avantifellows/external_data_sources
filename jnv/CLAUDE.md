@@ -287,8 +287,8 @@ Six tables in `avantifellows.external_data_sources`:
 | `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
 | `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
 | `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
-| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~3.6M |
-| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~2.5M |
+| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.1M |
+| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.2M |
 
 Key column groups (full list in [`codemaps/mains/shared.py`](codemaps/mains/shared.py)):
 

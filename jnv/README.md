@@ -116,14 +116,26 @@ student × entrance attempt; see [`student_journey_mapping.md`](student_journey_
 
 ## Student journey mapping + Avanti FK enrichment
 
-`scripts/build_student_journey_mapping.py` resolves a single student across
-10th/12th/JEE/NEET and to Avanti's `dim_student`. **It runs entirely in pandas**:
-the four sources are read from BQ already aggregated, identity resolution + FK
-matching happen as DataFrame merges, and the finished table is uploaded (no
-server-side CTE graph → no planner-complexity errors). One in-memory pass builds
-**all cohorts** (2021–2027); `--year` refreshes just one. `scripts/add_avanti_fk.py`
-then keys the resolved `fk_avanti_student_id`, `match_confidence`, `match_count`
-**back onto the four source tables** (jee, neet, board 10th/12th) on each table's grain.
+`scripts/build_student_outcome_mapping.py` resolves a single student across all
+five stages (**NCST → 10th → 12th → JEE → NEET**) and to Avanti's `dim_student`.
+It models identity as a **graph / union-find** problem: every source record is a
+node, trusted links (deterministic crosswalks + unambiguous name+DOB/name+father
+identity rules) are edges, and each connected component is one student — then it
+explodes to one row per (student, attempt_year). The Avanti fk is a **tiered
+name+DOB(+father) match against `dim_student`** (direct-id → name+dob →
+name+dob-swapped → name+father → strong-name → fuzzy-name → 10th-roll fill), with
+a name gate on the direct-id crosswalks and ambiguous matches withheld
+(precision-first). **It runs entirely in pandas**: the sources are read from BQ
+already aggregated, resolution happens as DataFrame merges, and the finished
+table is uploaded (no server-side CTE graph → no planner-complexity errors). One
+in-memory pass builds **all cohorts** (2021–2028); there is no per-year flag.
+`scripts/add_avanti_fk.py` then keys the resolved `fk_avanti_student_id`,
+`match_confidence`, `match_count` **back onto the six source tables** (jee, neet,
+board 10th/12th, dakshana + nvs NCST) on each table's grain.
+
+> This is a 2026-07-22 clean-slate rewrite (the former `build_student_journey_mapping.py`).
+> It writes the same canonical `jnv_student_outcome_mapping` (47 cols); pre-cutover
+> content is preserved in `jnv_student_outcome_mapping_v1_backup`.
 
 > ⚠️ **`fk_avanti_student_id` = `COALESCE(pk_student_id, apaar_id)`.** It's a
 > `pk_student_id` for most students, but an `apaar_id` for students who have no pk in
@@ -131,14 +143,13 @@ then keys the resolved `fk_avanti_student_id`, `match_confidence`, `match_count`
 > `COALESCE(pk_student_id, apaar_id) = fk_avanti_student_id`, not `pk_student_id` alone.
 
 ```bash
-.venv/bin/python scripts/build_student_journey_mapping.py            # rebuild ALL cohorts
-.venv/bin/python scripts/build_student_journey_mapping.py --year 2026 # refresh one cohort
-.venv/bin/python scripts/add_avanti_fk.py                           # write fk back to source tables
+.venv/bin/python scripts/build_student_outcome_mapping.py   # rebuild the whole table (all cohorts)
+.venv/bin/python scripts/add_avanti_fk.py                   # write fk back to the six source tables
 ```
 
 ⚠️ **Run order matters.** `load_bq.py` rebuilds the source tables with
 `WRITE_TRUNCATE`, which **drops the fk columns**. After any reload, re-run in
-order: **`load_bq.py` → `build_student_journey_mapping.py` (each cohort) →
+order: **`load_bq.py` → `build_student_outcome_mapping.py` →
 `add_avanti_fk.py`**. (No circularity — the mapping reads names/rolls/apps, never
 the fk it later writes back.)
 

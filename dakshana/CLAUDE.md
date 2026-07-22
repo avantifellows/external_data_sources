@@ -147,9 +147,9 @@ Column availability by year:
 table by `jnv/scripts/add_avanti_fk.py` from `jnv_student_outcome_mapping`. NCST has no roll that bridges
 to the board/JEE/NEET keys, so the fk is IDENTITY-derived: name+DOB, name+father, or (2024 only) a direct
 `Avanti ID` read from the raw Excel. So `father_name` also does double duty as a match key — it is what
-lets the DOB-less 2023/2024 rows link at all. fk counts: 2022 ≈1,217 · 2023 ≈245 · 2024 ≈2,616 · 2025 = 0
-(no DOB/father) · (nvs 2026 ≈6,729). ⚠️ Re-run order after any NCST reload: `load_bq` →
-`build_student_journey_mapping.py` → `add_avanti_fk.py` (load_bq WRITE_TRUNCATE drops the fk columns).
+lets the DOB-less 2023/2024 rows link at all. fk counts: 2022 ≈1,400 · 2023 ≈255 · 2024 ≈2,989 · 2025 = 0
+(no DOB/father) · (nvs 2026 ≈8,108). ⚠️ Re-run order after any NCST reload: `load_bq` →
+`build_student_outcome_mapping.py` → `add_avanti_fk.py` (load_bq WRITE_TRUNCATE drops the fk columns).
 
 ## Codemap architecture
 
