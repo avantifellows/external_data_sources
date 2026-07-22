@@ -131,11 +131,8 @@ table is uploaded (no server-side CTE graph → no planner-complexity errors). O
 in-memory pass builds **all cohorts** (2021–2028); there is no per-year flag.
 `scripts/add_avanti_fk.py` then keys the resolved `fk_avanti_student_id`,
 `match_confidence`, `match_count` **back onto the six source tables** (jee, neet,
-board 10th/12th, dakshana + nvs NCST) on each table's grain.
-
-> This is a 2026-07-22 clean-slate rewrite (the former `build_student_journey_mapping.py`).
-> It writes the same canonical `jnv_student_outcome_mapping` (47 cols); pre-cutover
-> content is preserved in `jnv_student_outcome_mapping_v1_backup`.
+board 10th/12th, dakshana + nvs NCST) on each table's grain. The output is one
+row per (student, attempt_year), 47 columns.
 
 > ⚠️ **`fk_avanti_student_id` = `COALESCE(pk_student_id, apaar_id)`.** It's a
 > `pk_student_id` for most students, but an `apaar_id` for students who have no pk in

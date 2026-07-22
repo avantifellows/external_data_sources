@@ -18,6 +18,14 @@ Uploads:
   - Clean EI Asset:    jnv/clean/jnv_fact_ei_asset_test_results.parquet
   - Clean 10th board:  jnv/clean/jnv_fact_board_results_10th.parquet
   - Clean 12th board:  jnv/clean/jnv_fact_board_results_12th.parquet
+  - Mapping files:     jnv/mapping_files/<name>.xlsx  (as-is, no parquet conversion)
+
+The mapping files (Poojita 12th&10th, All Years JNV 10th Score) are multi-sheet
+crosswalks read directly by build_student_outcome_mapping.py. They are not in
+the pipeline lists and are gitignored, so GCS is their only backup — uploaded
+verbatim because the build reads several named sheets from each. They are NOT
+part of the default or --raw-only run; upload them explicitly with
+--mapping-files (they change rarely).
 
 Run all clean scripts first to produce the clean CSVs before uploading.
 
@@ -31,6 +39,7 @@ Usage:
     python3 scripts/upload_to_gcs.py --ei-asset-test-only
     python3 scripts/upload_to_gcs.py --board-results-10th-only
     python3 scripts/upload_to_gcs.py --board-results-12th-only
+    python3 scripts/upload_to_gcs.py --mapping-files         # crosswalk Excel files, as-is
 """
 
 import argparse
@@ -43,7 +52,7 @@ from pathlib import Path
 import pandas as pd
 from google.cloud import storage
 
-from sources import BOARD_RESULTS_10TH_CLEAN, BOARD_RESULTS_12TH_CLEAN, EI_ASSET_TEST_CLEAN, GCS_BUCKET, JEE_CLEAN, JNVST_CLEAN, NEET_CLEAN, RAW_ADV_FILES, RAW_BOARD_RESULTS_10TH_FILES, RAW_BOARD_RESULTS_12TH_FILES, RAW_EI_ASSET_TEST_FILES, RAW_JNVST_FILES, RAW_MAINS_FILES, RAW_NEET_FILES
+from sources import BOARD_RESULTS_10TH_CLEAN, BOARD_RESULTS_12TH_CLEAN, EI_ASSET_TEST_CLEAN, GCS_BUCKET, JEE_CLEAN, JNVST_CLEAN, MAPPING_FILES, NEET_CLEAN, RAW_ADV_FILES, RAW_BOARD_RESULTS_10TH_FILES, RAW_BOARD_RESULTS_12TH_FILES, RAW_EI_ASSET_TEST_FILES, RAW_JNVST_FILES, RAW_MAINS_FILES, RAW_NEET_FILES
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from codemaps.ei_asset_test.shared import apply_dtypes as apply_dtypes_ei_asset_test
@@ -69,6 +78,27 @@ def _upload_raw_files(client: storage.Client, files, label: str) -> None:
         _upload(client, df, raw.gcs_path)
 
 
+def _upload_mapping_files(client: storage.Client, files) -> None:
+    """Upload identity-crosswalk Excel files verbatim (no parquet conversion).
+
+    These are multi-sheet workbooks read directly by
+    build_student_outcome_mapping.py, so they must be preserved as-is.
+    """
+    print("Uploading mapping files (as-is, no conversion) ...")
+    bucket = client.bucket(GCS_BUCKET)
+    for m in files:
+        if not m.local_path.exists():
+            print(f"  ERROR: {m.local_path} not found.")
+            sys.exit(1)
+        print(f"  Reading {m.local_path.name} ...")
+        bucket.blob(m.gcs_path).upload_from_filename(
+            str(m.local_path),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        size_mb = m.local_path.stat().st_size / 1e6
+        print(f"  ✓ gs://{GCS_BUCKET}/{m.gcs_path}  ({size_mb:.1f} MB)")
+
+
 def _upload_clean_table(client: storage.Client, table, apply_dtypes=None, clean_script: str = "") -> None:
     print(f"Uploading clean {table.name} ...")
     if not table.local_path.exists():
@@ -91,6 +121,7 @@ def main() -> None:
     group.add_argument("--ei-asset-test-only",       action="store_true", help="Upload EI Asset Test raw + clean")
     group.add_argument("--board-results-10th-only",  action="store_true", help="Upload 10th board results raw + clean")
     group.add_argument("--board-results-12th-only",  action="store_true", help="Upload 12th board results raw + clean")
+    group.add_argument("--mapping-files",  action="store_true", help="Upload identity-crosswalk Excel files as-is (Poojita, All Years JNV 10th Score)")
     args = parser.parse_args()
 
     client = storage.Client()
@@ -129,6 +160,8 @@ def main() -> None:
     elif args.board_results_12th_only:
         _upload_raw_files(client, RAW_BOARD_RESULTS_12TH_FILES, "12th board results")
         _upload_clean_table(client, BOARD_RESULTS_12TH_CLEAN, None, "clean_board_results_12th.py")
+    elif args.mapping_files:
+        _upload_mapping_files(client, MAPPING_FILES)
     else:
         _upload_raw_files(client, RAW_MAINS_FILES, "mains")
         _upload_raw_files(client, RAW_ADV_FILES, "advanced")

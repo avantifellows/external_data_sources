@@ -162,3 +162,29 @@ NCST_2024_RAW_CANDIDATES = [
     _DAKSHANA_RAW / "ncst" / "NCST 2024.xlsx",
 ]
 NCST_2024_RAW_SHEET = "Result"
+
+
+# ── Mapping-file GCS backup (uploaded as-is, no parquet conversion) ────────────
+# POOJITA and TENTH_SCORE are multi-sheet crosswalks read directly by
+# build_student_outcome_mapping.py. They are NOT in the pipeline RawFile lists
+# above and are gitignored, so GCS is their only durable backup. They are
+# uploaded verbatim (original .xlsx) — NOT converted to parquet — because the
+# build reads several named sheets from each, which a single-sheet parquet
+# would lose.
+@dataclass
+class MappingFile:
+    local_path: Path       # local .xlsx to upload as-is
+
+    @property
+    def gcs_path(self):
+        return f"{GCS_PREFIX}/mapping_files/{self.local_path.name}"
+
+    @property
+    def gcs_uri(self):
+        return f"gs://{GCS_BUCKET}/{self.gcs_path}"
+
+
+MAPPING_FILES = [
+    MappingFile(POOJITA),
+    MappingFile(TENTH_SCORE),
+]

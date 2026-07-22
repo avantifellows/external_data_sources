@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
-Build jnv_student_journey_mapping_v2 — a CLEAN-SLATE rewrite of the JNV
-cross-table student journey/identity mapping.
+Build jnv_student_outcome_mapping — the JNV cross-table student
+journey/identity mapping.
 
-This is a fresh design. Instead of v1's bespoke anchored spines
-(build_student_journey_mapping.py → jnv_student_outcome_mapping), v2 treats
-identity resolution as a GRAPH problem:
+Identity resolution is treated as a GRAPH problem:
 
     every source record is a NODE  →  trusted links between records are EDGES
     →  each connected component is ONE STUDENT  →  explode to one row per
@@ -35,30 +33,33 @@ two records as separate single-stage students rather than risk fusing two real
 people — union-find is transitive, so one bad edge would chain whole clusters.
 
 SCOPE OF THIS FILE: steps 1–8 (identity map + Avanti fk + outcome marks + load).
-The output is the identity MAP
-(student_key + cohort/attempt years + each stage's natural join key) plus the
-Avanti fk (step 6). fk_avanti_student_id / match_confidence / match_count are
-computed by this file's OWN tiered name+DOB(+father) matcher against dim_student
-(see _read_avanti_reference / _build_sid / _match_fk_v2) — ported from v1's
-_read_avanti / _match_fk, so v2 no longer depends on v1 having already run.
-Covers ALL five stages including NCST through the SAME pipeline: v2's union-find
-already attaches an NCST record to a b10/b12/jee/neet-anchored student by
-identity where one exists (IDENTITY_RULES), so the only remaining gap was an
-NCST-only student never entering `sid` at all — closed by folding ncst into
-_build_sid's coalesce + a name+father tier (v1 kept NCST matching in a fully
-separate function, _resolve_ncst; this build deliberately does not — one unified
-matcher for every stage). Marks / outcome columns (step 7) are ALSO included —
-ported verbatim from v1's _read_marks + _enrich (see _read_marks / _build_rows),
-so the output is column-identical to v1 (47 cols, same order).
+The output is the identity MAP (student_key + cohort/attempt years + each
+stage's natural join key) plus the Avanti fk (step 6).
+fk_avanti_student_id / match_confidence / match_count are computed by this
+file's OWN tiered name+DOB(+father) matcher against dim_student (see
+_read_avanti_reference / _build_sid / _match_fk_v2). All five stages —
+including NCST — resolve through the SAME pipeline: the union-find attaches an
+NCST record to a b10/b12/jee/neet-anchored student by identity where one exists
+(IDENTITY_RULES), and an NCST-only student enters `sid` via _build_sid's
+coalesce + a name+father tier — one unified matcher for every stage, no
+separate NCST path. Marks / outcome columns (step 7) come from
+_read_marks + _build_rows. Output is 47 columns.
 
-Output table: this build IS the production mapping — it writes the CANONICAL
-`jnv_student_outcome_mapping`, REPLACING v1 (build_student_journey_mapping.py,
-retired 2026-07-22; pre-cutover v1 content preserved in
-`jnv_student_outcome_mapping_v1_backup`):
+INPUTS & REPRODUCIBILITY: this build reads several raw Excel files from LOCAL
+disk (the POOJITA / TENTH_SCORE identity crosswalks and the JEE/NEET/NCST raw
+files — see the imports below), NOT from GCS. All are gitignored, but all are
+backed up to GCS (see upload_to_gcs.py): the two mapping crosswalks are stored
+as-is (original multi-sheet .xlsx, via `--mapping-files`), so they drop straight
+back in; the JEE/NEET/NCST raw files are stored as single-sheet parquet (the
+same sheet this build reads), so recovering those for a re-run needs a
+parquet→xlsx conversion (or repointing those reads). The data is fully
+recoverable from GCS; the build simply does not pull from GCS itself.
+
+Output table (this build IS the production mapping — the canonical table):
     avantifellows.external_data_sources.jnv_student_outcome_mapping
 
 Usage:
-    python3 scripts/build_student_journey_mapping_v2.py
+    python3 scripts/build_student_outcome_mapping.py
 """
 
 import difflib
@@ -74,21 +75,18 @@ from sources import (BQ_PROJECT, BQ_DATASET, BQ_LOCATION,
                      NCST_2024_RAW_CANDIDATES, NCST_2024_RAW_SHEET)
 
 # This build IS the production JNV student outcome mapping — it writes the
-# canonical `jnv_student_outcome_mapping` table, REPLACING v1
-# (build_student_journey_mapping.py, retired 2026-07-22). Pre-cutover v1 content
-# is preserved in `jnv_student_outcome_mapping_v1_backup`.
+# canonical `jnv_student_outcome_mapping` table.
 OUT_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_outcome_mapping"
 
-# Output columns — pure identity map + Avanti fk (step 6). The per-stage
-# name/father/mother/dob comparison columns served their purpose (9 rounds of QA,
-# see data-assistant-pr44.md findings #1-9) and are dropped here; each stage's
-# natural join key (roll/app/test_year) is kept so a consumer can still reach the
-# source row directly. Marks / outcome columns (step 7) remain deferred.
-# Column-identical to v1 (jnv_student_outcome_mapping): same 47 columns in the same
-# order, so v2 is a drop-in replacement. v2's own `attempt_year` column is dropped
-# from the OUTPUT to match v1 exactly (v1 encodes the same grain via jee/neet
-# _test_year); it is still used internally for sorting. STEP 7 (the outcome/marks
-# payload below the join keys) is ported from v1's _read_marks + _enrich.
+# Output columns — identity map + Avanti fk (step 6) + outcome/marks (step 7).
+# The per-stage name/father/mother/dob comparison columns served their purpose
+# (9 rounds of QA, see data-assistant-pr44.md findings #1-9) and are dropped
+# here; each stage's natural join key (roll/app/test_year) is kept so a consumer
+# can still reach the source row directly. 47 columns in total. The internal
+# `attempt_year` column is dropped from the OUTPUT (the grain is encoded via the
+# jee/neet _test_year columns); it is still used internally for sorting. The
+# outcome/marks payload (step 7, below the join keys) comes from
+# _read_marks + _build_rows.
 FINAL_COLS = [
     "student_key", "cohort_year", "fk_avanti_student_id",
     "match_confidence", "match_count",
@@ -438,11 +436,11 @@ def _read_crosswalks() -> dict:
     r10 = r10[["yr_s", "roll", "avanti_id"]]
 
     # Poojita "Mapped Data (2025 Students)" — a DIRECT b10-anchored Avanti id crosswalk
-    # (10th Roll Number -> Avanti Student ID), used by v1's fk-matcher's b10 direct-id
-    # tier (build_student_journey_mapping.py's `p25`). No year column in the sheet, so
-    # unlike v1 (which merges on roll alone — a real cross-year collision risk given
-    # this session's findings) we resolve it across ALL board years + a name-agreement
-    # gate in _build_sid, same as every other roll bridge in this file.
+    # (10th Roll Number -> Avanti Student ID), feeding the fk-matcher's b10 direct-id
+    # tier. No year column in the sheet, so rather than merge on roll alone (a real
+    # cross-year collision risk given this session's findings) we resolve it across
+    # ALL board years + a name-agreement gate in _build_sid, same as every other roll
+    # bridge in this file.
     p25b10 = pd.read_excel(POOJITA, sheet_name="Mapped Data (2025 Students)", dtype=str).rename(
         columns={"Avanti Student ID": "avanti_id", "Student Name": "name", "10th Roll Number": "roll"})
     p25b10 = p25b10[["avanti_id", "name", "roll"]]

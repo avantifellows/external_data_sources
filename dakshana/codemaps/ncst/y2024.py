@@ -11,7 +11,7 @@ NOTE: this file also carries an "Avanti ID" column (a source-provided direct
 Avanti student id, populated for ~213/5,988 rows). It is intentionally NOT
 mapped into this table — instead the NCST→Avanti fk-linkage step reads it
 straight from this raw Excel as a highest-confidence direct-id crosswalk
-(mirroring how build_student_journey_mapping.py reads the JEE-2024 file's
+(mirroring how build_student_outcome_mapping.py reads the JEE-2024 file's
 Student ID), and writes the result into fk_avanti_student_id.
 father_financial_income / mother_financial_income map to the canonical
 income columns; Parents Income → annual_family_income.
