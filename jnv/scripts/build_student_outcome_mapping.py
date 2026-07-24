@@ -124,7 +124,7 @@ STAGES = ["ncst", "b10", "b12", "jee", "neet"]
 # per-year (see _roll_cols) — the right year is chosen by the name gate. Searching
 # every year (not just the on-time one) is what links DROPPERS, whose 12th board
 # record sits an earlier year than their entrance sitting.
-BOARD_YEARS = ["2022", "2023", "2024", "2025"]
+BOARD_YEARS = ["2022", "2023", "2024", "2025", "2026"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -867,9 +867,12 @@ def _read_avanti_reference(client) -> tuple:
     artifact), which the cnt==1 ambiguity guard in _match_fk_v2 then correctly
     refuses to pick between — net loss for that population (resolved -1,275,
     ambiguous +11,128 in that rebuild). So: avanti_g12 stays the match target
-    for everyone EXCEPT students whose only source is NCST (see sid.ncst_only
-    in _build_sid) — those alone get avanti_all, since a grade-12 frame gives
-    them nothing to match at all."""
+    as the PRIMARY frame for everyone; only students avanti_g12 can't place at all
+    fall back to avanti_all (see the g12-primary → wide-fallback cascade in
+    _match_fk_v2). Those fallback students — the pre-grade-12 NCST/10th cohorts not
+    in grade 12 yet — have no grade-12 id, so they carry no Foundation->TP dual id
+    to be ambiguous against; the wide frame is simply the only one that can match
+    them at all."""
     name = r"UPPER(TRIM(REGEXP_REPLACE(student_full_name, r'\s+', ' ')))"
     fname = r"UPPER(TRIM(REGEXP_REPLACE(COALESCE(father_name,''), r'\s+', ' ')))"
     swap = ("SAFE.DATE(EXTRACT(YEAR FROM date_of_birth),"
@@ -1045,13 +1048,11 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame) ->
     b10tag = b10tag.dropna(subset=["student_key"]).drop_duplicates("student_key")
     sid = sid.merge(b10tag[["student_key", "roll10_avanti_id"]], on="student_key", how="left")
 
-    # ncst_only — student's cluster has NO board/entrance record, only NCST. Used
-    # by _match_fk_v2 to route ONLY these students against the wider all-grade
-    # avanti reference; everyone else matches against the safer grade-12-only
-    # frame (see _read_avanti_reference docstring for why the wide frame isn't
-    # safe as the default target).
-    src_sets = contrib.groupby("student_key")["src"].agg(lambda s: frozenset(s))
-    sid["ncst_only"] = sid["student_key"].map(src_sets) == frozenset({"ncst"})
+    # Frame routing (grade-12 vs the wider all-grade avanti reference) is decided in
+    # _match_fk_v2 by a g12-primary → wide-fallback cascade, so no per-cluster source
+    # classification is needed here. (Earlier revisions precomputed an ncst_only /
+    # pre_g12 flag to partition the two frames up front; the fallback subsumes it —
+    # a student is sent to the wide frame iff grade-12 can't place them at all.)
     return sid
 
 
@@ -1098,13 +1099,16 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     crosswalk id (fill-only). Ambiguous (>1 distinct candidate) is withheld
     (fk=NULL), matching this build's precision-first posture throughout.
 
-    Runs the SAME cascade twice against two different candidate pools, not two
-    separate resolvers: sid.ncst_only students (no board/entrance record at all)
-    match against avanti_all (the only way they get anything to match); everyone
-    else matches against avanti_g12. See _read_avanti_reference's docstring —
-    matching the general population against avanti_all was tried and reverted
-    (it turned Foundation->TP re-enrollment id pairs into false ambiguity for a
-    population that was previously matching cleanly)."""
+    Runs the SAME cascade against two candidate pools in a g12-primary →
+    wide-fallback order, not two independent resolvers: EVERYONE is matched against
+    avanti_g12 first, and only students that frame places nowhere (no candidate row
+    — the pre-grade-12 NCST/10th cohorts not in grade 12 yet) fall back to
+    avanti_all. This lets those young cohorts match at all while keeping students
+    who DO sit in the g12 frame there — matching the WHOLE population against
+    avanti_all was tried and reverted (it turned Foundation->TP re-enrollment id
+    pairs into false ambiguity for students that were matching cleanly), and the
+    fallback confines avanti_all to exactly the students g12 can't place, who by
+    construction have no grade-12 id to be ambiguous against."""
     cand_cols = ["student_key", "fk", "pri", "conf", "cnt"]
 
     # pk -> {dim_student JNV names} — used ONLY to name-gate the direct-id tier
@@ -1184,10 +1188,18 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
         return pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols], nf[cand_cols],
                           st[cand_cols], fz[cand_cols], x10[cand_cols]], ignore_index=True)
 
-    sid_general = sid[~sid.ncst_only].drop(columns=["ncst_only"])
-    sid_ncst = sid[sid.ncst_only].drop(columns=["ncst_only"])
-    cand = pd.concat([_match_one(sid_general, avanti_g12), _match_one(sid_ncst, avanti_all)],
-                     ignore_index=True)
+    # g12-primary → wide-fallback: match EVERYONE against the safer grade-12 frame
+    # first; only students that frame can't place at all (no candidate row — the
+    # young NCST/10th cohorts not in grade 12 yet) fall back to the wider all-grade
+    # reference. Students who DO sit in the g12 frame (incl. dual-pk NVS/Enable
+    # re-enrollees, who match their single grade-12 id there) stay on g12, so the
+    # Foundation->TP false ambiguity the wide frame induces never fires for them;
+    # the fallback students have no grade-12 id to be ambiguous against.
+    g12_cand = _match_one(sid, avanti_g12)
+    seen_g12 = set(g12_cand.student_key)
+    sid_fallback = sid[~sid.student_key.isin(seen_g12)]
+    wide_cand = _match_one(sid_fallback, avanti_all)
+    cand = pd.concat([g12_cand, wide_cand], ignore_index=True)
 
     cand["fk_isnull"] = cand.fk.isna()
     cand = cand.sort_values(["student_key", "fk_isnull", "pri"]).drop_duplicates("student_key", keep="first")
@@ -1197,7 +1209,7 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
         ["student_key", "fk_avanti_student_id", "match_confidence", "match_count"]]
     print(f"  step 6 (own matcher) — avanti fk: {out.fk_avanti_student_id.notna().sum():,} resolved, "
           f"{(out.match_confidence == 'ambiguous').sum():,} ambiguous "
-          f"({sid_ncst.student_key.nunique():,} ncst-only students routed to the wide reference)")
+          f"({sid_fallback.student_key.nunique():,} students unplaced by g12 fell back to the wide reference)")
     return out
 
 

@@ -23,12 +23,14 @@ BQ_LOCATION = "asia-south1"
 
 @dataclass
 class Table:
-    name: str          # used as GCS filename stem and BQ table suffix
-    local_path: Path   # local file to upload (CSV or parquet)
+    name: str                # used as GCS filename stem and BQ table suffix
+    local_path: Path         # local file to upload (CSV or parquet)
+    gcs_name: str = None     # override GCS clean stem (defaults to name)
+    bq_name: str = None      # override BQ table suffix (defaults to name)
 
     @property
     def gcs_path(self):
-        return f"{GCS_PREFIX}/clean/{self.name}.parquet"
+        return f"{GCS_PREFIX}/clean/{self.gcs_name or self.name}.parquet"
 
     @property
     def gcs_uri(self):
@@ -36,7 +38,7 @@ class Table:
 
     @property
     def bq_table_id(self):
-        return f"{BQ_PROJECT}.{BQ_DATASET}.{self.name}"
+        return f"{BQ_PROJECT}.{BQ_DATASET}.{self.bq_name or self.name}"
 
 
 # Clean table loaded into BigQuery
@@ -115,12 +117,35 @@ RAW_EI_ASSET_TEST_FILES = [
     RawFile("EI_Asset_Test.xlsx", "student_scores", subdir="ei_asset_test"),
 ]
 
-RAW_BOARD_RESULTS_10TH_FILES = [
-    RawFile("JNV1022.xlsx", "jnv1022",   subdir="board_results_10th"),
-    RawFile("JNV1023.xlsx", "JNV1023",   subdir="board_results_10th"),
-    RawFile("JNV1024.xlsx", "jnv_1024",  subdir="board_results_10th"),
-    RawFile("JNV1025.xlsx", "Sheet1",    subdir="board_results_10th"),
-]
+# Raw 10th-board Excel files keyed by exam_year — the single source of truth for
+# which years exist. Add a new year here (one line) and it flows through the whole
+# pipeline: clean_board_results_10th.py / upload_to_gcs.py / load_bq.py all resolve
+# years from this dict. The list alias below is kept for callers that iterate every
+# raw file (upload_to_gcs full run, mapping build).
+BOARD_RESULTS_10TH_RAW_BY_YEAR = {
+    2022: RawFile("JNV1022.xlsx", "jnv1022",   subdir="board_results_10th"),
+    2023: RawFile("JNV1023.xlsx", "JNV1023",   subdir="board_results_10th"),
+    2024: RawFile("JNV1024.xlsx", "jnv_1024",  subdir="board_results_10th"),
+    2025: RawFile("JNV1025.xlsx", "Sheet1",    subdir="board_results_10th"),
+    2026: RawFile("JNV1026.xlsx", "jnv1026",   subdir="board_results_10th"),
+}
+RAW_BOARD_RESULTS_10TH_FILES = list(BOARD_RESULTS_10TH_RAW_BY_YEAR.values())
+
+
+def board_results_10th_clean_for_year(year) -> Table:
+    """Per-year clean artifact for the incremental (append-one-year) load path.
+
+    Reads/writes a year-scoped clean CSV + GCS parquet
+    (clean/by_year/jnv_fact_board_results_10th_<year>.parquet) but targets the
+    SAME BigQuery table, so load_bq.py can WRITE_APPEND a single year without
+    touching the years already loaded.
+    """
+    return Table(
+        name=f"jnv_fact_board_results_10th_{year}",
+        local_path=JNV_DIR / "clean" / f"board_results_10th_clean_{year}.csv",
+        gcs_name=f"by_year/jnv_fact_board_results_10th_{year}",
+        bq_name="jnv_fact_board_results_10th",
+    )
 
 BOARD_RESULTS_12TH_CLEAN = Table(
     name="jnv_fact_board_results_12th",

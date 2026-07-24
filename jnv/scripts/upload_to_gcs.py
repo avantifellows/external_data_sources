@@ -52,7 +52,7 @@ from pathlib import Path
 import pandas as pd
 from google.cloud import storage
 
-from sources import BOARD_RESULTS_10TH_CLEAN, BOARD_RESULTS_12TH_CLEAN, EI_ASSET_TEST_CLEAN, GCS_BUCKET, JEE_CLEAN, JNVST_CLEAN, MAPPING_FILES, NEET_CLEAN, RAW_ADV_FILES, RAW_BOARD_RESULTS_10TH_FILES, RAW_BOARD_RESULTS_12TH_FILES, RAW_EI_ASSET_TEST_FILES, RAW_JNVST_FILES, RAW_MAINS_FILES, RAW_NEET_FILES
+from sources import BOARD_RESULTS_10TH_CLEAN, BOARD_RESULTS_10TH_RAW_BY_YEAR, BOARD_RESULTS_12TH_CLEAN, EI_ASSET_TEST_CLEAN, GCS_BUCKET, JEE_CLEAN, JNVST_CLEAN, MAPPING_FILES, NEET_CLEAN, RAW_ADV_FILES, RAW_BOARD_RESULTS_10TH_FILES, RAW_BOARD_RESULTS_12TH_FILES, RAW_EI_ASSET_TEST_FILES, RAW_JNVST_FILES, RAW_MAINS_FILES, RAW_NEET_FILES, board_results_10th_clean_for_year
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from codemaps.ei_asset_test.shared import apply_dtypes as apply_dtypes_ei_asset_test
@@ -122,7 +122,13 @@ def main() -> None:
     group.add_argument("--board-results-10th-only",  action="store_true", help="Upload 10th board results raw + clean")
     group.add_argument("--board-results-12th-only",  action="store_true", help="Upload 12th board results raw + clean")
     group.add_argument("--mapping-files",  action="store_true", help="Upload identity-crosswalk Excel files as-is (Poojita, All Years JNV 10th Score)")
+    parser.add_argument("--year", type=int, default=None,
+                        help="With --board-results-10th-only: upload only this exam year's "
+                             "raw + per-year clean parquet (for the incremental append load).")
     args = parser.parse_args()
+
+    if args.year is not None and not args.board_results_10th_only:
+        parser.error("--year is only supported with --board-results-10th-only")
 
     client = storage.Client()
 
@@ -155,8 +161,17 @@ def main() -> None:
         _upload_raw_files(client, RAW_EI_ASSET_TEST_FILES, "EI Asset Test")
         _upload_clean_table(client, EI_ASSET_TEST_CLEAN, apply_dtypes_ei_asset_test, "clean_ei_asset_test.py")
     elif args.board_results_10th_only:
-        _upload_raw_files(client, RAW_BOARD_RESULTS_10TH_FILES, "10th board results")
-        _upload_clean_table(client, BOARD_RESULTS_10TH_CLEAN, None, "clean_board_results_10th.py")
+        if args.year is not None:
+            raw = BOARD_RESULTS_10TH_RAW_BY_YEAR.get(args.year)
+            if raw is None:
+                print(f"  ERROR: no raw 10th-board file registered for year {args.year}.")
+                sys.exit(1)
+            _upload_raw_files(client, [raw], f"10th board results {args.year}")
+            _upload_clean_table(client, board_results_10th_clean_for_year(args.year), None,
+                                f"clean_board_results_10th.py --year {args.year}")
+        else:
+            _upload_raw_files(client, RAW_BOARD_RESULTS_10TH_FILES, "10th board results")
+            _upload_clean_table(client, BOARD_RESULTS_10TH_CLEAN, None, "clean_board_results_10th.py")
     elif args.board_results_12th_only:
         _upload_raw_files(client, RAW_BOARD_RESULTS_12TH_FILES, "12th board results")
         _upload_clean_table(client, BOARD_RESULTS_12TH_CLEAN, None, "clean_board_results_12th.py")
