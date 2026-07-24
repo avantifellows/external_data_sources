@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Clean and reshape CBSE 10th board results for JNV students (2022–2025).
+Clean and reshape CBSE 10th board results for JNV students (2022–2026).
 
 Reads:   raw/board_results_10th/JNV10{YY}.xlsx  (one file per year)
-Writes:  clean/board_results_10th_clean.csv
+Writes:  clean/board_results_10th_clean.csv                (all years, combined)
+   or:   clean/board_results_10th_clean_<year>.csv         (single year, with --year)
 
 Transformations:
   - Column names normalized and renamed (see COLUMN_RENAMES)
@@ -13,9 +14,12 @@ Transformations:
   - category: C → SC, T → ST, O → OBC, G → Gen
 
 Usage:
-    python3 scripts/clean_board_results_10th.py
+    python3 scripts/clean_board_results_10th.py             # rebuild all years → combined CSV
+    python3 scripts/clean_board_results_10th.py --year 2026 # clean one year → per-year CSV
+                                                            # (feeds the append-one-year load)
 """
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -23,7 +27,11 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import BOARD_RESULTS_10TH_CLEAN, RAW_BOARD_RESULTS_10TH_FILES
+from sources import (
+    BOARD_RESULTS_10TH_CLEAN,
+    BOARD_RESULTS_10TH_RAW_BY_YEAR,
+    board_results_10th_clean_for_year,
+)
 
 # NOTE: the Avanti FK (fk_avanti_student_id / match_confidence / match_count) is
 # NOT resolved here. It is stamped onto this table post-load by add_avanti_fk.py
@@ -33,15 +41,19 @@ from sources import BOARD_RESULTS_10TH_CLEAN, RAW_BOARD_RESULTS_10TH_FILES
 
 # ── Year configs ───────────────────────────────────────────────────────────────
 
+# Exam years we can build, resolved from the single source of truth in sources.py.
+# Add a new year by adding its raw file to BOARD_RESULTS_10TH_RAW_BY_YEAR there —
+# no edit needed here.
 YEAR_CONFIGS = [
-    {"exam_year": 2022, "raw": RAW_BOARD_RESULTS_10TH_FILES[0]},
-    {"exam_year": 2023, "raw": RAW_BOARD_RESULTS_10TH_FILES[1]},
-    {"exam_year": 2024, "raw": RAW_BOARD_RESULTS_10TH_FILES[2]},
-    {"exam_year": 2025, "raw": RAW_BOARD_RESULTS_10TH_FILES[3]},
+    {"exam_year": year, "raw": raw}
+    for year, raw in sorted(BOARD_RESULTS_10TH_RAW_BY_YEAR.items())
 ]
 
 # Applied on raw column names before sanitization to fix year-specific quirks.
 # 2024 renamed student/location cols; 2025 has unnamed region/state columns.
+# 2026 needs none — its columns are already canonical (like 2022/2023); its `state`
+# resolves to the full state name ("MADHYA PRADESH") since the full-name STATE
+# column precedes the 2-letter one and _sanitize_columns keeps the first.
 YEAR_COLUMN_FIXES = {
     2024: {
         "JNV Region":   "region",
@@ -228,9 +240,10 @@ def _load_year(exam_year: int, raw) -> pd.DataFrame:
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
-def main() -> None:
+def _build(year_configs) -> pd.DataFrame:
+    """Load + clean the given year configs into one long-format DataFrame."""
     frames = []
-    for cfg in YEAR_CONFIGS:
+    for cfg in year_configs:
         raw = cfg["raw"]
         if not raw.local_path.exists():
             print(f"WARN: raw file not found, skipping: {raw.local_path}")
@@ -249,12 +262,37 @@ def main() -> None:
     for col in OUTPUT_COLS:
         if col not in out_df.columns:
             out_df[col] = pd.NA
-    out_df = out_df[OUTPUT_COLS]
+    return out_df[OUTPUT_COLS]
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--year", type=int, default=None,
+        help="Clean only this exam year and write a per-year CSV "
+             "(clean/board_results_10th_clean_<year>.csv) for the incremental "
+             "append-one-year load. Omit to rebuild all years into the combined CSV.",
+    )
+    args = parser.parse_args()
+
+    if args.year is not None:
+        if args.year not in BOARD_RESULTS_10TH_RAW_BY_YEAR:
+            print(f"ERROR: no raw file registered for year {args.year}. "
+                  f"Known years: {sorted(BOARD_RESULTS_10TH_RAW_BY_YEAR)}")
+            sys.exit(1)
+        configs = [{"exam_year": args.year, "raw": BOARD_RESULTS_10TH_RAW_BY_YEAR[args.year]}]
+        out_table = board_results_10th_clean_for_year(args.year)
+    else:
+        configs = YEAR_CONFIGS
+        out_table = BOARD_RESULTS_10TH_CLEAN
+
+    out_df = _build(configs)
 
     total_rows = len(out_df)
     print(f"\nTotal: {total_rows:,} rows × {len(out_df.columns)} columns")
 
-    out = BOARD_RESULTS_10TH_CLEAN.local_path
+    out = out_table.local_path
     out.parent.mkdir(exist_ok=True)
     out_df.to_csv(out, index=False)
     print(f"Written to {out}")

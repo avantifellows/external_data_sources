@@ -20,9 +20,10 @@ internal JNV tracking, one file per year per exam.
   cleaning (column renames, area/gender value mapping).
 - **EI Asset Test pipeline** — EI ASSET assessment scores by student and
   subject. Raw load with column renames only.
-- **Board Results 10th pipeline** — CBSE 10th board results, 2022–2025. Long
+- **Board Results 10th pipeline** — CBSE 10th board results, 2022–2026. Long
   format (one row per student per subject), unpivoted from up to 7 subject
-  slots per student.
+  slots per student. Supports an **incremental append-one-year** load (`--year`)
+  so a new year lands without touching the years already in BigQuery.
 - **Board Results 12th pipeline** — CBSE 12th board results, 2022–2025. Long
   format, includes both main subjects (with marks) and internal assessment
   subjects (grade only — Work Experience, Health & PE, General Studies).
@@ -207,6 +208,7 @@ python3 -m venv .venv
 .venv/bin/python scripts/load_bq.py --ei-asset-test-only
 
 # ── Board Results 10th pipeline ───────────────────────────────────────────────
+# Full rebuild (all years → WRITE_TRUNCATE):
 # 1. Clean raw Excel → CSV (wide → long unpivot, column renames)
 .venv/bin/python scripts/clean_board_results_10th.py
 
@@ -215,6 +217,16 @@ python3 -m venv .venv
 
 # 3. Load clean parquet from GCS → BigQuery
 .venv/bin/python scripts/load_bq.py --board-results-10th-only
+
+# Incremental — add ONE new year without touching the years already loaded.
+# Register the year's raw file in sources.py → BOARD_RESULTS_10TH_RAW_BY_YEAR first,
+# then (e.g. 2026):
+.venv/bin/python scripts/clean_board_results_10th.py --year 2026        # → per-year CSV
+.venv/bin/python scripts/upload_to_gcs.py --board-results-10th-only --year 2026
+.venv/bin/python scripts/load_bq.py --board-results-10th-only --year 2026   # DELETE year + WRITE_APPEND
+# The appended rows get NULL fk_avanti_student_id until the identity mapping is
+# rebuilt (add "2026" to BOARD_YEARS in build_student_outcome_mapping.py, rerun it,
+# then add_avanti_fk.py). load_bq's --year is idempotent (re-run replaces that year).
 
 # ── Board Results 12th pipeline ───────────────────────────────────────────────
 # 1. Clean raw Excel → CSV (wide → long unpivot, column renames)
@@ -287,7 +299,7 @@ Six tables in `avantifellows.external_data_sources`:
 | `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
 | `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
 | `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
-| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.1M |
+| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.36M (2022–2026) |
 | `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.2M |
 
 Key column groups (full list in [`codemaps/mains/shared.py`](codemaps/mains/shared.py)):
