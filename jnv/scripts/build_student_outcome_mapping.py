@@ -37,7 +37,10 @@ The output is the identity MAP (student_key + cohort/attempt years + each
 stage's natural join key) plus the Avanti fk (step 6).
 fk_avanti_student_id / match_confidence / match_count are computed by this
 file's OWN tiered name+DOB(+father) matcher against dim_student (see
-_read_avanti_reference / _build_sid / _match_fk_v2). All five stages —
+_read_avanti_reference / _build_sid / _match_fk_v2), plus a lowest-priority
+fill-only tier from production's operational NTA app→id crosswalk, which is the
+only key able to reach the ~8k nameless JEE-2025 rows (see
+_read_prod_nta_crosswalk). All five stages —
 including NCST — resolve through the SAME pipeline: the union-find attaches an
 NCST record to a b10/b12/jee/neet-anchored student by identity where one exists
 (IDENTITY_RULES), and an NCST-only student enters `sid` via _build_sid's
@@ -478,6 +481,166 @@ def _read_ncst_avanti_id() -> pd.DataFrame:
         return out
     print("  crosswalk ncst24         0  (raw not found — skipped)")
     return pd.DataFrame(columns=["yr_s", "roll", "avanti_id"])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# production NTA (test_year, application_no) → Avanti id crosswalk
+# ─────────────────────────────────────────────────────────────────────────────
+# Attribute referees used to corroborate a production-supplied id: state, JNV school
+# name, category, gender. All four are NAME-FREE by design — the population this
+# crosswalk exists to reach carries no name at all (see _read_prod_nta_crosswalk) — and
+# none is used by _match_fk_v2, so they are independent evidence rather than a
+# restatement of the match key. Require ≥2 to agree.
+_PROD_NTA_MIN_REFEREES = 2
+
+# Referees are compared YEAR-ALIGNED: a candidate is judged only against its
+# dim_student row(s) for the academic year(s) the exam sits in, never its whole history
+# pooled. Pooling inflates a candidate purely for having MORE dim rows (more values to
+# match against) — measured on the disagreement set, pooling scored production 2.51 vs
+# the build's 2.63, while year-aligning the same rows gives 2.40 vs 2.60. Window =
+# {test_year, test_year - 1}: an on-time student sits the exam in the academic year
+# ending test_year, a dropper the year after their grade-12 year. Same alignment
+# production's own fact_student_jee_main_results uses (test_year = RIGHT(academic_year,4)),
+# widened by one, which lifts adjudicable coverage on the target population to 93%.
+_PROD_NTA_YEAR_WINDOW = 1
+
+# fk-tier priority for this source — LAST, below roll10_crosswalk (7). Named because
+# _match_fk_v2 also has to exclude this tier from the g12→wide fallback decision.
+_PROD_NTA_PRI = 8
+
+
+def _read_prod_nta_crosswalk(client) -> dict:
+    """Production's operational (test_year, application_no) → Avanti id crosswalk,
+    from the NTA result facts. Returns {stage: frame[yr_s, app, avanti_id]}.
+
+    WHY THIS SOURCE EXISTS HERE. `student_id` on those facts is passed straight
+    through from the NTA upload (`stg_nta_*_results.student_id`) — ops fills it in
+    when handing over the file — so it is an OPERATIONAL app→id crosswalk of exactly
+    the same shape as the local `jee24`/`jee25`/`neet24` "Student ID" columns this
+    file already trusts (see _deterministic_edges (d)), just BQ-native, all-years and
+    refreshed with each NTA load. It is INDEPENDENT of this build: no dbt model reads
+    `external_data_sources`, so there is no feedback loop through add_avanti_fk.py.
+
+    WHAT IT FIXES. The JEE 2025 "All JNV Candidates" file carries NO name, dob or
+    father for 8,066 of its 12,103 rows (only an application number + scores), and
+    its own `avanti_studentid` column covers just 733. Those rows therefore become
+    orphan size-1 `jee:2025:<app>` clusters that NO name/dob tier in _match_fk_v2 can
+    ever reach — they end up fk-less while the SAME student sits elsewhere in the
+    table (as a board-anchored cluster, or as a `dim_passthrough` roster row claiming
+    "no outcome"). This crosswalk is the only key that can join those two halves.
+    Reported as a recall gap on data-assistant PR #90: 780 `dim_passthrough` students
+    have a production JEE/NEET outcome, and 729 of their exam rows are sitting in
+    jnv_fact_* under the very same (test_year, application_no).
+
+    WHY IT IS FILL-ONLY, AND GATED. Production's `student_id` is reliable but NOT
+    better than us when it conflicts. Measured against the current table: it supplies an
+    id for 5,441 exam rows, of which 3,328 AGREE with the fk we already have (97.5% of
+    everything checkable), 125 disagree, and 1,988 are rows we cannot match at all.
+    On the 125 disagreements, 39 ids do not exist in dim_student/_historical in ANY
+    academic year, and on the 86 that do, the four year-aligned referees make it a
+    near-tie: build 2.60 vs production 2.40, build ahead on only 14 rows to production's
+    9 with 29 ties. There is no evidence either way, so we do not churn 86 existing
+    links — hence:
+      • FILL-ONLY — consumed as the LOWEST fk tier (see _match_fk_v2), so it can only
+        ever fill a blank, never override a name/dob (or roll10) match. Ranking it above
+        a name tier was tested and rejected on the numbers above.
+      • ATTRIBUTE-GATED — kept only if ≥_PROD_NTA_MIN_REFEREES of the four referees
+        agree, year-aligned. On the target population production scores 3.11/4 with 93%
+        coverage, i.e. it is strongly corroborated exactly where it is needed; the gate
+        drops the weakly-corroborated tail (1,988 → 1,820).
+    Names are NOT checked here (the target rows have none); _match_fk_v2 applies the
+    existing `_direct_ok` name gate on top, which still vetoes a candidate whose name is
+    visible and disagrees.
+
+    COVERAGE IS 2025+ ONLY, and that is not a bug. Production only began populating
+    `application_no` on the NTA upload from 2024: it is blank for every row 2013–2023,
+    ~0.3% filled in 2024, ~90% in 2025 and ~99.8% in 2026. So this crosswalk cannot help
+    2021–2023 under any design — there is no join key on production's side. It lands
+    where it is needed anyway, since JEE 2025 is the nameless file.
+
+    DELIBERATELY NOT INCLUDED:
+      • `fact_student_jee_main_results_overall` — pre-selects 'Overall'/Session 1 and
+        excludes CoE NEET batches: 864 fewer (test_year, app) pairs than the
+        underlying table used here.
+      • `fact_student_jee_advanced_results` — its `application_no` is a DIFFERENT
+        namespace (Advanced registration no, not the Mains app no the `jee` nodes are
+        keyed on): only 72 of its 1,069 pairs hit a jee node, vs 3,904 for Mains. It
+        would buy almost nothing and risks a false link on a namespace collision.
+
+    Kept only where (test_year, application_no) maps to exactly ONE id — the same
+    unambiguity posture as every other bridge in this file. Note `student_id` is never
+    NULL on these facts, it is EMPTY-STRING when unset (280 rows), so it must be
+    filtered on TRIM(...) != '' — an `IS NOT NULL` guard silently passes them, and
+    because exactly one dim_student row also carries an empty coalesced id, every such
+    app would otherwise "resolve" to that one student.
+    """
+    id_expr = "COALESCE(student_id, apaar_id)"
+    prod = f"""
+        SELECT stage, ty, app, ANY_VALUE(id) AS avanti_id FROM (
+            SELECT 'jee' AS stage, CAST(test_year AS STRING) AS ty,
+                   application_no AS app, {id_expr} AS id
+            FROM `avantifellows.production_dbt_final.fact_student_jee_main_results`
+            WHERE application_no IS NOT NULL AND TRIM({id_expr}) != ''
+            UNION ALL
+            SELECT 'neet', CAST(test_year AS STRING), application_no, {id_expr}
+            FROM `avantifellows.production_dbt_final.fact_student_neet_results`
+            WHERE application_no IS NOT NULL AND TRIM({id_expr}) != '')
+        GROUP BY stage, ty, app HAVING COUNT(DISTINCT id) = 1"""
+    # the JNV source row's name-free attributes, for corroboration
+    attrs = ("UPPER(TRIM(COALESCE(jnv_name,''))) AS s_school,"
+             " UPPER(TRIM(COALESCE(student_state,''))) AS s_state,"
+             " UPPER(TRIM(COALESCE(category,''))) AS s_cat,"
+             " UPPER(TRIM(COALESCE(student_gender,''))) AS s_gender")
+    src = f"""
+        SELECT 'jee' AS stage, CAST(test_year AS STRING) AS ty, application_no AS app, {attrs}
+        FROM `avantifellows.external_data_sources.jnv_fact_jee_results`
+        WHERE application_no IS NOT NULL
+        UNION ALL
+        SELECT 'neet', CAST(test_year AS STRING), application_no, {attrs}
+        FROM `avantifellows.external_data_sources.jnv_fact_neet_results`
+        WHERE application_no IS NOT NULL"""
+    # one row per (Avanti id, academic-year-end) — NOT one pooled profile per id, so a
+    # candidate is judged only on the year(s) the exam sits in (see _PROD_NTA_YEAR_WINDOW).
+    dim_cols = ("SUBSTR(CAST(academic_year AS STRING), 6, 4) AS ay4,"
+                " NULLIF(UPPER(TRIM(student_school)),'') AS school,"
+                " NULLIF(UPPER(TRIM(student_school_state)),'') AS state,"
+                " NULLIF(UPPER(TRIM(student_category)),'') AS cat,"
+                " NULLIF(UPPER(TRIM(student_gender)),'') AS gender")
+    dim_filt = "WHERE TRIM(COALESCE(pk_student_id, apaar_id)) != ''"
+    dim = f"""
+        SELECT DISTINCT COALESCE(pk_student_id, apaar_id) AS pk, {dim_cols}
+        FROM `avantifellows.production_dbt_final.dim_student` {dim_filt}
+        UNION DISTINCT
+        SELECT DISTINCT COALESCE(pk_student_id, apaar_id), {dim_cols}
+        FROM `avantifellows.production_dbt_final.dim_student_historical` {dim_filt}"""
+    # school agreement = the JNV school name and dim_student's school share a >3-char
+    # token ('JNV KOPPAL' vs 'JNV Koppal Karnataka'); bare 'JNV' is too short to count.
+    school_ok = ("(SELECT COUNT(*) FROM UNNEST(SPLIT(s.s_school, ' ')) t"
+                 " WHERE LENGTH(t) > 3 AND t IN UNNEST(SPLIT(d.school, ' '))) > 0")
+    sql = f"""
+        WITH prod AS ({prod}), src AS ({src}), dim AS ({dim})
+        SELECT p.stage, p.ty AS yr_s, p.app, p.avanti_id
+        FROM prod p
+        JOIN src s ON s.stage = p.stage AND s.ty = p.ty AND s.app = p.app
+        JOIN dim d ON d.pk = p.avanti_id
+                  AND d.ay4 BETWEEN CAST(CAST(p.ty AS INT64) - {_PROD_NTA_YEAR_WINDOW} AS STRING)
+                                AND p.ty
+        GROUP BY p.stage, p.ty, p.app, p.avanti_id
+        HAVING (
+            CAST(LOGICAL_OR(s.s_state  != '' AND s.s_state  = d.state)  AS INT64)
+          + CAST(LOGICAL_OR(s.s_gender != '' AND s.s_gender = d.gender) AS INT64)
+          + CAST(LOGICAL_OR(s.s_cat    != '' AND s.s_cat    = d.cat)    AS INT64)
+          + CAST(LOGICAL_OR({school_ok}) AS INT64)
+        ) >= {_PROD_NTA_MIN_REFEREES}"""
+    df = client.query(sql).to_dataframe()
+    for c in df.columns:
+        df[c] = _S(df[c])
+    out = {s: g[["yr_s", "app", "avanti_id"]].reset_index(drop=True)
+           for s, g in df.groupby("stage")}
+    for s in ("jee", "neet"):
+        print(f"  crosswalk prod_{s:<5}{len(out.get(s, [])):>7,}  "
+              f"gated (test_year, app)→id")
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -978,7 +1141,8 @@ def _coalesce_by_source(contrib: pd.DataFrame, col: str, order: list) -> pd.Seri
     return d.set_index("student_key")[col]
 
 
-def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame) -> pd.DataFrame:
+def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame,
+               prod_nta: dict) -> pd.DataFrame:
     """Per-student name/DOB/father/direct-avanti-id frame for the STEP-6 matcher —
     coalesced across the student's own linked records at the SAME source priority
     v1 used (name b12>b10>jee>neet, dob b10>jee>neet), PLUS ncst as the lowest-
@@ -1047,6 +1211,28 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame) ->
     b10tag["student_key"] = b10tag.node_id.map(n2k)
     b10tag = b10tag.dropna(subset=["student_key"]).drop_duplicates("student_key")
     sid = sid.merge(b10tag[["student_key", "roll10_avanti_id"]], on="student_key", how="left")
+
+    # Production NTA app→id — FILL-ONLY, the LOWEST tier of all (see _match_fk_v2 tier 8
+    # and _read_prod_nta_crosswalk for the evidence). Kept in its OWN column rather than
+    # folded into `direct` above for the same reason roll10_avanti_id is: it must never
+    # override a name/dob match. It is nonetheless the ONLY key that reaches the nameless
+    # JEE-2025 rows (8,066 of 12,103 carry no name/dob/father ⇒ invisible to every other
+    # tier), which is the whole point of adding it.
+    ptag = []
+    for st in ("jee", "neet"):
+        px = prod_nta.get(st)
+        if px is None or px.empty:
+            continue
+        t = nodes[st].merge(px, on=["yr_s", "app"], how="inner")[["node_id", "avanti_id"]].copy()
+        t["student_key"], t["src"] = t.node_id.map(n2k), st
+        ptag.append(t)
+    if ptag:
+        pt = pd.concat(ptag, ignore_index=True).dropna(subset=["student_key"])
+        pt = pt[_present(pt.avanti_id)]
+        sid = sid.merge(_coalesce_by_source(pt, "avanti_id", ["jee", "neet"])
+                        .rename("prod_nta_avanti_id"), on="student_key", how="left")
+    else:
+        sid["prod_nta_avanti_id"] = pd.Series(pd.NA, index=sid.index, dtype="string")
 
     # Frame routing (grade-12 vs the wider all-grade avanti reference) is decided in
     # _match_fk_v2 by a g12-primary → wide-fallback cascade, so no per-cluster source
@@ -1125,9 +1311,15 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
         it would otherwise override the correct name+dob match. Fallback = keep:
         if the candidate id is not in the JNV name frame (a legitimately non-JNV
         label) or the record has no name, we can't verify — preserve it rather
-        than regress. Rejected ids fall through to the name+dob tiers below."""
+        than regress. Rejected ids fall through to the name+dob tiers below.
+
+        The NA check must come BEFORE any truthiness test on rec_name: `not pd.NA`
+        raises TypeError, and the prod_nta tier feeds this exactly the nameless rows
+        (a name-less record is the "can't verify -> keep" case)."""
         cand = name_by_pk.get(fk)
-        if not cand or not rec_name or pd.isna(rec_name):
+        if not cand:
+            return True
+        if rec_name is None or pd.isna(rec_name) or not str(rec_name):
             return True
         return any(_name_agree(rec_name, cn) for cn in cand)
 
@@ -1185,8 +1377,27 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
             x10 = pd.DataFrame({"student_key": xr.student_key, "fk": xr.roll10_avanti_id,
                                 "pri": 7, "conf": "roll10_crosswalk", "cnt": 1})
 
+        # tier 8 — production NTA app→id (see _read_prod_nta_crosswalk). LAST on purpose:
+        # where it conflicts with a name/dob match the two are a statistical near-tie, so
+        # it may only fill a blank. Name-gated by _direct_ok exactly like the direct tier
+        # (a no-op for the nameless rows this reaches — nothing to contradict — but it
+        # still vetoes a candidate whose name IS visible and disagrees).
+        xp = pd.DataFrame(columns=cand_cols)
+        if "prod_nta_avanti_id" in sid:
+            xr = sid[_present(sid.prod_nta_avanti_id) & sid.prod_nta_avanti_id.isin(all_ids)]
+            # `len(xr)` guard: a list-comprehension mask on an EMPTY frame is `[]`, which
+            # pandas reads as "select zero columns" rather than "keep zero rows", so the
+            # frame loses its columns and the construction below raises. Empty is a real
+            # case (no production rows for these apps / crosswalk unavailable).
+            if len(xr):
+                xr = xr[[_direct_ok(n, f) for n, f in zip(xr.norm_name, xr.prod_nta_avanti_id)]]
+            if len(xr):
+                xp = pd.DataFrame({"student_key": xr.student_key, "fk": xr.prod_nta_avanti_id,
+                                   "pri": _PROD_NTA_PRI, "conf": "prod_nta_crosswalk", "cnt": 1})
+
         return pd.concat([direct[cand_cols], nd[cand_cols], nds[cand_cols], nf[cand_cols],
-                          st[cand_cols], fz[cand_cols], x10[cand_cols]], ignore_index=True)
+                          st[cand_cols], fz[cand_cols], x10[cand_cols], xp[cand_cols]],
+                         ignore_index=True)
 
     # g12-primary → wide-fallback: match EVERYONE against the safer grade-12 frame
     # first; only students that frame can't place at all (no candidate row — the
@@ -1195,8 +1406,16 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     # re-enrollees, who match their single grade-12 id there) stay on g12, so the
     # Foundation->TP false ambiguity the wide frame induces never fires for them;
     # the fallback students have no grade-12 id to be ambiguous against.
+    # The prod_nta tier is EXCLUDED from "did the g12 frame place them": unlike the
+    # name/dob tiers it never consults `avanti` at all (it validates against all_ids), so
+    # it returns the SAME candidate in both passes and is no evidence either way. Counting
+    # it suppressed the wide-frame fallback for students who only match there, measured as
+    # 20 existing fks being overwritten (name_dob 10, name_dob_strong 9, name_dob_fuzzy 1)
+    # and 11 becoming NULL — a fill-only violation. (The direct and roll10 tiers are
+    # frame-independent in the same way and ARE still counted here; left as-is
+    # deliberately, to keep this change scoped to the one tier being added.)
     g12_cand = _match_one(sid, avanti_g12)
-    seen_g12 = set(g12_cand.student_key)
+    seen_g12 = set(g12_cand.loc[g12_cand.pri != _PROD_NTA_PRI, "student_key"])
     sid_fallback = sid[~sid.student_key.isin(seen_g12)]
     wide_cand = _match_one(sid_fallback, avanti_all)
     cand = pd.concat([g12_cand, wide_cand], ignore_index=True)
@@ -1312,7 +1531,7 @@ def _one_per_student(assigned: pd.DataFrame, val_cols: list[str]) -> pd.DataFram
 
 def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataFrame,
                 avanti_all: pd.DataFrame, all_ids: set, ncst24: pd.DataFrame,
-                marks: dict, dim_pt: pd.DataFrame) -> pd.DataFrame:
+                marks: dict, dim_pt: pd.DataFrame, prod_nta: dict) -> pd.DataFrame:
     n2k = key.set_index("node_id")["student_key"]
 
     def assign(stage):
@@ -1348,7 +1567,7 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     attempts = jee_a.merge(neet_a, on=["student_key", "attempt_year"], how="outer")
 
     # ── STEP 6 — Avanti fk via v2's own tiered matcher (not the source-table passthrough) ──
-    sid = _build_sid(nodes, n2k, refs, ncst24)
+    sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
     fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids)
 
     # resolved per-student identity (name / parents / dob) for the output — the
@@ -1457,10 +1676,12 @@ def _resolve(client) -> pd.DataFrame:
     avanti_g12, avanti_all, all_ids = _read_avanti_reference(client)
     marks = _read_marks(client)
     dim_pt = _read_dim_passthrough(client)
+    prod_nta = _read_prod_nta_crosswalk(client)
     print("Steps 2–3 — edges + union-find ...")
     key = _cluster(nodes, refs, ncst24)
     print("Steps 4–7 — cohort_year + avanti fk + explode to (student × attempt_year) + outcome marks ...")
-    return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks, dim_pt)
+    return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks,
+                       dim_pt, prod_nta)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
