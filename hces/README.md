@@ -8,6 +8,37 @@ and a derived income estimate.
 See `schemas/README.md` for "HCES in 60 seconds" (what the survey is and the two gotchas that change every
 number). Full column docs: `schemas/hces_fact_household_master.yaml`.
 
+## Why Avanti needs this
+
+Avanti serves low-income students, so we need a defensible, national picture of the income distribution
+those families sit in. This table gives us four things:
+
+- **Size the population we serve** — how many, and where, India's low-income ("poor-but-not-destitute")
+  households are.
+- **EWS benchmarking** — where our students' families fall against the ₹8 LPA EWS income cutoff and the
+  broader distribution.
+- **Fundraising / positioning** — ground the donor and board narrative about the scale of the need in
+  official numbers, not assertion.
+- **A reusable income baseline** — other Avanti analyses can benchmark students' family income against the
+  national distribution by joining to this table.
+
+## What is committed
+
+- **In git (this folder):** the pipeline scripts + schema + this README. No data.
+- **In GCS (`gs://avantifellows-external-data/hces/`):** `raw/HCES_Data_2023-24_Csv/` (15 NSS level CSVs,
+  3.4 GB) and `clean/hces_fact_household_master.parquet` (the BQ table source).
+- **In BigQuery (post-review):** `external_data_sources.hces_fact_household_master`, one row per household,
+  261,953 rows.
+
+## Source & provenance
+
+- **Publisher:** Ministry of Statistics and Programme Implementation (MoSPI), Government of India — NSS.
+- **Dataset:** Household Consumption Expenditure Survey (HCES), round **2023-24**; the 15 unit-level
+  ("level") CSVs.
+- **Released:** by MoSPI, Dec 2024. **Staged to GCS:** Jul 2026.
+- **Licence / PII:** public, anonymised microdata. No PII — composite sampling household ids only, no
+  names or contacts.
+
 ## Data locations
 
 ```
@@ -55,8 +86,6 @@ python3 scripts/load_bq.py              # load
 | `schemas/hces_fact_household_master.yaml` | Column docs + domain teaching |
 | `schemas/README.md` | HCES concepts primer |
 
-## Provenance
+## Related
 
-Public, anonymised MoSPI NSS HCES 2023-24 microdata. No PII (composite sampling household ids only, no
-names/contacts). The whitepaper built on this table lives in the `data-assistant` repo at
-`analysis/hces-poverty-estimate/`.
+The whitepaper built on this table lives in the `data-assistant` repo at `analysis/hces-poverty-estimate/`.
