@@ -1,0 +1,261 @@
+# mhtcet_fact_cutoffs
+#
+# Source parquet: gs://avantifellows-external-data/mhtcet/clean/mhtcet_fact_cutoffs.parquet
+# BQ table:       avantifellows.external_data_sources.mhtcet_fact_cutoffs
+
+description: |
+  Maharashtra CAP (Centralised Admission Process) state-quota closing ranks —
+  the last rank admitted into every (college, branch, quota pool, reservation
+  category) seat bucket for the 2025-26 cycle. 59,380 rows across 943 colleges
+  and 4 streams. One row = one seat bucket, aggregated over every CAP round and
+  stage.
+
+  WHAT MHT-CET IS. MHT-CET is Maharashtra's state engineering/pharmacy entrance
+  exam. The State CET Cell runs about ten separate CAPs under one roof, each on
+  its own portal subdomain, all sharing one reservation taxonomy. This table
+  covers the four whose per-college cutoffs are published as parseable PDFs:
+  engineering, pharmacy, architecture and B.Design.
+
+  CLOSING RANK IS A MAX OVER ROUNDS. closing_rank is MAX(state merit rank) and
+  opening_rank is MIN, taken across the union of all CAP rounds and all stages
+  within a round. last_round_with_max tells you which round produced the max.
+  num_rank_observations is how many source rows fed the bucket — a value of 1
+  means a single-seat pool, whose closing rank is wherever its one applicant
+  happened to sit, so do not read it as a competitive threshold.
+
+  CATEGORY CODE SYSTEM. category_raw is the CET Cell's own code. Read it as
+  three parts, per the legend printed on every cutoff page:
+    Starting character  G = General (gender-NEUTRAL, open to all)
+                        L = Ladies  (female-reserved)
+    Middle              OPEN / OBC / SC / ST / VJ / NT1 / NT2 / NT3 /
+                        SEBC / SBC   (the vertical reservation)
+    End character       H = Home University, O = Other than Home University,
+                        S = State Level, AI = All India Seat
+  So GOPENS = General/Open/State-Level and LSCH = Ladies/SC/Home-University.
+  Standalone codes exist too: EWS, TFWS (tuition-fee waiver), ORPHAN, MI
+  (minority), and DEF*/PWD* prefixes for defence and disability seats.
+
+  GOTCHAS (read before writing SQL):
+  1. GENDER IS HORIZONTAL. gender is 'All' or 'Girls' — never 'Boys'. G-codes
+     are gender-neutral, open to every candidate; Maharashtra's 30% female
+     quota gives women L-seats *in addition to* the G pool. A female candidate's
+     reachable set is gender IN ('All','Girls'), not gender = 'Girls'.
+  2. ARCHITECTURE IS A DIFFERENT RANK SPACE. Architecture is admitted on
+     MAH-AAC-CET / NATA merit, not the MHT-CET PCM state merit rank. Filter on
+     stream or rank_basis before comparing ranks across streams. It is also the
+     only stream with opening_score / closing_score populated (NATA merit
+     score); those are NULL everywhere else.
+  3. category vs category_raw. category is the canonical 5-bucket rollup
+     (GEN / EWS / OBC-NCL / SC / ST) plus OTHER. Maharashtra's VJ / NT1-3 /
+     SEBC / SBC groups have no clean national equivalent and land in OTHER —
+     they are NOT ignorable, they are ~22k rows. Use category_raw when you need
+     the real Maharashtra category.
+  4. HORIZONTAL FLAGS LIVE IN sub_pool, NOT category. PWD, PWDR, DEF, DEFR,
+     TFWS, ORPHAN and MIN are properties of the seat, not the candidate's
+     social category. A PWDROBC seat is an OBC seat carrying a disability flag:
+     category = 'OBC-NCL', sub_pool = 'PWDR'. For a clean base-category
+     aggregate, filter sub_pool = ''. Ignoring this mixes reserved sub-pools
+     into the headline numbers.
+  5. quota IS A DOMICILE PAIR, NOT A CATEGORY. Values are 'State Level',
+     'Home → Home', 'Other → Other', 'Home → Other', 'Other → Home' — the
+     candidate's home-university region versus the college's. The same seat
+     bucket closes at very different ranks across these pools, so never
+     aggregate over quota without meaning to.
+  6. ONE COLLEGE CODE CAN HOST TWO FUNDING POOLS. college_type is part of the
+     grain because a few institutes genuinely run both Government-Aided and
+     Un-Aided seats under one code (03016 Bombay College of Pharmacy: 62 Aided
+     and 52 Un-Aided source rows). Those are two real, separately-funded seat
+     pools, not duplicates.
+  7. ALL COLLEGE TYPES SHIP. Government scope is a query, not a pipeline
+     decision: college_type IN ('Govt','Govt-Aided','State-Univ-Dept') gives
+     3,726 rows across 38 colleges. The other ~56k rows are private, minority
+     and deemed institutes.
+  8. college_code and branch_code ARE ZERO-PADDED STRINGS. VJTI is '03012',
+     not 3012. Casting to INT will silently break joins.
+  9. status IS THE RAW PDF TEXT. It legitimately includes clauses like
+     'Home University : Mumbai University' on the same line as the funding
+     status — that is the CET Cell's own formatting, not contamination. Use
+     college_type for logic; status is for provenance.
+
+rows: 59380
+grain: (stream, college_code, branch_code, quota, category_raw, college_type, year)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State. Always 'MAHARASHTRA' in this table.
+
+  - name: cet_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Entrance exam whose merit list governs admission. 'MHT-CET' for
+      engineering / pharmacy / B.Design; 'MAH-AAC-CET / NATA' for architecture.
+      Distinguishes rank spaces — see rank_basis.
+
+  - name: stream
+    type: STRING
+    mode: REQUIRED
+    description: >
+      CAP stream: 'engineering' (46,662 rows), 'pharmacy' (11,716),
+      'architecture' (983), 'bdesign' (19). Each is a separate CAP on its own
+      CET Cell portal.
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: Admission cycle. Always 2025 (the 2025-26 academic year).
+
+  - name: round
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Which rounds the aggregate spans, e.g. 'R1+R2+R3+R4 (cumulative)'. Not a
+      single round — see last_round_with_max for where the closing rank came
+      from.
+
+  - name: college_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      CET Cell institute code, zero-padded to 5 characters (VJTI = '03012').
+      Keep as STRING; casting to INT drops the leading zero and breaks joins.
+
+  - name: college_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Institute name as printed in the cutoff PDF, with pdftotext line wrapping
+      flattened. Canonicalized per college_code to the shortest observed
+      variant, because page-header text merges onto some header lines.
+
+  - name: college_type
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Funding class derived from the PDF's Status field: 'Govt', 'Govt-Aided',
+      'State-Univ-Dept', 'Private-Unaided', 'Private-Minority', 'Deemed'.
+      Part of the grain — one college_code can host two types. Use this for
+      government-scope filters, not the raw status text.
+
+  - name: status
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Raw Status text from the PDF, e.g. 'Government Autonomous' or
+      'Un-Aided Home University : Mumbai University'. Provenance only; the
+      'Home University : X' clause is the CET Cell's own formatting.
+
+  - name: branch_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      CET Cell course code, zero-padded 10 characters. Unique within a college;
+      encodes the college code as its prefix.
+
+  - name: branch_name
+    type: STRING
+    mode: REQUIRED
+    description: Course name as printed, wrapping flattened and canonicalized per (college_code, branch_code).
+
+  - name: quota
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Domicile pool as a candidate-region → college-region pair: 'State Level',
+      'Home → Home', 'Other → Other', 'Home → Other', 'Other → Home'. Ranks are
+      not comparable across pools; always filter or group by this.
+
+  - name: category_raw
+    type: STRING
+    mode: REQUIRED
+    description: >
+      The CET Cell's own reservation code, e.g. GOPENS, LSCH, DEFROBCS, TFWS.
+      Part of the grain. Decode as [G=General|L=Ladies] + vertical category +
+      [H=Home|O=Other|S=State Level].
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Canonical rollup: 'GEN', 'EWS', 'OBC-NCL', 'SC', 'ST', or 'OTHER'.
+      Maharashtra-specific groups (VJ, NT1-3, SEBC, SBC) and seat-type pools
+      (TFWS, ORPHAN, minority) map to OTHER — ~22k rows, so check sub_pool and
+      category_raw rather than discarding them.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'All' (gender-neutral G-codes) or 'Girls' (female-reserved L-codes).
+      Never 'Boys' — female reservation is horizontal, so women can take either.
+      A female candidate's reachable set is gender IN ('All','Girls').
+
+  - name: sub_pool
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Horizontal seat flag, empty string for a plain base-category seat:
+      'PWD'/'PWDR' (disability), 'DEF'/'DEFR' (defence), 'TFWS' (tuition-fee
+      waiver), 'ORPHAN', 'MIN' (minority). Filter sub_pool = '' for clean base
+      category aggregates.
+
+  - name: opening_rank
+    type: INTEGER
+    mode: REQUIRED
+    description: MIN state merit rank observed in the bucket across all rounds and stages.
+
+  - name: closing_rank
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      MAX state merit rank observed in the bucket — the last rank admitted.
+      For architecture this is a MAH-AAC-CET / NATA merit number, not an
+      MHT-CET rank.
+
+  - name: num_rank_observations
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Source rows behind the bucket. 1 means a single-seat pool whose closing
+      rank reflects one applicant, not a competitive threshold — weight
+      accordingly.
+
+  - name: opening_score
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Architecture only: MIN MAH-AAC-CET / NATA merit score. NULL for the
+      MHT-CET streams, which publish no per-seat score.
+
+  - name: closing_score
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Architecture only: MAX MAH-AAC-CET / NATA merit score. NULL elsewhere.
+
+  - name: last_round_with_max
+    type: STRING
+    mode: REQUIRED
+    description: >
+      CAP round that produced closing_rank ('R1'…'R4'). Useful for judging
+      staleness: a bucket last touched in R1 filled early.
+
+  - name: rank_basis
+    type: STRING
+    mode: REQUIRED
+    description: >
+      What the rank counts, e.g. 'MHT-CET State Merit Rank' or
+      'MH AAC-CET / NATA State Merit Rank'. Filter on this before comparing
+      ranks across streams.
+
+  - name: source_file
+    type: STRING
+    mode: REQUIRED
+    description: Parsed per-stream CSV this row came from; each is staged under gs://avantifellows-external-data/mhtcet/raw/.
+
+  - name: source_url
+    type: STRING
+    mode: REQUIRED
+    description: CET Cell portal the stream's cutoff PDFs were published on.
