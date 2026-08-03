@@ -21,6 +21,9 @@
 # same students), so you must ALWAYS filter to one cut and NEVER SUM across cuts:
 #   cut='state_level'      Table 33      graduates by state x level
 #                                        (2015-16, 2016-17, 2017-18, 2018-19, 2021-22)
+#   cut='state_social'     Tables 14+15  ENROLMENT by state x social category
+#                                        (2012-13 … 2018-19) — the social time
+#                                        series, and the only ESTIMATED cut
 #   cut='programme_social' Table 34/34a  graduates by programme x social category
 #                                        (2021-22 only — see the coverage note below)
 #   cut='ug_discipline'    Tables 12 + 35  UG enrolment (T12) + graduates (T35) by
@@ -41,14 +44,17 @@
 # from 2019-20 and the earlier years are parsed from the PDF reports, whose
 # layouts differ per edition. Rows per year x cut:
 #
-#            state_level  programme_social  ug_discipline
-#   2015-16          864                 0            198
-#   2016-17          864                 0             99   (enrolment only)
-#   2017-18          864                 0              0
-#   2018-19          864                 0            216
-#   2019-20            0                 0            216
-#   2020-21            0                 0            216
-#   2021-22          864              5448            243
+#            state_level  state_social  programme_social  ug_discipline
+#   2012-13            0           756                 0              0
+#   2013-14            0           756                 0              0
+#   2014-15            0           756                 0              0
+#   2015-16          864           756                 0            198
+#   2016-17          864           756                 0             99  (enrolment only)
+#   2017-18          864           756                 0              0
+#   2018-19          864           756                 0            216
+#   2019-20            0             0                 0            216
+#   2020-21            0             0                 0            216
+#   2021-22          864             0              5448            243
 #
 # So: state_level is the one cut with real historical depth (5 years), and it is
 # the cut to use for a trend. programme_social exists for 2021-22 ONLY — the
@@ -56,6 +62,37 @@
 # the years that do parse from it are not yet loaded (see sources.PDF_TABLES).
 # An apparent collapse in a series is far more likely to be missing coverage than
 # a real change: always GROUP BY aishe_year and confirm the years are present.
+#
+# ── basis: actual response vs estimated — NEVER MIX ───────────────────────────
+# AISHE publishes two kinds of figure and says which in each table's caption:
+#
+#   basis='actual response'  the totals reported BY the institutions that
+#                            answered the survey that year.
+#   basis='estimated'        those totals grossed up to the full registered
+#                            population, to account for non-response.
+#
+# They are different populations. Response rates vary by year and state, so the
+# estimated figure for a cell is systematically larger than the actual-response
+# one — comparing across the two reads as growth that did not happen. The
+# state_social cut is entirely 'estimated'; every other cut is entirely
+# 'actual response'. So filtering to one `cut` already keeps you on one basis;
+# the column exists so that mixing is visible rather than accidental.
+#
+# Concretely: 2018-19 estimated all-category enrolment is 37.4M (state_social),
+# while the actual-response UG enrolment for the same year is 28.6M
+# (ug_discipline). Neither is wrong; they answer different questions.
+#
+# ── State names are canonicalised ─────────────────────────────────────────────
+# AISHE respells states between editions ("Chhatisgarh" → "Chhattisgarh",
+# "Uttrakhand" → "Uttarakhand", "Daman & Diu" → "Daman and Diu", "A & N Islands").
+# codemaps/state_canonical.csv maps every variant to one spelling, so a per-state
+# trend does not split in 2017-18. 38 distinct values: 36 states/UTs plus two
+# genuine boundary changes that are deliberately NOT merged away —
+#   'Ladakh'                        carved out of Jammu and Kashmir in 2019
+#   'D & N Haveli and Daman & Diu'  the two UTs merged in 2020, so 2021-22 has
+#                                   one row where earlier years have two
+# A series spanning those years must decide how to handle the change; hiding it
+# behind a rename would make that decision invisible.
 #
 # ── The historical programme_social caveat ────────────────────────────────────
 # If/when the PDF years' Table 34 is loaded, those rows will carry
@@ -89,8 +126,8 @@
 # not in this table.
 
 description: AISHE higher-ed enrolment + graduates, one wide fact tagged by `cut` (state×level | programme×social | UG-discipline) and `metric` (enrolment | graduates). "All" sentinels for un-broken-out dims.
-rows: 10956
-grain: (cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)
+rows: 16248
+grain: (cut, aishe_year, metric, basis, level, state, discipline, programme, social_category, gender)
 
 columns:
   - name: cut
@@ -111,7 +148,20 @@ columns:
   - name: metric
     type: STRING
     mode: REQUIRED
-    description: "'enrolment' (students currently enrolled) or 'graduates' (out-turn / qualifiers that year). enrolment only on the ug_discipline cut."
+    description: >
+      'enrolment' (students currently enrolled) or 'graduates' (out-turn /
+      qualifiers that year). enrolment appears on the ug_discipline and
+      state_social cuts; graduates on state_level and programme_social.
+
+  - name: basis
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'actual response' = as reported by the institutions that responded;
+      'estimated' = grossed up to the full registered population for
+      non-response. DIFFERENT POPULATIONS — never compare or sum across them.
+      state_social is entirely 'estimated'; every other cut is entirely
+      'actual response'.
 
   - name: level
     type: STRING
@@ -123,7 +173,11 @@ columns:
   - name: state
     type: STRING
     mode: REQUIRED
-    description: State/UT on the state_level cut; "All" elsewhere.
+    description: >
+      State/UT on the state_level and state_social cuts; "All" elsewhere.
+      Canonicalised via codemaps/state_canonical.csv so one state has one
+      spelling across editions. 38 values = 36 states/UTs + 'Ladakh' (created
+      2019) + 'D & N Haveli and Daman & Diu' (the two UTs merged in 2020).
 
   - name: discipline
     type: STRING
@@ -148,8 +202,12 @@ columns:
       On the programme_social cut: All Categories, Scheduled Caste, Scheduled Tribe,
       OBC, Persons with Disability, Muslim, Other Minority, EWS (these OVERLAP —
       All Categories is a superset, so never sum across them). "All" elsewhere.
-      Present for 2021-22 only; the pre-2019 reports publish no social-category
-      breakdown of programmes.
+      Present on programme_social for 2021-22 only. For a social-category TIME
+      SERIES use cut='state_social' instead: Tables 14+15 give enrolment by state
+      x category for 2012-13 → 2018-19, with categories All Categories,
+      Scheduled Caste, Scheduled Tribe, Other Backward Classes, Persons with
+      Disability, Muslim, Other Minority Communities. Note it carries no EWS
+      (AISHE only reports EWS from 2019-20) and it is `basis='estimated'`.
 
   - name: gender
     type: STRING
