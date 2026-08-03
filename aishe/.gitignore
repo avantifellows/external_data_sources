@@ -2,6 +2,10 @@
 # Raw Final Report workbooks (re-downloadable from aishe.gov.in; see README).
 raw/*.xlsx
 raw/*.XLSX
+# Raw Final Report PDFs — the only edition for 2012-13 … 2018-19, ~76 MB across
+# the set (re-downloadable via scripts/fetch.py).
+raw/*.pdf
+raw/*.PDF
 # Institution directory raw exports (re-downloadable from dashboard.aishe.gov.in/hedirectory).
 raw/institution_directory/
 # Parsed parquet (regenerable via clean_aishe.py / build_institution_directory.py).
