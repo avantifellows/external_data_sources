@@ -37,16 +37,23 @@ REPORTS: dict[str, Path] = {
     "2019-20": RAW / "aishe_2019-20_final_report.xlsx",
     "2020-21": RAW / "aishe_2020-21_final_report.xlsx",
     "2021-22": RAW / "aishe_2021-22_final_report.xlsx",
+    "2022-23": RAW / "aishe_2022-23_final_report.xlsx",
+    "2023-24": RAW / "aishe_2023-24_final_report.xlsx",
 }
-LATEST_YEAR = "2021-22"  # the state×level and programme×social cuts are 2021-22 only
 
 # Canonical source URLs — AISHE Final Report workbooks, he.nic.in (MoE). fetch.py
 # downloads these into raw/ so the source files are regenerable from scratch.
+#
+# NOTE: the 2022-23 and 2023-24 URLs follow the established filename pattern but
+# are UNVERIFIED — they were added without network access to he.nic.in. If
+# fetch.py 404s on either, correct the URL here (check aishe.gov.in → Reports).
 _AISHE = "https://he.nic.in/aishereport/assets/excel"
 REPORT_URLS: dict[str, str] = {
     "2019-20": f"{_AISHE}/AISHE%20Final%20Report%202019-20.xlsx",
     "2020-21": f"{_AISHE}/AISHE%20Final%20Report%202020-21.xlsx",
     "2021-22": f"{_AISHE}/AISHE%20Final%20Report%202021-22.xlsx",
+    "2022-23": f"{_AISHE}/AISHE%20Final%20Report%202022-23.xlsx",
+    "2023-24": f"{_AISHE}/AISHE%20Final%20Report%202023-24.xlsx",
 }
 
 # ─── GCS ──────────────────────────────────────────────────────────────────────
@@ -235,11 +242,16 @@ DIRECTORY_TABLE_BY_NAME: dict[str, DirectoryTable] = {t.bq_name: t for t in DIRE
 # Institution directory raw Excel files — for upload_to_gcs.py
 INSTITUTION_DIRECTORY_RAW_FILES: list[str] = [t.raw_file for t in DIRECTORY_TABLES]
 
-# ─── Raw sheets (uploaded to GCS raw/ as parquet for traceability; NOT in BQ) ──
+# ─── Raw sheets — the parse registry ──────────────────────────────────────────
+# Doubles as (a) what clean_aishe.py parses and (b) what upload_to_gcs.py mirrors
+# to GCS raw/ as parquet for traceability. One entry per (year, sheet): adding a
+# year means adding its entries here, which is what makes a year contribute a cut.
 @dataclass(frozen=True)
 class RawSheet:
     year: str
     sheet: str
+    cut: str      # fact `cut` this sheet feeds: state_level | programme_social | ug_discipline
+    metric: str   # 'graduates' | 'enrolment'
 
     @property
     def workbook(self) -> Path:
@@ -261,13 +273,24 @@ class RawSheet:
 # The source sheets the fact is built from: 2021-22 carries all cuts; 2019-20 /
 # 2020-21 contribute the UG-discipline trend. Table 12 = UG enrolment by
 # discipline, Table 35 = UG graduates by discipline (same layout).
+#
+# Adding a new year: run `inspect_workbook.py --year <new> --all-sheets` FIRST and
+# copy the *actual* sheet names in here. AISHE renumbers tables between editions,
+# so "33OutTurnState" is not guaranteed to be Table 33 in a later report.
 RAW_SHEETS: list[RawSheet] = [
-    RawSheet("2021-22", "33OutTurnState"),
-    RawSheet("2021-22", "34a"),
-    RawSheet("2021-22", "35UGDisc"),
-    RawSheet("2021-22", "12UGDisc"),
-    RawSheet("2020-21", "35UGDisc"),
-    RawSheet("2020-21", "12UGDisc"),
-    RawSheet("2019-20", "35UGDisc"),
-    RawSheet("2019-20", "12UGDisc"),
+    RawSheet("2021-22", "33OutTurnState", "state_level",      "graduates"),
+    RawSheet("2021-22", "34a",            "programme_social", "graduates"),
+    RawSheet("2021-22", "35UGDisc",       "ug_discipline",    "graduates"),
+    RawSheet("2021-22", "12UGDisc",       "ug_discipline",    "enrolment"),
+    RawSheet("2020-21", "35UGDisc",       "ug_discipline",    "graduates"),
+    RawSheet("2020-21", "12UGDisc",       "ug_discipline",    "enrolment"),
+    RawSheet("2019-20", "35UGDisc",       "ug_discipline",    "graduates"),
+    RawSheet("2019-20", "12UGDisc",       "ug_discipline",    "enrolment"),
+    # 2022-23 / 2023-24 — fetch, then inspect_workbook.py, then fill in the real
+    # sheet names and uncomment. Left commented rather than guessed: a wrong sheet
+    # name here is a silent miss, and the table numbers are likely to have moved.
+    # RawSheet("2022-23", "<33?>",  "state_level",      "graduates"),
+    # RawSheet("2022-23", "<34a?>", "programme_social", "graduates"),
+    # RawSheet("2022-23", "<35?>",  "ug_discipline",    "graduates"),
+    # RawSheet("2022-23", "<12?>",  "ug_discipline",    "enrolment"),
 ]

@@ -50,25 +50,27 @@ Cuts:
 Dimensions a cut doesn't break out carry `"All"`. Cuts overlap — always filter to
 one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
 
+**`RAW_SHEETS` is the parse registry.** Each entry is `(year, sheet, cut, metric)`, and
+`clean_aishe.py` builds exactly what's declared there — so which cuts a year contributes
+is config, not code. It's the same list `upload_to_gcs.py` mirrors to GCS `raw/`, so the
+traceability dump and the parse can't drift apart.
+
 ### Parsing gotchas
 
 - **Sheet names vary by year.** Match on the space-stripped, lowercased name
   (`_sheet`). This tolerates whitespace/case drift but *not* a renumbered table —
   AISHE renumbers between editions, so `33OutTurnState` may not be Table 33 next year.
 - **Tables 12 and 35 share a layout** — UG by discipline, T12 = enrolment, T35 = graduates.
-- **Only the discipline sheets self-describe.** `_discipline_series` (T12/T35) detects
-  its header by locating the `"Discipline"` cell, so it absorbs a column shift — that's
-  how 2021-22's added S.No. column was handled. **Tables 33 and 34a do not**: they read
-  fixed offsets (`row[2 + i * 3 + gender]`) from a fixed start row against the fixed
-  `LEVELS` / `SOCIAL_CATEGORIES` lists.
-- **A layout change on T33/T34a fails silently, not loudly.** `_row()` coerces a
-  non-numeric cell to `0`, so an inserted column or an added social category yields
-  plausible zeros and wrong totals rather than an error. Run
-  `inspect_workbook.py` before trusting a new year, and re-check the validation total.
-- **`LATEST_YEAR` is a data value, not just a selector.** `state_level_rows` and
-  `programme_social_rows` stamp it into `aishe_year` and `main()` only ever opens that
-  one workbook — so those two cuts are single-year *by construction*. Extending them to
-  a new year is a code change (thread `year` through), not a config change.
+- **Every reader detects its own geometry — none assume fixed columns.**
+  `discipline_rows` (T12/T35) locates the `"Discipline"` cell; `_crosstab_geometry`
+  (T33/T34a) locates the `Male/Female/Total` header row, taking the value block's start
+  and width from it, so an inserted S.No. or state-code column shifts harmlessly. It
+  additionally verifies the merged group-label row against `LEVELS` /
+  `SOCIAL_CATEGORIES` — order matters, because the read within the block is positional.
+- **Value cells fail loudly.** `_num()` maps blanks and `-`/`NA`/`nil` to 0 but raises
+  on any other text. That is the tripwire for a layout shift: a label landing in a value
+  column is an error, not a `0`. (Before this, an inserted column silently produced 864
+  plausible-looking rows whose UG total was 6,768 instead of 7,754,223.)
 - **Discipline totals only.** Sub-discipline rows are skipped.
 - **Social categories overlap.** All Categories ⊇ SC/ST/OBC/PwD/Muslim/EWS — never sum
   across `social_category`.
@@ -77,15 +79,16 @@ one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
 
 1. Add the new year's URL + path to `REPORT_URLS` / `REPORTS` in `sources.py`.
 2. `fetch.py` pulls the workbook into `raw/`.
-3. **`inspect_workbook.py --year <new>` — do not skip.** Confirms the sheets still
-   exist under the expected names (and suggests candidates if a table was renumbered),
-   and reports where data starts plus how many value columns follow. If T33 shows
-   anything other than 24 value columns from index 2 (8 levels × 3 genders), or T34a
-   anything other than 24 (8 social categories × 3), the positional readers in
-   `clean_aishe.py` need updating before the numbers can be trusted — see the
-   silent-zero gotcha above.
-4. If the programme list changed, re-run `build_programme_map.py`.
-5. `clean_aishe.py` → `upload_to_gcs.py --raw-only` → `upload_to_gcs.py --clean-only`
+3. **`inspect_workbook.py --year <new> --all-sheets` — do not skip.** AISHE renumbers
+   tables between editions, so this is how you learn the real sheet names (it suggests
+   candidates for a renumbered table). It also reports the value-block width per sheet.
+4. Add the year's `RawSheet(year, sheet, cut, metric)` entries to `RAW_SHEETS` using
+   those **actual** sheet names. Nothing is parsed for a year until this is done.
+5. Add the year's published UG-graduates figure to `UG_GRADUATES_ANCHOR` in
+   `clean_aishe.py` if one exists. Without it the cross-cut reconciliation still runs
+   (state_level vs ug_discipline must agree) but has no external anchor.
+6. If the programme list changed, re-run `build_programme_map.py`.
+7. `clean_aishe.py` → `upload_to_gcs.py --raw-only` → `upload_to_gcs.py --clean-only`
    → `load_bq.py --table aishe_fact_higher_ed_students`.
 
    (Bare `upload_to_gcs.py` runs the strict all-tables path — it requires *every*

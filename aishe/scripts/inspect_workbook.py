@@ -131,10 +131,14 @@ def inspect(year: str, path: Path, n_rows: int, n_cols: int, all_sheets: bool) -
         tag = "" if not expected or wanted in expected else "  [not registered for this year]"
         actual = lookup.get(_norm(wanted))
         if actual is None:
-            all_found = False
+            # Only a failure if this year declares the sheet in RAW_SHEETS. For an
+            # unregistered year we're probing, so a miss is the discovery result.
+            registered = wanted in expected
+            if registered:
+                all_found = False
             cands = _candidates(wanted, names)
             hint = f"  candidates: {cands}" if cands else "  no obvious rename candidate"
-            print(f"\n  ✗ {wanted:<16} MISSING{tag}{hint}")
+            print(f"\n  {'✗' if registered else '·'} {wanted:<16} not in workbook{tag}{hint}")
             continue
 
         print(f"\n  ✓ {wanted:<16} → sheet {actual!r}{tag}")
@@ -181,7 +185,9 @@ def main() -> None:
         raise SystemExit("nothing to inspect — no workbooks in raw/.")
 
     ok = all(inspect(y, p, args.rows, args.cols, args.all_sheets) for y, p in present)
-    print(f"\n{'✓ all wanted sheets found.' if ok else '✗ some sheets missing — see above.'}")
+    print("\n" + ("✓ every sheet registered in RAW_SHEETS was found."
+                  if ok else
+                  "✗ a sheet registered in RAW_SHEETS is missing — see ✗ above."))
 
 
 if __name__ == "__main__":

@@ -86,9 +86,28 @@ source** by `scripts/fetch.py` (canonical URLs in `scripts/sources.py` →
 | `raw/aishe_2019-20_final_report.xlsx` | 2019-20 |
 | `raw/aishe_2020-21_final_report.xlsx` | 2020-21 |
 | `raw/aishe_2021-22_final_report.xlsx` | 2021-22 |
+| `raw/aishe_2022-23_final_report.xlsx` | 2022-23 — **not yet ingested**, see below |
+| `raw/aishe_2023-24_final_report.xlsx` | 2023-24 — **not yet ingested**, see below |
 
-Only 2021-22 is needed for the state and programme cuts; all three feed the
+Only 2021-22 is needed for the state and programme cuts; 2019-20 → 2021-22 feed the
 UG-discipline enrolment + graduates trend.
+
+**2022-23 / 2023-24 status.** Both shipped in the 8 Jul 2026 AISHE release and are
+registered in `REPORT_URLS` so `fetch.py` will pull them, but they are **not in
+`RAW_SHEETS` yet, so nothing parses them** and they contribute no rows to the fact.
+Finishing the ingest needs a workbook in hand:
+
+```bash
+.venv/bin/python scripts/fetch.py --year 2022-23
+.venv/bin/python scripts/inspect_workbook.py --year 2022-23 --all-sheets
+```
+
+then copy the real sheet names into `RAW_SHEETS` (AISHE renumbers tables between
+editions, so the names are not predictable) and add the year's published
+UG-graduates figure to `UG_GRADUATES_ANCHOR` in `clean_aishe.py`. The two URLs
+follow the established filename pattern but are **unverified** — they were added
+without network access to `he.nic.in`; if `fetch.py` 404s, correct them in
+`sources.py`.
 
 ## First-time setup
 
