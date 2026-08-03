@@ -1,23 +1,27 @@
 # aishe/schemas
 
-⏸ PAUSED — resume by fixing the seven unreconciled `(year, table)` pairs listed in
-the comment above `PDF_TABLES` in [`../scripts/sources.py`](../scripts/sources.py).
-Highest value first: **Table 34 for 2018-19** (off by just −51, one wrapped
-programme name, and Table 33's Grand Total can anchor it), then
-**(2017-18, Table 12)** (+38,652, one subject row read as a discipline), then the
-two ranked-list Table 35s (2016-17, 2017-18), which need a different reader.
+▶ NEXT: open the paired data-assistant PR for the `state_social` cut and the
+`basis` column (schema copy + regenerated CLAUDE.md + golden questions), then
+reload BigQuery — the table now has 16,248 rows and an extra column, so the load
+must follow the merge.
 
-Also outstanding, in order:
-1. The **GER / GPI time series** (`raw/aishe_timeseries_*.pdf`, both parsed and
+Then, in order:
+1. The **seven unreconciled `(year, table)` pairs** listed above `PDF_TABLES` in
+   [`../scripts/sources.py`](../scripts/sources.py). Highest value first:
+   **Table 34 for 2018-19** (off by −51, one wrapped programme name, and Table 33's
+   Grand Total can anchor it), then **(2017-18, Table 12)** (+38,652, one subject
+   row read as a discipline), then the two ranked-list Table 35s (2016-17, 2017-18).
+2. The **GER / GPI time series** (`raw/aishe_timeseries_*.pdf`, both parsed and
    verified, 2011-12 → 2021-22) — its own table, its own PR. GPI is **not**
    derivable from GER (checked all 33 cells; published GPI runs up to 0.055 below
    female-GER/male-GER), so both series must be stored.
-2. **2022-23 / 2023-24** from PDF — captions must be checked before registering.
-3. **2012-13 → 2014-15** — PDFs fetch, no `PDF_TABLES` entries yet.
-4. The paired **data-assistant** PR: schema copy at
-   `docs/schemas/external_data_sources/aishe_fact_higher_ed_students.yaml`, an
-   analysis-intent block in `docs/analyses/external_data_sources.yaml`, and a
-   regenerated `CLAUDE.md`.
+3. **2022-23 / 2023-24** from PDF — captions must be checked before registering.
+   Their Excel editions do not exist for us (see `sources.REPORT_URLS`).
+4. **Tables 14/15 for 2019-20 → 2023-24**, to carry the social series past 2018-19.
+
+**Not available from AISHE, so stop looking:** household income (no edition has an
+income variable) and EWS before 2019-20. Social category is the only disadvantage
+axis here; PLFS `mpce` is the repo's income proxy.
 
 ---
 
@@ -55,6 +59,15 @@ For subject-based numbers use the `ug_discipline` cut, not the programme cut.
 **Social categories overlap.** `All Categories` is a superset of SC / ST / OBC /
 PwD / Muslim / Other Minority / EWS, and those bands overlap each other too (a
 person can be both SC and PwD). Summing across `social_category` double-counts.
+Note also that SC + ST + OBC does **not** equal All Categories — the general
+category is the remainder, and AISHE never reports it as a line of its own.
+
+**"Actual response" vs "Estimated".** Every table caption says which. Actual
+response is what the responding institutions reported; estimated grosses that up
+to the full registered population to account for non-response. They are different
+populations and the `basis` column keeps them apart — an estimated figure sits
+systematically above the actual-response one for the same cell, so comparing
+across them manufactures growth.
 
 **GER and GPI** (published separately, not yet a table). *Gross Enrolment Ratio* is
 enrolment in higher education as a percentage of the 18–23 population — so it moves

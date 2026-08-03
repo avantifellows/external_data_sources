@@ -49,13 +49,28 @@ aishe/
 Cuts:
 - `state_level` — Table 33, graduates by state × level (2015-16 … 2018-19, 2021-22)
 - `programme_social` — Table 34a, graduates by programme × social category (2021-22 ONLY)
+- `state_social` — Tables 14 (All Categories/SC/ST/OBC) + 15 (PwD/Muslim/Other
+  Minority), ENROLMENT by state × social category, all 7 PDF years
+  (2012-13 … 2018-19). The social time series, and the only `estimated` cut.
 - `ug_discipline` — Tables 12 (enrolment) + 35 (graduates), UG by discipline
   (2015-16, 2016-17, 2018-19, 2019-22)
 
+**`basis` separates actual-response from estimated figures.** AISHE publishes both
+and says which in the caption. `state_social` is entirely `estimated` (grossed up
+for non-response); every other cut is `actual response`. They are different
+populations — estimated runs systematically higher, so comparing across them
+invents growth. Filtering to one cut already keeps you on one basis.
+
+**AISHE has no income variable and no EWS before 2019-20.** Checked every PDF
+edition: zero hits for household/family income, income group, EWS or
+"economically weaker". Social category is the only disadvantage axis here; for
+income use PLFS `mpce`.
+
 **Coverage is ragged and that is the main trap.** Not every year carries every
 cut, so a query that doesn't `GROUP BY aishe_year` will read missing coverage as a
-real trend. `programme_social` is 2021-22 only — the pre-2019 editions print a
-Table 34 with no social-category breakdown at all.
+real trend. `state_social` is the deepest series (all 7 PDF years) and
+`state_level` has five; `programme_social` is 2021-22 only, because the pre-2019
+editions print a Table 34 with no social-category breakdown of programmes.
 
 Dimensions a cut doesn't break out carry `"All"`. Cuts overlap — always filter to
 one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
@@ -111,9 +126,14 @@ bug that produced *plausible* numbers:
 | Subject row taken as a discipline | +38,652 — still a credible national figure |
 | Page footer read as a row | `T-44` in a value column |
 | Sheet roll-up emitted as a discipline | 2019-20 / 2020-21 UG totals **exactly doubled** |
+| Roll-up label in the merged serial cell | 2021-22's checks silently skipped for months |
+| Footer welded to the roll-up's label | "All India AISHE 2012-13" read as a state |
+| Two figures touching, extracted as one word | a state's Female value vanished, Total became 13 digits |
+| A figure printed in scientific notation | `2E+06` parsed as a round 2,000,000 vs a true 1,788,263 |
+| Three-line label split across two rows | the states "Andaman and Nicobar" and "Islands Andhra Pradesh" |
 
-That last one was in the **Excel** reader, not the PDF one, and it sat in the
-production table until 2026-08. `discipline_rows` strips a trailing "Total" from
+The roll-up-as-a-discipline one was in the **Excel** reader, not the PDF one, and
+it sat in the production table until 2026-08. `discipline_rows` strips a trailing "Total" from
 the label, which turned the sheet's `Grand Total` row into a discipline named
 `Grand`; since that row equals the sum of the disciplines, `SUM(value)` for those
 two years returned twice the truth. It went unnoticed because neither year carries
@@ -156,6 +176,48 @@ Total row).
 - **Discipline labels need whitespace normalising.** AISHE varies internal spacing
   between editions (`Footwear  Design` vs `Footwear Design`), which silently splits
   one discipline into two values and breaks trends and codemap joins.
+- **The roll-up row's label hides in the SERIAL column.** AISHE merges the serial
+  and label cells on its "All India" / "Grand Total" row, so openpyxl reports the
+  label one column left and the label column comes back empty. The reader skipped
+  the row entirely, which left both published-total checks with no anchor and
+  degraded them to a warning — for months, unnoticed, because a warning scrolls
+  past. `_label_with_merge` falls back one column, accepting only non-numeric
+  text (on an ordinary row that cell holds the serial, and returning it would
+  invent a state called "35").
+- **The running footer can arrive welded to a row's label** ("All India AISHE
+  2012-13"). `FURNITURE_RE` only catches a footer on a line of its own, so
+  `_strip_furniture` removes one from the end of a label. Unstripped, the roll-up
+  fails its All-India test and is emitted as a state — double-counting the nation.
+- **Values are assigned per CHARACTER, not per word.** Where two figures are wide
+  enough to touch, pdfplumber extracts them as one word spanning two columns
+  (2014-15 Table 14: `4689261004703` = 468,926 and 1,004,703). Bucketing that word
+  by its centre puts both in one column and empties the other.
+- **A cell printed in scientific notation is a trap, not a number.** `2E+06`
+  parses cleanly to a round 2,000,000 where the truth is 1,788,263. `_repair_triple`
+  recovers the one lossy cell of a Male/Female/Total triple from the other two
+  (Total ≡ Male + Female) and refuses if more than one is lossy.
+- **Wrapped labels attach as RUNS, to the nearer adjacent row, ties downward.**
+  Per-line attachment splits a three-line label, because its last line is closer to
+  the *next* row (2018-19 Table 14, "Andaman and Nicobar / Islands"). Attaching
+  everything to the row above instead breaks a label that wraps upward onto its own
+  values line (2018-19 Table 33, "Dadra and Nagar" above "Haveli") — and the same
+  edition contains both, so no per-line rule can be right for both.
+  *Do not try to solve this from the drawn cell borders.* They exist, but they are
+  per-cell segments rather than row rules; reconstructing a grid from them
+  over-segments some pages and was a net regression.
+- **Reconciliation checks totals, not labels.** Every check here compares sums, so
+  a mangled state *name* passes silently — the 2018-19 Table 33 split shipped in
+  PR #66 for exactly that reason. When touching the row reader, verify that every
+  year has 36 states and an identical row count per state, not just that the
+  totals reconcile.
+- **State spellings drift between editions** and must be canonicalised
+  (`codemaps/state_canonical.csv`), or a per-state trend splits in 2017-18. Do NOT
+  map away `Ladakh` or `D & N Haveli and Daman & Diu` — those are real boundary
+  changes, not spellings.
+- **A source discrepancy gets a registered exception, never a tolerance.**
+  `PUBLISHER_ROUNDING` holds one entry (2017-18 T14 All Categories Male, +3) with
+  the evidence that it is AISHE's rounding and not our parse. A blanket epsilon
+  would also swallow a real misread of a small state.
 - **Grand Total is a group, not a level.** Table 33 prints 9 groups: the 8 levels
   plus a roll-up. It is read for validation and never emitted. The Excel sheet does
   this too — that is what the strict geometry check in `clean_aishe.py` trips on if

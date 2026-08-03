@@ -3,8 +3,8 @@
 AISHE (All India Survey on Higher Education, MoE) student data → BigQuery.
 
 **Enrolment + graduates (out-turn)** from the AISHE Final Reports, as a **single
-denormalized fact** sliceable by state×level, programme×social-category, and UG
-discipline. Covers **2015-16 → 2021-22**. The reports need real parsing, so this
+denormalized fact** sliceable by state×level, state×social-category,
+programme×social-category, and UG discipline. Covers **2012-13 → 2021-22**. The reports need real parsing, so this
 is a heavier pipeline than `nirf/`, but it still stages parsed parquet through GCS.
 
 **Source:** AISHE Final Reports from [aishe.gov.in](https://aishe.gov.in/)
@@ -51,7 +51,7 @@ The single source of truth for filenames, GCS URIs, and BQ destinations is
 
 ## Table produced
 
-**`aishe_fact_higher_ed_students`** — one wide fact (10,956 rows). Grain:
+**`aishe_fact_higher_ed_students`** — one wide fact (16,248 rows). Grain:
 `(cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)`
 → `value`. Each row carries a `cut` (which published cross-tab it came from) and a
 `metric` (`enrolment` = students currently studying, or `graduates` = out-turn /
@@ -60,6 +60,7 @@ qualifiers that year). Dimensions a cut doesn't break out carry the sentinel `"A
 | `cut` | Source | Metric(s) | Set dimensions | Years | Rows |
 |---|---|---|---|---|---:|
 | `state_level`      | Table 33     | graduates             | level, state                       | 2015-16, 2016-17, 2017-18, 2018-19, 2021-22 | 4,320 |
+| `state_social`     | Tables 14+15 | enrolment             | state, social_category             | 2012-13 → 2018-19 (all 7) | 5,292 |
 | `programme_social` | Table 34a    | graduates             | programme, social_category         | 2021-22 | 5,448 |
 | `ug_discipline`    | Tables 12+35 | enrolment + graduates | level=`Under Graduate`, discipline | 2015-16, 2016-17, 2018-19, 2019-20, 2020-21, 2021-22 | 1,188 |
 
@@ -67,10 +68,53 @@ qualifiers that year). Dimensions a cut doesn't break out carry the sentinel `"A
 `cut`, and never `SUM(value)` across cuts.**
 
 **Coverage is ragged — `GROUP BY aishe_year` before reading any trend.**
-`state_level` is the only cut with real historical depth (5 years) and is the one
-to use for a time series. `programme_social` is **2021-22 only**: the pre-2019 PDFs
-print a Table 34 with no social-category breakdown at all. A series that appears
-to collapse is far more likely to be missing coverage than a real change.
+`state_social` has the deepest series (all 7 PDF years) and `state_level` five
+years. `programme_social` is **2021-22 only**: the pre-2019 PDFs print a Table 34
+with no social-category breakdown of programmes. A series that appears to collapse
+is far more likely to be missing coverage than a real change.
+
+### `basis` — actual response vs estimated, never mixed
+
+AISHE publishes two kinds of figure and says which in each caption:
+
+| `basis` | Meaning | Cuts |
+|---|---|---|
+| `actual response` | as reported by the institutions that answered that year | state_level, programme_social, ug_discipline |
+| `estimated` | grossed up to the full registered population for non-response | state_social |
+
+**They are different populations.** Response rates move year to year, so an
+estimated figure runs systematically above the actual-response one for the same
+cell — comparing across them reads as growth that did not happen. 2018-19
+estimated all-category enrolment is 37.4M; actual-response UG enrolment the same
+year is 28.6M. Neither is wrong; they answer different questions. Filtering to one
+`cut` already keeps you on one basis — the column is there to make a mix visible.
+
+### The social-category series
+
+`cut='state_social'` is the reason the historical PDFs were worth parsing: it
+gives enrolment by state × social category for **every year 2012-13 → 2018-19**,
+across seven categories (All Categories, SC, ST, OBC, Persons with Disability,
+Muslim, Other Minority Communities). Estimated total enrolment, and each group's
+share of it:
+
+| Year | All (M) | SC | ST | OBC | Muslim |
+|---|---:|---:|---:|---:|---:|
+| 2012-13 | 30.15 | 12.8% | 4.4% | 31.2% | 4.2% |
+| 2015-16 | 34.58 | 13.9% | 4.9% | 33.8% | 4.7% |
+| 2018-19 | 37.40 | 14.9% | 5.5% | 36.3% | 5.2% |
+
+**No income and no EWS.** AISHE collects neither: there is no household-income
+variable in any edition, and EWS appears only from 2019-20. Social category is the
+only disadvantage axis available here — for an income measure, PLFS `mpce` in
+[`../plfs/`](../plfs/) is the repo's income proxy.
+
+**State names are canonicalised** via
+[`codemaps/state_canonical.csv`](codemaps/state_canonical.csv), because AISHE
+respells states between editions (`Chhatisgarh` → `Chhattisgarh`, `Uttrakhand` →
+`Uttarakhand`, `Daman & Diu` → `Daman and Diu`, `A & N Islands`). Without it a
+per-state trend silently splits in 2017-18. Genuine boundary changes are **not**
+mapped away: `Ladakh` (2019) and `D & N Haveli and Daman & Diu` (merged 2020) stay
+distinct, so a series spanning them has to handle the change explicitly.
 
 Schema: [`schemas/aishe_fact_higher_ed_students.yaml`](schemas/aishe_fact_higher_ed_students.yaml).
 
@@ -79,7 +123,14 @@ Schema: [`schemas/aishe_fact_higher_ed_students.yaml`](schemas/aishe_fact_higher
 Every year is reconciled against a figure the report itself publishes, and the
 build **fails rather than emit an unreconciled table**:
 
-- **Table 33** — the 8 levels must sum to the published `Grand Total` column.
+- **Table 33** — the 8 levels must sum to the published `Grand Total` column, and
+  each level's states must sum to its published All India row.
+- **Tables 14 / 15** — each category's states must sum to its published All India
+  row. One registered exception, in `PUBLISHER_ROUNDING`: 2017-18 All Categories
+  Male is +3, because five states' own published rows are internally inconsistent
+  by ±1 (AISHE rounds each grossed-up state separately). Female and Total
+  reconcile to the unit, which is what shows the parse is right and the
+  arithmetic is theirs.
 - **Tables 12 / 35** — the disciplines must sum to the published Grand Total row.
 - **Cross-cut** — UG graduates via `state_level` must equal UG graduates via
   `ug_discipline` for any year carrying both. Holds exactly for 2015-16
@@ -199,7 +250,7 @@ gcloud auth application-default login
 .venv/bin/python scripts/load_bq.py --table aishe_fact_higher_ed_students
 ```
 
-Expected from step 2: **10,956 rows**, and three `OK` reconciliation lines
+Expected from step 2: **16,248 rows**, and three `OK` reconciliation lines
 (2015-16, 2018-19, 2021-22). Any other output means a parse moved — read the error
 rather than loading the result.
 

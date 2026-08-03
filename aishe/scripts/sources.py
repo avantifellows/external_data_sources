@@ -330,6 +330,35 @@ RAW_SHEETS: list[RawSheet] = [
 ]
 
 
+# ─── State names — one spelling per state, across editions ────────────────────
+# AISHE respells states between editions: "Chhatisgarh" then "Chhattisgarh",
+# "Uttrakhand" then "Uttarakhand", "Daman & Diu" then "Daman and Diu", and the
+# 2021-22 workbook abbreviates "A & N Islands". Left as published, one state
+# becomes two values and every per-state trend silently splits in 2017-18.
+#
+# Genuine boundary changes are NOT mapped away — they are different places:
+#   Ladakh                        carved out of Jammu and Kashmir in 2019
+#   D & N Haveli and Daman & Diu  the two UTs merged in 2020, so 2021-22 reports
+#                                 one row where earlier years report two
+# A series spanning those years has to decide how to treat the change; hiding it
+# behind a rename would make that decision invisible.
+def _load_state_canonical() -> dict[str, str]:
+    path = CODEMAPS / "state_canonical.csv"
+    if not path.exists():
+        return {}
+    import csv
+    with path.open() as f:
+        return {r["as_published"]: r["canonical"] for r in csv.DictReader(f)}
+
+
+STATE_CANONICAL: dict[str, str] = _load_state_canonical()
+
+
+def canonical_state(name: str) -> str:
+    """Map a published state label to the one spelling used across editions."""
+    return STATE_CANONICAL.get(name.strip(), name.strip())
+
+
 # ─── PDF tables — the parse registry for the historical (pre-Excel) years ─────
 # parse_report_pdf.py reads these. Same role as RAW_SHEETS above, for the years
 # where no Excel edition exists.
@@ -338,19 +367,53 @@ class PdfTable:
     year: str
     label: str        # the table as printed, for logs — e.g. "T33"
     title_re: str     # regex matching the table's printed caption
-    cut: str          # state_level | programme_social | ug_discipline
+    cut: str          # state_level | state_social | programme_social | ug_discipline
     metric: str       # 'graduates' | 'enrolment'
+    # Cross-tab column groups, in printed order, for the cuts whose reader is
+    # positional. None for the line-based readers (T12/T34/T35), which have a
+    # single Male/Female/Total block and so have no groups to verify.
+    groups: tuple[str, ...] | None = None
+    # Whether the table's figures are the responding institutions' own totals or
+    # grossed up to full coverage. AISHE prints this in the caption and the two
+    # are DIFFERENT POPULATIONS — see BASIS_* below.
+    basis: str = "actual response"
 
     @property
     def pdf(self) -> Path:
         return PDF_REPORTS[self.year]
 
 
+# ─── Basis: actual response vs estimated ──────────────────────────────────────
+# AISHE publishes two kinds of figure and says which in the table caption:
+#
+#   "based on actual response"  the totals reported BY the institutions that
+#                               responded to the survey that year.
+#   "Estimated"                 those totals grossed up to the full registered
+#                               population, to account for non-response.
+#
+# They are not comparable. Response rates vary by year and state, so an estimated
+# figure is systematically larger than the actual-response one for the same cell —
+# comparing across the two reads as growth that did not happen. Every row carries
+# `basis` so the two can never be mixed silently.
+BASIS_ACTUAL = "actual response"
+BASIS_ESTIMATED = "estimated"
+
+# Social categories as printed across Tables 14 and 15. Order matters — the
+# cross-tab read is positional — and the labels match the Excel-era
+# SOCIAL_CATEGORIES vocabulary so both eras share one dimension.
+SOCIAL_T14 = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+              "Other Backward Classes")
+SOCIAL_T15 = ("Persons with Disability", "Muslim", "Other Minority Communities")
+
 # Tables are located by their printed caption, not a page number — pagination
 # moves between editions but the captions are stable. The separator after the
 # table number varies ('.' in 2015-18, ':' in 2018-19), hence `[.:]`.
 T12 = ("T12", r"Table\s*12\s*[.:]\s*Enrolment at Under Graduate",
        "ug_discipline", "enrolment")
+T14 = ("T14", r"Table\s*14\s*[.:]\s*Estimated State[-‐‑‒–]?\s*wise Enrolment",
+       "state_social", "enrolment", SOCIAL_T14, BASIS_ESTIMATED)
+T15 = ("T15", r"Table\s*15\s*[.:]\s*State[-‐‑‒–]?\s*wise Enrolment in PWD",
+       "state_social", "enrolment", SOCIAL_T15, BASIS_ESTIMATED)
 T33 = ("T33", r"Table\s*33\s*[.:]\s*State-wise Out-?turn",
        "state_level", "graduates")
 T34 = ("T34", r"Table\s*34\s*[.:]\s*Programme-wise Out-?turn",
@@ -385,12 +448,22 @@ T35 = ("T35", r"Table\s*35\s*[.:]\s*Out-?turn/Pass-Out at Under Graduate",
 #                   dropped. Note that T34's population is the same as T33's
 #                   Grand Total, so T33 can serve as the external anchor once the
 #                   dropped row is found.
+#   Tables 14 and 15 (the social-category cut) are registered for all seven
+#   editions — unlike 12/33/34/35 they are laid out identically throughout, and
+#   each reconciles against its own published All India row per category.
 PDF_TABLES: list[PdfTable] = [
     PdfTable(year, *spec)
     for year, spec in [
+        ("2012-13", T14), ("2012-13", T15),
+        ("2013-14", T14), ("2013-14", T15),
+        ("2014-15", T14), ("2014-15", T15),
         ("2015-16", T12), ("2015-16", T33), ("2015-16", T35),
+        ("2015-16", T14), ("2015-16", T15),
         ("2016-17", T12), ("2016-17", T33),
+        ("2016-17", T14), ("2016-17", T15),
         ("2017-18", T33),
+        ("2017-18", T14), ("2017-18", T15),
         ("2018-19", T12), ("2018-19", T33), ("2018-19", T35),
+        ("2018-19", T14), ("2018-19", T15),
     ]
 ]

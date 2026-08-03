@@ -55,11 +55,11 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import parse_report_pdf
-from sources import (CLEAN, PDF_TABLES, RAW_SHEETS, REPORTS, SENTINEL,
-                     TABLES)
+from sources import (BASIS_ACTUAL, CLEAN, PDF_TABLES, RAW_SHEETS, REPORTS,
+                     SENTINEL, TABLES, canonical_state)
 
-COLUMNS = ["cut", "aishe_year", "metric", "level", "state", "discipline",
-           "programme", "social_category", "gender", "value"]
+COLUMNS = ["cut", "aishe_year", "metric", "basis", "level", "state",
+           "discipline", "programme", "social_category", "gender", "value"]
 
 LEVELS = [
     "Ph.D.", "M.Phil.", "Post Graduate", "Under Graduate",
@@ -150,17 +150,51 @@ def _num(value, ctx: str) -> int:
 
 
 def _row(cut, year, metric, level, state, discipline, programme,
-         social_category, gender, value, ctx=""):
+         social_category, gender, value, ctx="", basis=BASIS_ACTUAL):
+    """Build one fact row.
+
+    `basis` defaults to actual-response because every sheet the Excel parser
+    reads is a "based on actual response" table; the estimated tables only enter
+    via the PDF parser (Tables 14/15).
+    """
     return {
-        "cut": cut, "aishe_year": year, "metric": metric, "level": level,
-        "state": state, "discipline": discipline, "programme": programme,
-        "social_category": social_category, "gender": gender,
-        "value": _num(value, ctx),
+        "cut": cut, "aishe_year": year, "metric": metric, "basis": basis,
+        "level": level, "state": state, "discipline": discipline,
+        "programme": programme, "social_category": social_category,
+        "gender": gender, "value": _num(value, ctx),
     }
 
 
 def _key(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", str(s).lower())
+
+
+ROLLUP_LABELS = {"grand", "grandtotal", "allindia", "india", "total"}
+
+
+def _label_with_merge(row, label_col: int) -> str:
+    """The row's label, tolerating the merged cell AISHE uses on its roll-up row.
+
+    On every data row the label sits in `label_col` and the serial number to its
+    left. On the *roll-up* row ("All India" / "Grand Total") the sheet merges the
+    serial and label cells, so openpyxl reports the label in the SERIAL column and
+    `label_col` comes back empty — which made the reader skip the row, leaving
+    both published-total checks with no anchor and silently degrading them to a
+    warning. Falling back one column left recovers it.
+
+    The fallback only accepts non-numeric text: on an ordinary row the cell to the
+    left holds the serial, and returning that would invent a state called "35".
+    """
+    label = row[label_col] if len(row) > label_col else None
+    if label is not None and str(label).strip():
+        return str(label).strip()
+    if label_col == 0:
+        return ""
+    left = row[label_col - 1] if len(row) > label_col - 1 else None
+    if left is None or isinstance(left, (int, float)):
+        return ""
+    text = str(left).strip()
+    return text if text and not text.isdigit() else ""
 
 
 # ─── Cross-tab geometry (Tables 33 / 34a) ────────────────────────────────────
@@ -245,11 +279,11 @@ def state_level_rows(ws, year: str) -> list[dict]:
     for row in ws.iter_rows(min_row=data_row, values_only=True):
         if len(row) <= label_col:
             continue
-        state = row[label_col]
-        if state is None or not str(state).strip():
+        state = _label_with_merge(row, label_col)
+        if not state:
             continue
-        state = str(state).strip()
-        is_rollup = state.lower() in {"all india", "india", "total", "grand total"}
+        state = canonical_state(state)
+        is_rollup = _key(state) in ROLLUP_LABELS
         for li, group in enumerate(STATE_LEVEL_GROUPS):
             for gi, gender in enumerate(GENDERS):
                 idx = first_val + li * 3 + gi
@@ -296,10 +330,9 @@ def programme_social_rows(ws, year: str) -> list[dict]:
     for row in ws.iter_rows(min_row=data_row, values_only=True):
         if len(row) <= label_col:
             continue
-        prog = row[label_col]
-        if prog is None or not str(prog).strip():
+        prog = _label_with_merge(row, label_col)
+        if not prog or _key(prog) in ROLLUP_LABELS:
             continue
-        prog = str(prog).strip()
         for ci, cat in enumerate(SOCIAL_CATEGORIES):
             for gi, gender in enumerate(GENDERS):
                 idx = first_val + ci * 3 + gi
@@ -335,10 +368,10 @@ def discipline_rows(ws, year: str, metric: str) -> list[dict]:
     for r in ws.iter_rows(min_row=4, values_only=True):
         if not r or len(r) <= col_t:
             continue
-        disc, subj, male, female, total = r[col_disc], r[col_subj], r[col_m], r[col_f], r[col_t]
-        if disc is None or not str(disc).strip():
+        subj, male, female, total = r[col_subj], r[col_m], r[col_f], r[col_t]
+        disc_s = _label_with_merge(r, col_disc)
+        if not disc_s:
             continue
-        disc_s = str(disc).strip()
         if disc_s.isdigit():
             continue
         is_total = (subj is None or str(subj).strip() == "") or disc_s.endswith("Total")
@@ -358,7 +391,7 @@ def discipline_rows(ws, year: str, metric: str) -> list[dict]:
         # since it equals the sum of the disciplines, SUM(value) for 2019-20 and
         # 2020-21 returned exactly DOUBLE the true figure. Hold it back as the
         # validation anchor instead.
-        if _key(clean) in {"grand", "grandtotal", "allindia", "india", "total"}:
+        if _key(clean) in ROLLUP_LABELS:
             ctx = f"{ws.title} roll-up"
             published = {"Male": _num(male, ctx), "Female": _num(female, ctx),
                          "Total": _num(total, ctx)}
@@ -455,6 +488,30 @@ def _validate(df: pd.DataFrame) -> None:
               f"discipline-cut={ug_disc:,}{note}  {'OK' if ok else 'CHECK'}")
 
 
+def _check_state_labels(df: pd.DataFrame) -> None:
+    """Every year of a state cut must carry the same states, one row-count each.
+
+    The reconciliation checks compare sums, so a mangled state *name* passes them
+    silently: a label split in two still totals correctly. That is exactly how the
+    2018-19 Table 33 "Chhattisgarh Dadra and Nagar" / "Haveli" split reached
+    production. This checks the shape of the dimension instead of its sums.
+    """
+    for cut in ("state_level", "state_social"):
+        sub = df[df.cut == cut]
+        if sub.empty:
+            continue
+        for year, g in sub.groupby("aishe_year"):
+            counts = g.groupby("state").size()
+            if counts.nunique() != 1:
+                odd = counts[counts != counts.mode()[0]].to_dict()
+                raise SystemExit(
+                    f"{cut} {year}: states do not all have the same number of "
+                    f"rows — {odd}.\nA state label was split or merged by the row "
+                    f"reader. The totals can still reconcile, so this is the only "
+                    f"check that catches it."
+                )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -490,16 +547,19 @@ def main() -> None:
         print(f"  Restore the workbooks first:  python3 scripts/fetch.py --from-gcs")
 
     print(f"\nAISHE → {out.name}: {len(df):,} rows")
-    for cut in ("state_level", "programme_social", "ug_discipline"):
+    for cut in sorted(df.cut.unique()):
         sub = df[df.cut == cut]
         if sub.empty:
             continue
         by_metric = ", ".join(f"{m}={(sub.metric == m).sum():,}"
                               for m in ("graduates", "enrolment") if (sub.metric == m).any())
         yrs = ",".join(sorted(sub.aishe_year.unique()))
-        print(f"  cut={cut:<17} {len(sub):>6,} rows  ({by_metric})  years={yrs}")
+        bases = "/".join(sorted(sub.basis.unique()))
+        print(f"  cut={cut:<17} {len(sub):>6,} rows  ({by_metric})  "
+              f"basis={bases:<16} years={yrs}")
 
     _validate(df)
+    _check_state_labels(df)
     print("✓ done.")
 
 
