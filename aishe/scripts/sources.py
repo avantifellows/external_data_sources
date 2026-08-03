@@ -430,8 +430,19 @@ T35 = ("T35", r"Table\s*35\s*[.:]\s*Out-?turn/Pass-Out at Under Graduate",
 # All four editions print tables 12/33/34/35 with matching captions, but they do
 # NOT all lay them out the same way, so this is deliberately not a cross product.
 #
-# NOT YET INGESTED, with the reason each fails its check:
+# NOT YET INGESTED, with the reason each fails its check. T34's population is the
+# same as T33's Grand Total, so the deltas below are measured against that — an
+# external anchor that works even for the editions printing no Grand Total of
+# their own. clean_aishe._check_programme_vs_state enforces it on every build.
 #
+#   (2015-16, T34)  parses 3,825,596 Male against T33's 4,463,710 (-638,114).
+#                   A large block of programmes is missing, not a stray row — this
+#                   edition needs its layout looked at before anything else.
+#   (2016-17, T34)  parses 4,397,315 against 4,398,169 (-854). Very close; likely
+#                   a handful of rows still printing fewer than three figures in a
+#                   shape _sparse_row does not yet accept.
+#   (2017-18, T34)  sums to 4,315,863 Male vs its own published 4,323,271
+#                   (-7,408).
 #   (2017-18, T12)  disciplines sum to 14,891,226 Male vs published 14,852,574
 #                   (+38,652). One subject row is being taken as a discipline;
 #                   this edition indents the discipline/subject columns
@@ -439,15 +450,16 @@ T35 = ("T35", r"Table\s*35\s*[.:]\s*Out-?turn/Pass-Out at Under Graduate",
 #   (2016-17, T35)  this edition prints Table 35 as a *ranked list* split across
 #                   pages — subjects on one page, disciplines on the next — and
 #                   sets each label on a different text line from its numbers.
-#                   Neither the indent rule nor the line reader survives it.
+#                   Neither the indent rule nor the line reader survives it. The
+#                   published Grand Total is itself misread (314,264,395), so the
+#                   anchor needs fixing before the rows do.
 #   (2017-18, T35)  same ranked-list layout as 2016-17.
-#   (all years, T34) the programme table does not reconcile. 2015-16 and 2016-17
-#                   print no Grand Total row at all, so there is nothing to check
-#                   against; 2018-19 sums to 4,308,792 Male vs a published
-#                   4,308,843 (-51), i.e. a wrapped programme name is being
-#                   dropped. Note that T34's population is the same as T33's
-#                   Grand Total, so T33 can serve as the external anchor once the
-#                   dropped row is found.
+#
+#   (2018-19, T34)  FIXED and registered. Was -51: nine rows printing fewer than
+#                   three figures (a blank gender cell, or no out-turn at all)
+#                   were dropped whole. _sparse_row now reads them, and the result
+#                   matches T33's Grand Total exactly on all three genders.
+#
 #   Tables 14 and 15 (the social-category cut) are registered for all seven
 #   editions — unlike 12/33/34/35 they are laid out identically throughout, and
 #   each reconciles against its own published All India row per category.
@@ -463,7 +475,7 @@ PDF_TABLES: list[PdfTable] = [
         ("2016-17", T14), ("2016-17", T15),
         ("2017-18", T33),
         ("2017-18", T14), ("2017-18", T15),
-        ("2018-19", T12), ("2018-19", T33), ("2018-19", T35),
+        ("2018-19", T12), ("2018-19", T33), ("2018-19", T34), ("2018-19", T35),
         ("2018-19", T14), ("2018-19", T15),
     ]
 ]

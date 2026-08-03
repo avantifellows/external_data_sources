@@ -488,6 +488,35 @@ def _validate(df: pd.DataFrame) -> None:
               f"discipline-cut={ug_disc:,}{note}  {'OK' if ok else 'CHECK'}")
 
 
+def _check_programme_vs_state(df: pd.DataFrame) -> None:
+    """Table 34's population is Table 33's Grand Total — so they must agree.
+
+    An external anchor for the programme cut that costs nothing: the programme
+    table and the state×level table count the same graduates, sliced differently.
+    It is what confirmed the 2018-19 Table 34 read after the sparse-row fix, and
+    it is the check to lean on for any edition that prints no Grand Total row of
+    its own (2015-16, 2016-17).
+    """
+    g = df[df.social_category.isin(["All Categories"]) | (df.cut == "state_level")]
+    for year in sorted(set(df[df.cut == "programme_social"].aishe_year)):
+        if year not in set(df[df.cut == "state_level"].aishe_year):
+            continue
+        for gender in GENDERS:
+            a = g[(g.cut == "state_level") & (g.aishe_year == year)
+                  & (g.gender == gender)].value.sum()
+            b = g[(g.cut == "programme_social") & (g.aishe_year == year)
+                  & (g.gender == gender)
+                  & (g.social_category == "All Categories")].value.sum()
+            if a != b:
+                raise SystemExit(
+                    f"{year}: programme cut sums to {b:,} for gender={gender} but "
+                    f"the state×level cut sums to {a:,} (off by {b - a:+,}).\n"
+                    f"These count the same graduates — one of the two reads is "
+                    f"wrong."
+                )
+        print(f"  {year} programme vs state×level: agree on all genders  OK")
+
+
 def _check_state_labels(df: pd.DataFrame) -> None:
     """Every year of a state cut must carry the same states, one row-count each.
 
@@ -559,6 +588,7 @@ def main() -> None:
               f"basis={bases:<16} years={yrs}")
 
     _validate(df)
+    _check_programme_vs_state(df)
     _check_state_labels(df)
     print("✓ done.")
 
