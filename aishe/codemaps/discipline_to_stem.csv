@@ -1,0 +1,42 @@
+discipline,stem_bucket,basis,note
+Engineering & Technology,STEM,specified,Core engineering
+Science,STEM,specified,Core natural science
+IT & Computer,STEM,specified,Core computing
+Medical Science,STEM,specified,"Included deliberately; broad STEMM reading"
+Paramedical Science,STEM,specified,"Nursing, ANM, technicians — included deliberately"
+Agriculture,STEM,specified,Agri and allied included
+Veterinary & Animal Sciences,STEM,specified,Agri and allied included
+Fisheries Science,STEM,specified,Agri and allied included
+Design,STEM,specified,Treated as applied technology
+Fashion Technology,STEM,specified,Treated as applied technology
+Footwear Design,STEM,specified,Treated as applied technology
+Criminology & Forensic Science,STEM,inferred,Laboratory science — not explicitly ruled on
+Marine Science / Oceanography,STEM,inferred,Natural science — not explicitly ruled on
+Arts,non-STEM,specified,
+Commerce,non-STEM,specified,
+Management,non-STEM,specified,
+Education,non-STEM,specified,
+Law,non-STEM,specified,
+Fine Arts,non-STEM,specified,
+Oriental Learning,non-STEM,specified,Sanskrit-system degrees
+Social Science,non-STEM,specified,
+Social Work,non-STEM,specified,
+Journalism & Mass Communication,non-STEM,specified,
+Library & Information Science,non-STEM,specified,
+Indian Language,non-STEM,specified,
+Foreign Language,non-STEM,specified,
+Linguistics,non-STEM,specified,
+Physical Education,non-STEM,specified,
+Hospitality and Tourism,non-STEM,specified,
+Area Studies,non-STEM,inferred,Social science — not explicitly ruled on
+Cultural Studies,non-STEM,inferred,Humanities — not explicitly ruled on
+Defence Studies,non-STEM,inferred,Social science — not explicitly ruled on
+Gandhian Studies,non-STEM,inferred,Humanities — not explicitly ruled on
+Religious Studies,non-STEM,inferred,Humanities — not explicitly ruled on
+Women Studies,non-STEM,inferred,Social science — not explicitly ruled on
+Home Science,non-STEM,inferred,"Has science content but conventionally excluded — not explicitly ruled on"
+Others,non-STEM,inferred,"Residual bucket of unknown mix; excluded so it cannot inflate the STEM share"
+Architecture and Engineering,STEM,inferred,"2021-22 only; engineering — consistent with Engineering & Technology"
+Information Technology,STEM,inferred,"2021-22 only; computing — consistent with IT & Computer"
+Criminology,STEM,inferred,"2021-22 only; same bucket as Criminology & Forensic Science"
+Security Management,non-STEM,inferred,"2021-22 only; management discipline"

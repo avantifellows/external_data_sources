@@ -143,9 +143,15 @@ Two patterns, two examples:
   parsed with pdfplumber across two extractors (overall + stream-wise), merged
   into one denormalized fact with `cut` sentinel. Same shape as `nmc/` but
   multi-year and multi-parser. → 1 table: `moe_fact_board_exam_results`.
-- [`aishe/`](aishe/) — xlsx parse. Three AISHE Final Report workbooks (2019-22)
-  parsed with openpyxl across three published cross-tabs (state×level, programme×social,
-  UG discipline), unified into one denormalized fact with `cut` sentinel. Follows
-  `plfs/` shape for parsing + `nirf/` shape for GCS staging. → 1 table: `aishe_fact_higher_ed_students`.
+- [`aishe/`](aishe/) — **dual-edition parse (xlsx + PDF)**. AISHE publishes the Final
+  Report as Excel only from 2019-20 on, so the pre-2019 years exist as PDF and nothing
+  else. Three workbooks (2019-22) are read with openpyxl and four PDF editions
+  (2015-16 → 2018-19) with pdfplumber, across three published cross-tabs (state×level,
+  programme×social, UG discipline), unified into one denormalized fact with a `cut`
+  sentinel. `clean_aishe.py` is the single entry point and calls the PDF parser itself.
+  Use as the reference when a source changes publication format mid-series — and for the
+  pattern of reconciling every parse against a total the source itself publishes, with
+  the build failing rather than emitting unverified numbers. Follows `plfs/` shape for
+  parsing + `nirf/` shape for GCS staging. → 1 table: `aishe_fact_higher_ed_students`.
 
 See `<source>/CLAUDE.md` for the full orientation of either.

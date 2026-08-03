@@ -1,6 +1,7 @@
 # AISHE pipeline dependencies.
 # Parsing:
-openpyxl>=3.1
+openpyxl>=3.1          # Excel editions (2019-20 onward)
+pdfplumber>=0.10       # PDF editions (the only edition before 2019-20)
 pandas>=2.0
 pyarrow>=14.0
 # GCS staging + BQ load:

@@ -37,16 +37,57 @@ REPORTS: dict[str, Path] = {
     "2019-20": RAW / "aishe_2019-20_final_report.xlsx",
     "2020-21": RAW / "aishe_2020-21_final_report.xlsx",
     "2021-22": RAW / "aishe_2021-22_final_report.xlsx",
+    "2022-23": RAW / "aishe_2022-23_final_report.xlsx",
+    "2023-24": RAW / "aishe_2023-24_final_report.xlsx",
 }
-LATEST_YEAR = "2021-22"  # the state×level and programme×social cuts are 2021-22 only
 
-# Canonical source URLs — AISHE Final Report workbooks, he.nic.in (MoE). fetch.py
-# downloads these into raw/ so the source files are regenerable from scratch.
-_AISHE = "https://he.nic.in/aishereport/assets/excel"
-REPORT_URLS: dict[str, str] = {
-    "2019-20": f"{_AISHE}/AISHE%20Final%20Report%202019-20.xlsx",
-    "2020-21": f"{_AISHE}/AISHE%20Final%20Report%202020-21.xlsx",
-    "2021-22": f"{_AISHE}/AISHE%20Final%20Report%202021-22.xlsx",
+# ─── Excel editions — NO STATIC SOURCE URL ────────────────────────────────────
+# The Excel workbooks cannot currently be fetched from a URL, so REPORT_URLS is
+# deliberately empty and fetch.py can only pull the PDFs below.
+#
+# What was here before: five `he.nic.in/aishereport/assets/excel/AISHE Final
+# Report <year>.xlsx` URLs. All five return 404 (verified 2026-08-03) — including
+# the three years whose workbooks are already parsed, so this was never a
+# 2022-23/2023-24-only problem as the README claimed. On aishe.gov.in the
+# "(Excel)" links point at https://he.nic.in/aishereport/#/report/<year>, a
+# JavaScript report viewer that renders nothing without script execution and
+# exposes no static .xlsx path.
+#
+# Consequence: the 2019-20 … 2021-22 workbooks in raw/ are NOT regenerable from
+# scratch. They must be re-obtained by hand through the viewer. Anyone who finds
+# the real download endpoint should populate this dict — fetch.py picks it up
+# with no other change.
+REPORT_URLS: dict[str, str] = {}
+
+# Canonical source URLs — AISHE Final Report PDFs, on the MoE content CDN. These
+# are the *only* machine-fetchable edition, and the only edition at all for
+# 2012-13 … 2018-19. Verified 2026-08-03.
+_CDN = ("https://cdnbbsr.s3waas.gov.in/s392049debbe566ca5782a3045cf300a3c/uploads")
+PDF_REPORT_URLS: dict[str, str] = {
+    "2012-13": f"{_CDN}/2025/06/20250604192794875.pdf",
+    "2013-14": f"{_CDN}/2025/06/202506041593835380.pdf",
+    "2014-15": f"{_CDN}/2025/06/202506041473712372.pdf",
+    "2015-16": f"{_CDN}/2025/06/20250604868258281.pdf",
+    "2016-17": f"{_CDN}/2025/06/20250604257561305.pdf",
+    "2017-18": f"{_CDN}/2025/06/202506041358047572.pdf",
+    "2018-19": f"{_CDN}/2025/06/20250604802450485.pdf",
+    "2019-20": f"{_CDN}/2025/06/20250604434323531.pdf",
+    "2020-21": f"{_CDN}/2025/06/202506041612700081.pdf",
+    "2021-22": f"{_CDN}/2025/06/2025060466438560.pdf",
+    "2022-23": f"{_CDN}/2026/07/20260708401535366.pdf",
+    "2023-24": f"{_CDN}/2026/07/202607131602421770.pdf",
+}
+
+PDF_REPORTS: dict[str, Path] = {
+    year: RAW / f"aishe_{year}_final_report.pdf" for year in PDF_REPORT_URLS
+}
+
+# The GER / GPI time series, published as standalone PDFs rather than inside a
+# report. Both cover 2011-12 → 2021-22 and are not yet ingested — see
+# schemas/README.md for the status line.
+TIMESERIES_URLS: dict[str, str] = {
+    "ger": f"{_CDN}/2025/06/202506041164303308.pdf",
+    "gpi": f"{_CDN}/2025/06/20250604850977088.pdf",
 }
 
 # ─── GCS ──────────────────────────────────────────────────────────────────────
@@ -235,11 +276,16 @@ DIRECTORY_TABLE_BY_NAME: dict[str, DirectoryTable] = {t.bq_name: t for t in DIRE
 # Institution directory raw Excel files — for upload_to_gcs.py
 INSTITUTION_DIRECTORY_RAW_FILES: list[str] = [t.raw_file for t in DIRECTORY_TABLES]
 
-# ─── Raw sheets (uploaded to GCS raw/ as parquet for traceability; NOT in BQ) ──
+# ─── Raw sheets — the parse registry ──────────────────────────────────────────
+# Doubles as (a) what clean_aishe.py parses and (b) what upload_to_gcs.py mirrors
+# to GCS raw/ as parquet for traceability. One entry per (year, sheet): adding a
+# year means adding its entries here, which is what makes a year contribute a cut.
 @dataclass(frozen=True)
 class RawSheet:
     year: str
     sheet: str
+    cut: str      # fact `cut` this sheet feeds: state_level | programme_social | ug_discipline
+    metric: str   # 'graduates' | 'enrolment'
 
     @property
     def workbook(self) -> Path:
@@ -261,13 +307,90 @@ class RawSheet:
 # The source sheets the fact is built from: 2021-22 carries all cuts; 2019-20 /
 # 2020-21 contribute the UG-discipline trend. Table 12 = UG enrolment by
 # discipline, Table 35 = UG graduates by discipline (same layout).
+#
+# Adding a new year: run `inspect_workbook.py --year <new> --all-sheets` FIRST and
+# copy the *actual* sheet names in here. AISHE renumbers tables between editions,
+# so "33OutTurnState" is not guaranteed to be Table 33 in a later report.
 RAW_SHEETS: list[RawSheet] = [
-    RawSheet("2021-22", "33OutTurnState"),
-    RawSheet("2021-22", "34a"),
-    RawSheet("2021-22", "35UGDisc"),
-    RawSheet("2021-22", "12UGDisc"),
-    RawSheet("2020-21", "35UGDisc"),
-    RawSheet("2020-21", "12UGDisc"),
-    RawSheet("2019-20", "35UGDisc"),
-    RawSheet("2019-20", "12UGDisc"),
+    RawSheet("2021-22", "33OutTurnState", "state_level",      "graduates"),
+    RawSheet("2021-22", "34a",            "programme_social", "graduates"),
+    RawSheet("2021-22", "35UGDisc",       "ug_discipline",    "graduates"),
+    RawSheet("2021-22", "12UGDisc",       "ug_discipline",    "enrolment"),
+    RawSheet("2020-21", "35UGDisc",       "ug_discipline",    "graduates"),
+    RawSheet("2020-21", "12UGDisc",       "ug_discipline",    "enrolment"),
+    RawSheet("2019-20", "35UGDisc",       "ug_discipline",    "graduates"),
+    RawSheet("2019-20", "12UGDisc",       "ug_discipline",    "enrolment"),
+    # 2022-23 / 2023-24 — fetch, then inspect_workbook.py, then fill in the real
+    # sheet names and uncomment. Left commented rather than guessed: a wrong sheet
+    # name here is a silent miss, and the table numbers are likely to have moved.
+    # RawSheet("2022-23", "<33?>",  "state_level",      "graduates"),
+    # RawSheet("2022-23", "<34a?>", "programme_social", "graduates"),
+    # RawSheet("2022-23", "<35?>",  "ug_discipline",    "graduates"),
+    # RawSheet("2022-23", "<12?>",  "ug_discipline",    "enrolment"),
+]
+
+
+# ─── PDF tables — the parse registry for the historical (pre-Excel) years ─────
+# parse_report_pdf.py reads these. Same role as RAW_SHEETS above, for the years
+# where no Excel edition exists.
+@dataclass(frozen=True)
+class PdfTable:
+    year: str
+    label: str        # the table as printed, for logs — e.g. "T33"
+    title_re: str     # regex matching the table's printed caption
+    cut: str          # state_level | programme_social | ug_discipline
+    metric: str       # 'graduates' | 'enrolment'
+
+    @property
+    def pdf(self) -> Path:
+        return PDF_REPORTS[self.year]
+
+
+# Tables are located by their printed caption, not a page number — pagination
+# moves between editions but the captions are stable. The separator after the
+# table number varies ('.' in 2015-18, ':' in 2018-19), hence `[.:]`.
+T12 = ("T12", r"Table\s*12\s*[.:]\s*Enrolment at Under Graduate",
+       "ug_discipline", "enrolment")
+T33 = ("T33", r"Table\s*33\s*[.:]\s*State-wise Out-?turn",
+       "state_level", "graduates")
+T34 = ("T34", r"Table\s*34\s*[.:]\s*Programme-wise Out-?turn",
+       "programme_social", "graduates")
+T35 = ("T35", r"Table\s*35\s*[.:]\s*Out-?turn/Pass-Out at Under Graduate",
+       "ug_discipline", "graduates")
+
+# Registered (year, table) pairs — ONLY those whose parse reconciles exactly
+# against the table's own published Grand Total. parse_report_pdf.py refuses to
+# emit a table that doesn't reconcile, so anything listed here has been checked
+# cell-for-cell against the report, and anything commented out below is a known
+# gap rather than an oversight.
+#
+# All four editions print tables 12/33/34/35 with matching captions, but they do
+# NOT all lay them out the same way, so this is deliberately not a cross product.
+#
+# NOT YET INGESTED, with the reason each fails its check:
+#
+#   (2017-18, T12)  disciplines sum to 14,891,226 Male vs published 14,852,574
+#                   (+38,652). One subject row is being taken as a discipline;
+#                   this edition indents the discipline/subject columns
+#                   differently from the other three.
+#   (2016-17, T35)  this edition prints Table 35 as a *ranked list* split across
+#                   pages — subjects on one page, disciplines on the next — and
+#                   sets each label on a different text line from its numbers.
+#                   Neither the indent rule nor the line reader survives it.
+#   (2017-18, T35)  same ranked-list layout as 2016-17.
+#   (all years, T34) the programme table does not reconcile. 2015-16 and 2016-17
+#                   print no Grand Total row at all, so there is nothing to check
+#                   against; 2018-19 sums to 4,308,792 Male vs a published
+#                   4,308,843 (-51), i.e. a wrapped programme name is being
+#                   dropped. Note that T34's population is the same as T33's
+#                   Grand Total, so T33 can serve as the external anchor once the
+#                   dropped row is found.
+PDF_TABLES: list[PdfTable] = [
+    PdfTable(year, *spec)
+    for year, spec in [
+        ("2015-16", T12), ("2015-16", T33), ("2015-16", T35),
+        ("2016-17", T12), ("2016-17", T33),
+        ("2017-18", T33),
+        ("2018-19", T12), ("2018-19", T33), ("2018-19", T35),
+    ]
 ]

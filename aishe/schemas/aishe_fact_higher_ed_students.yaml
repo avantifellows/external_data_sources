@@ -19,10 +19,13 @@
 # dimensions. We stack them into ONE fact and tag each row with `cut` = which
 # published table it came from. The cuts OVERLAP (each is a different view of the
 # same students), so you must ALWAYS filter to one cut and NEVER SUM across cuts:
-#   cut='state_level'      Table 33      graduates by state x level (2021-22)
-#   cut='programme_social' Table 34a     graduates by programme x social category (2021-22, all levels)
+#   cut='state_level'      Table 33      graduates by state x level
+#                                        (2015-16, 2016-17, 2017-18, 2018-19, 2021-22)
+#   cut='programme_social' Table 34/34a  graduates by programme x social category
+#                                        (2021-22 only — see the coverage note below)
 #   cut='ug_discipline'    Tables 12 + 35  UG enrolment (T12) + graduates (T35) by
-#                                        discipline, 2019-20 -> 2021-22 (the trend)
+#                                        discipline (2015-16, 2016-17, 2018-19,
+#                                        2019-20, 2020-21, 2021-22)
 # `metric` in {enrolment, graduates}; enrolment exists ONLY on the ug_discipline
 # cut. Dimensions a cut doesn't break out carry the sentinel "All" (mirroring
 # AISHE's own "Total" / "All Categories" rows).
@@ -33,11 +36,51 @@
 #   discipline = the broad SUBJECT area: Arts, Science, Engineering & Technology,
 #                Commerce… (Table 35/12 group UG students by subject, not degree.)
 #
+# ── Coverage is deliberately ragged — check before comparing years ────────────
+# Not every year carries every cut, because AISHE only published an Excel edition
+# from 2019-20 and the earlier years are parsed from the PDF reports, whose
+# layouts differ per edition. Rows per year x cut:
+#
+#            state_level  programme_social  ug_discipline
+#   2015-16          864                 0            198
+#   2016-17          864                 0             99   (enrolment only)
+#   2017-18          864                 0              0
+#   2018-19          864                 0            216
+#   2019-20            0                 0            216
+#   2020-21            0                 0            216
+#   2021-22          864              5448            243
+#
+# So: state_level is the one cut with real historical depth (5 years), and it is
+# the cut to use for a trend. programme_social exists for 2021-22 ONLY — the
+# pre-2019 PDFs print a Table 34 with no social-category breakdown at all, and
+# the years that do parse from it are not yet loaded (see sources.PDF_TABLES).
+# An apparent collapse in a series is far more likely to be missing coverage than
+# a real change: always GROUP BY aishe_year and confirm the years are present.
+#
+# ── The historical programme_social caveat ────────────────────────────────────
+# If/when the PDF years' Table 34 is loaded, those rows will carry
+# social_category='All Categories' and nothing else, because that edition does
+# not break programme out by social category. Filtering
+# social_category='Scheduled Caste' will therefore silently return only 2021-22.
+#
 # Source parquet: gs://avantifellows-external-data/aishe/clean/higher_ed.parquet
 # BQ table:       avantifellows.external_data_sources.aishe_fact_higher_ed_students
 #
-# Validation: 2021-22 UG graduates (metric='graduates', gender='Total') = 7,754,223
-# via BOTH the state_level cut and the ug_discipline cut (they must reconcile).
+# Validation: every year's parse is reconciled against a figure the report itself
+# publishes, and the build fails rather than emit an unreconciled table:
+#   - Table 33: the levels must sum to the published Grand Total column.
+#   - Tables 12/35: the disciplines must sum to the published Grand Total row —
+#     which is itself excluded from the fact. Before 2026-08 the Excel reader
+#     emitted that roll-up as a discipline named "Grand", so SUM(value) for
+#     2019-20 and 2020-21 returned exactly DOUBLE the true figure. If you have
+#     cached numbers for those two years from before this fix, re-check them.
+#   - Cross-cut: UG graduates via state_level must equal UG graduates via
+#     ug_discipline for any year carrying both (holds for 2015-16, 2018-19,
+#     2021-22). 2021-22 additionally matches the published 7,754,223.
+#
+# STEM bucketing: codemaps/discipline_to_stem.csv maps every `discipline` value to
+# STEM / non-STEM, for the low-income-representation and discipline-mix analyses.
+# Join on `discipline`; it covers all 38 values the fact contains.
 #
 # Cross-source: the `discipline` values group into wage-curve buckets (Engineering
 # & Tech, Medical, IT/Computer, Management, other-STEM, general/non-tech) that map
@@ -46,7 +89,7 @@
 # not in this table.
 
 description: AISHE higher-ed enrolment + graduates, one wide fact tagged by `cut` (state×level | programme×social | UG-discipline) and `metric` (enrolment | graduates). "All" sentinels for un-broken-out dims.
-rows: 6999
+rows: 10956
 grain: (cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)
 
 columns:
@@ -57,15 +100,18 @@ columns:
       Published slice this row belongs to: 'state_level' (Table 33), 'programme_social'
       (Table 34a), or 'ug_discipline' (Tables 12+35). ALWAYS filter on cut; never SUM across cuts.
 
+  - name: aishe_year
+    type: STRING
+    mode: REQUIRED
+    description: >
+      AISHE survey year, e.g. "2018-19". Coverage differs by cut — see the
+      year x cut table in the header. Only state_level spans 2015-16 to 2021-22;
+      programme_social is 2021-22 only. Always GROUP BY this before reading a trend.
+
   - name: metric
     type: STRING
     mode: REQUIRED
     description: "'enrolment' (students currently enrolled) or 'graduates' (out-turn / qualifiers that year). enrolment only on the ug_discipline cut."
-
-  - name: aishe_year
-    type: STRING
-    mode: REQUIRED
-    description: AISHE survey year. "2021-22" for all cuts; the ug_discipline cut also has "2019-20" and "2020-21" for trend.
 
   - name: level
     type: STRING
@@ -82,7 +128,13 @@ columns:
   - name: discipline
     type: STRING
     mode: REQUIRED
-    description: AISHE major discipline (subject-based, Table 35) on the ug_discipline cut; "All" elsewhere.
+    description: >
+      AISHE major discipline (subject-based, Tables 12/35) on the ug_discipline
+      cut; "All" elsewhere. 41 distinct values across the loaded years — AISHE's
+      taxonomy grows between editions, so a value can exist in one year and not
+      another. Join codemaps/discipline_to_stem.csv for the STEM / non-STEM split;
+      it covers all 41. Roll-up rows ("Grand Total") are excluded, so summing the
+      disciplines for a year gives that year's UG total.
 
   - name: programme
     type: STRING
@@ -94,8 +146,10 @@ columns:
     mode: REQUIRED
     description: >
       On the programme_social cut: All Categories, Scheduled Caste, Scheduled Tribe,
-      OBC, Persons with Disability, Muslim, Other Minority, EWS (overlap — don't sum
-      across them). "All" elsewhere.
+      OBC, Persons with Disability, Muslim, Other Minority, EWS (these OVERLAP —
+      All Categories is a superset, so never sum across them). "All" elsewhere.
+      Present for 2021-22 only; the pre-2019 reports publish no social-category
+      breakdown of programmes.
 
   - name: gender
     type: STRING
