@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import CLEAN, OPTIONAL_RAW_FILES, RAW, RAW_FILES
 
 # Architecture is admitted on a DIFFERENT exam and therefore a different rank
-# space (MAH-AAC-CET / NATA merit, not the MHT-CET PCM state merit rank). It
+# space (NATA or JEE Main Paper 2 (merit = NATA/2 + Class XII %, max 200), not the MHT-CET PCM state merit rank). It
 # ships in the same table because the counselling process and reservation
 # taxonomy are shared, but rank_basis must be filtered on before any
 # cross-stream rank comparison.
@@ -70,9 +70,9 @@ OUTPUT_COLS = [
     "branch_code", "branch_name",
     "quota", "category_raw", "category", "gender", "sub_pool",
     "opening_rank", "closing_rank", "num_rank_observations",
-    # Architecture only: the CET Cell publishes a NATA/AAC-CET merit SCORE
-    # alongside the merit number. NULL for the MHT-CET streams, which publish
-    # no per-seat score.
+    # Architecture only: B.Arch CAP merit is NATA/2 + Class XII % (max 200),
+    # so the CET Cell publishes that SCORE alongside the merit number. NULL for
+    # the MHT-CET streams, which publish no per-seat score.
     "opening_score", "closing_score",
     "last_round_with_max", "rank_basis", "source_file", "source_url",
 ]

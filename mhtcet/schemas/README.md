@@ -66,7 +66,7 @@ aggregate over `quota` without meaning to.
 
 ## Two more traps
 
-**Architecture is a different rank space.** It admits on MAH-AAC-CET / NATA
+**Architecture is a different rank space.** It admits on NATA / JEE Main Paper 2
 merit, not the MHT-CET PCM state merit rank. Filter on `stream` or `rank_basis`
 before comparing ranks across streams. It is also the only stream with
 `opening_score` / `closing_score` populated.

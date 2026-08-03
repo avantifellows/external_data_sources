@@ -41,10 +41,11 @@ description: |
      quota gives women L-seats *in addition to* the G pool. A female candidate's
      reachable set is gender IN ('All','Girls'), not gender = 'Girls'.
   2. ARCHITECTURE IS A DIFFERENT RANK SPACE. Architecture is admitted on
-     MAH-AAC-CET / NATA merit, not the MHT-CET PCM state merit rank. Filter on
+     NATA or JEE Main Paper 2 (merit = NATA/2 + Class XII %, max 200), not the MHT-CET PCM state merit rank. Filter on
      stream or rank_basis before comparing ranks across streams. It is also the
-     only stream with opening_score / closing_score populated (NATA merit
-     score); those are NULL everywhere else.
+     only stream with opening_score / closing_score populated; those are NULL
+     everywhere else. B.Design is a third space again (MAH-B.Design CET), so
+     only engineering + pharmacy (58,378 of 59,380 rows) are true MHT-CET.
   3. category vs category_raw. category is the canonical 5-bucket rollup
      (GEN / EWS / OBC-NCL / SC / ST) plus OTHER. Maharashtra's VJ / NT1-3 /
      SEBC / SBC groups have no clean national equivalent and land in OTHER —
@@ -90,9 +91,12 @@ columns:
     type: STRING
     mode: REQUIRED
     description: >
-      Entrance exam whose merit list governs admission. 'MHT-CET' for
-      engineering / pharmacy / B.Design; 'MAH-AAC-CET / NATA' for architecture.
-      Distinguishes rank spaces — see rank_basis.
+      Entrance exam whose merit list governs admission — and therefore which
+      rank space the row lives in. 'MHT-CET' for engineering and pharmacy;
+      'NATA / JEE Main Paper 2' for architecture (B.Arch merit is NATA/2 +
+      Class XII %, max 200); 'MAH-B.Design CET' for bdesign. Only engineering
+      and pharmacy are actually MHT-CET — filter on this (or rank_basis) before
+      comparing ranks across streams.
 
   - name: stream
     type: STRING
@@ -211,7 +215,7 @@ columns:
     mode: REQUIRED
     description: >
       MAX state merit rank observed in the bucket — the last rank admitted.
-      For architecture this is a MAH-AAC-CET / NATA merit number, not an
+      For architecture this is a NATA / JEE Main Paper 2 merit number, not an
       MHT-CET rank.
 
   - name: num_rank_observations
@@ -226,14 +230,14 @@ columns:
     type: FLOAT
     mode: NULLABLE
     description: >
-      Architecture only: MIN MAH-AAC-CET / NATA merit score. NULL for the
+      Architecture only: MIN NATA / JEE Main Paper 2 merit score. NULL for the
       MHT-CET streams, which publish no per-seat score.
 
   - name: closing_score
     type: FLOAT
     mode: NULLABLE
     description: >
-      Architecture only: MAX MAH-AAC-CET / NATA merit score. NULL elsewhere.
+      Architecture only: MAX NATA / JEE Main Paper 2 merit score. NULL elsewhere.
 
   - name: last_round_with_max
     type: STRING
@@ -247,7 +251,7 @@ columns:
     mode: REQUIRED
     description: >
       What the rank counts, e.g. 'MHT-CET State Merit Rank' or
-      'MH AAC-CET / NATA State Merit Rank'. Filter on this before comparing
+      'MH B.Arch CAP Merit No (NATA/2 + XII%, max 200)'. Filter on this before comparing
       ranks across streams.
 
   - name: source_file
