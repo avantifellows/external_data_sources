@@ -7,11 +7,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import (
-    GCS_BUCKET, GCS_PREFIX, OPTIONAL_RAW_FILES, RAW, RAW_FILES, TABLES,
+    GCS_BUCKET, GCS_PREFIX, OPTIONAL_RAW_FILES, RAW, RAW_FILES, RAW_PDF_DIR,
+    RAW_PDF_STREAMS, TABLES,
 )
 
 
-def _items(include_raw: bool, include_clean: bool) -> list[tuple[Path, str]]:
+def _pdf_items() -> list[tuple[Path, str]]:
+    """The official CET Cell PDFs, mirrored under raw/pdfs/<stream>/.
+
+    256 files, ~96 MB. These are the auditable source of record: every number
+    in the fact table traces back to one of these pages. Gitignored — they ride
+    in GCS, never in the repo.
+    """
+    items: list[tuple[Path, str]] = []
+    for stream in RAW_PDF_STREAMS:
+        for path in sorted((RAW_PDF_DIR / stream).glob("*.pdf")):
+            items.append((path, f"{GCS_PREFIX}/raw/pdfs/{stream}/{path.name}"))
+    return items
+
+
+def _items(include_raw: bool, include_clean: bool, include_pdfs: bool) -> list[tuple[Path, str]]:
     items: list[tuple[Path, str]] = []
     if include_raw:
         for name in RAW_FILES:
@@ -23,6 +38,14 @@ def _items(include_raw: bool, include_clean: bool) -> list[tuple[Path, str]]:
             path = RAW / name
             if path.exists():
                 items.append((path, f"{GCS_PREFIX}/raw/{name}"))
+    if include_pdfs:
+        pdfs = _pdf_items()
+        if not pdfs:
+            raise SystemExit(
+                f"No PDFs found under {RAW_PDF_DIR}. Fetch them with download_MH.py "
+                "and download_MH_arch.py in futures-v2, then mirror into raw/pdfs/<stream>/."
+            )
+        items += pdfs
     if include_clean:
         for table in TABLES:
             if not table.local_path.exists():
@@ -36,12 +59,21 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--raw-only", action="store_true")
     mode.add_argument("--clean-only", action="store_true")
+    mode.add_argument("--pdfs-only", action="store_true",
+                      help="Upload only the 256 official source PDFs.")
+    parser.add_argument("--with-pdfs", action="store_true",
+                        help="Also upload the source PDFs (~96 MB) alongside CSVs/parquet.")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    include_raw = not args.clean_only
-    include_clean = not args.raw_only
-    items = _items(include_raw, include_clean)
+    if args.pdfs_only:
+        include_raw = include_clean = False
+        include_pdfs = True
+    else:
+        include_raw = not args.clean_only
+        include_clean = not args.raw_only
+        include_pdfs = args.with_pdfs
+    items = _items(include_raw, include_clean, include_pdfs)
 
     client = None
     if not args.dry_run:

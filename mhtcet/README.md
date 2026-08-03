@@ -21,6 +21,7 @@ mhtcet/raw/MH_engg_state_quota_closing_ranks_2025.csv       (gitignored)
 mhtcet/raw/MH_pharm_state_quota_closing_ranks_2025.csv      (gitignored)
 mhtcet/raw/MH_arch_state_quota_closing_ranks_2025.csv       (gitignored)
 mhtcet/raw/MH_bdesign_state_quota_closing_ranks_2025.csv    (gitignored, optional)
+mhtcet/raw/pdfs/<stream>/*.pdf                              (gitignored, 256 official PDFs)
        │  scripts/build_clean.py    union streams, type, validate anchors
        ▼
 mhtcet/clean/mhtcet_fact_cutoffs.parquet                    (gitignored)
@@ -51,6 +52,13 @@ Parsers live in **[`avantifellows/futures-v2`](https://github.com/avantifellows/
 covered: agriculture (MCAER publishes no per-college closing ranks), 5-yr LL.B
 and B.HMCT (no batch-downloadable source).
 
+All 256 official PDFs are mirrored to
+`gs://avantifellows-external-data/mhtcet/raw/pdfs/<stream>/`, so any number in
+the fact table can be traced back to the page it came from without re-scraping
+the CET Cell. They are gitignored — large binaries belong in GCS, never in git.
+Architecture accounts for 234 of them because that portal publishes one PDF per
+institute per round instead of one consolidated file.
+
 > **Scope: every college type ships.** Unlike the older `state_cet/` product,
 > this table is not pre-filtered to government colleges. `college_type` is a
 > column, so government scope is a query
@@ -71,9 +79,16 @@ cp /path/to/futures-v2/state_cet/scrape/extracted_data/MH_{engg,pharm,arch,bdesi
 .venv/bin/python scripts/build_clean.py --dry-run
 .venv/bin/python scripts/build_clean.py
 
-# 3. Stage to GCS
+# 3. Stage to GCS (parsed CSVs + clean parquet)
 .venv/bin/python scripts/upload_to_gcs.py --dry-run
 .venv/bin/python scripts/upload_to_gcs.py
+
+# 3b. Mirror the official source PDFs (~96 MB, 256 files) for auditability.
+#     cp them into raw/pdfs/<stream>/ from futures-v2's
+#     state_cet/scrape/source/MH/ first (architecture lives under .../pdfs/).
+.venv/bin/python scripts/upload_to_gcs.py --pdfs-only --dry-run
+.venv/bin/python scripts/upload_to_gcs.py --pdfs-only
+# (or `--with-pdfs` to do everything in one pass)
 
 # 4. Load GCS → BQ
 .venv/bin/python scripts/load_bq.py --dry-run

@@ -27,6 +27,14 @@ RAW_FILES = [
 # bdesign has 3 private institutes and no govt seats; included when present.
 OPTIONAL_RAW_FILES = ["MH_bdesign_state_quota_closing_ranks_2025.csv"]
 
+# The official CET Cell PDFs the CSVs above were parsed from — the auditable
+# source of record. 256 files, ~96 MB, under raw/pdfs/<stream>/. Architecture is
+# 234 of them because that portal publishes one PDF per institute per round
+# rather than one consolidated file. Staged to GCS (never git) so any number in
+# the fact table can be traced back to the page it came from.
+RAW_PDF_DIR = RAW / "pdfs"
+RAW_PDF_STREAMS = ["engineering", "pharmacy", "architecture", "bdesign"]
+
 # ─── GCS ────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"
 GCS_PREFIX = "mhtcet"   # gs://{bucket}/{prefix}/clean/*.parquet
