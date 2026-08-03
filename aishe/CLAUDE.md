@@ -22,6 +22,7 @@ aishe/
 ├── scripts/
 │   ├── sources.py                    # config + Table/DirectoryTable registry (single source of truth)
 │   ├── fetch.py                      # download Final Report workbooks -> raw/
+│   ├── inspect_workbook.py           # diagnostic: sheet inventory + header geometry (run before a new year)
 │   ├── build_programme_map.py        # 34a programme names -> discipline codemap
 │   ├── clean_aishe.py                # parse Final Report xlsx -> clean/higher_ed.parquet
 │   ├── build_institution_directory.py# parse HE Directory xlsx -> clean/aishe_dim_*.parquet
@@ -51,10 +52,23 @@ one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
 
 ### Parsing gotchas
 
-- **Sheet names vary by year.** Match on the space-stripped, lowercased name.
+- **Sheet names vary by year.** Match on the space-stripped, lowercased name
+  (`_sheet`). This tolerates whitespace/case drift but *not* a renumbered table —
+  AISHE renumbers between editions, so `33OutTurnState` may not be Table 33 next year.
 - **Tables 12 and 35 share a layout** — UG by discipline, T12 = enrolment, T35 = graduates.
-- **Column layout shifts across years.** 2021-22 added an S.No. column; auto-detected by
-  locating the row whose cell equals `"Discipline"` exactly.
+- **Only the discipline sheets self-describe.** `_discipline_series` (T12/T35) detects
+  its header by locating the `"Discipline"` cell, so it absorbs a column shift — that's
+  how 2021-22's added S.No. column was handled. **Tables 33 and 34a do not**: they read
+  fixed offsets (`row[2 + i * 3 + gender]`) from a fixed start row against the fixed
+  `LEVELS` / `SOCIAL_CATEGORIES` lists.
+- **A layout change on T33/T34a fails silently, not loudly.** `_row()` coerces a
+  non-numeric cell to `0`, so an inserted column or an added social category yields
+  plausible zeros and wrong totals rather than an error. Run
+  `inspect_workbook.py` before trusting a new year, and re-check the validation total.
+- **`LATEST_YEAR` is a data value, not just a selector.** `state_level_rows` and
+  `programme_social_rows` stamp it into `aishe_year` and `main()` only ever opens that
+  one workbook — so those two cuts are single-year *by construction*. Extending them to
+  a new year is a code change (thread `year` through), not a config change.
 - **Discipline totals only.** Sub-discipline rows are skipped.
 - **Social categories overlap.** All Categories ⊇ SC/ST/OBC/PwD/Muslim/EWS — never sum
   across `social_category`.
@@ -63,8 +77,15 @@ one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
 
 1. Add the new year's URL + path to `REPORT_URLS` / `REPORTS` in `sources.py`.
 2. `fetch.py` pulls the workbook into `raw/`.
-3. If the programme list changed, re-run `build_programme_map.py`.
-4. `clean_aishe.py` → `upload_to_gcs.py --raw-only` → `upload_to_gcs.py --clean-only`
+3. **`inspect_workbook.py --year <new>` — do not skip.** Confirms the sheets still
+   exist under the expected names (and suggests candidates if a table was renumbered),
+   and reports where data starts plus how many value columns follow. If T33 shows
+   anything other than 24 value columns from index 2 (8 levels × 3 genders), or T34a
+   anything other than 24 (8 social categories × 3), the positional readers in
+   `clean_aishe.py` need updating before the numbers can be trusted — see the
+   silent-zero gotcha above.
+4. If the programme list changed, re-run `build_programme_map.py`.
+5. `clean_aishe.py` → `upload_to_gcs.py --raw-only` → `upload_to_gcs.py --clean-only`
    → `load_bq.py --table aishe_fact_higher_ed_students`.
 
    (Bare `upload_to_gcs.py` runs the strict all-tables path — it requires *every*
