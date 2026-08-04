@@ -29,6 +29,42 @@ SOURCE_XLSX = RAW / "udise_2024-25_enrolment.xlsx"
 SHEET = "UDISE+"
 ACADEMIC_YEAR = "2024-25"
 
+# ─── DSP microdata (school level) — NOT YET INGESTED ──────────────────────────
+# A second, much larger UDISE+ product, unrelated to the Report 4000 cross-tab
+# above: per-school records from the Data Sharing Portal, downloaded by hand as one
+# zip per file group per year. See docs/DSP_INGEST_PLAN.md before starting.
+#
+# Grain is ONE ROW PER SCHOOL, keyed on `pseudocode` — a pseudonymised school id
+# that joins the four groups to each other. There is no school name and no UDISE
+# code, so these cannot be linked to Avanti's own school lists, and there are no
+# student-level records: school aggregates throughout, no PII.
+#
+# Size is the main constraint. The zips are ~754 MB across the two years and the
+# enrolment CSV alone is 562 MB uncompressed — do not read one with a naive
+# pandas.read_csv on a laptop. Nothing under raw/dsp/ is committed (.gitignore).
+DSP_YEARS = ("2020-21", "2024-25")
+
+# Group -> the CSV inside that group's zip. The zip filenames carry the year, the
+# CSVs do not: "100_enr1.csv" is the same name in every edition.
+DSP_GROUPS: dict[str, str] = {
+    "enrolment_data_1": "100_enr1.csv",   # enrolment by class x gender (cpp..c12)
+    "enrolment_data_2": "100_enr2.csv",   # continues the enrolment block
+    "profile_data_1":   "100_prof1.csv",  # state/district/block, category, management
+    "profile_data_2":   "100_prof2.csv",  # continues the profile block
+    "teacher_data":     "100_tch.csv",    # teacher counts by sex/social group/qual
+    "facility_data":    "100_fac.csv",    # building, classrooms, toilets, utilities
+}
+
+
+def dsp_zip(year: str, group: str) -> Path:
+    """Path to a downloaded DSP zip, named as the portal produces them."""
+    return RAW / "dsp" / year / f"{group}_All State_{year}.zip"
+
+
+DSP_CODEBOOKS: dict[str, Path] = {
+    year: ROOT / "docs" / f"DSP_Schema_{year}.pdf" for year in DSP_YEARS
+}
+
 # ─── GCS ──────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"
 GCS_PREFIX = "udise"

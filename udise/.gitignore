@@ -1,4 +1,20 @@
 # UDISE source + derived data — never in git. Staged to GCS instead.
+
+# Dashboard cross-tab export (Report 4000) — see README.
 raw/*.xlsx
 raw/*.XLSX
+
+# DSP (Data Sharing Portal) school-level microdata. ~754 MB of zips per the two
+# years held, and one enrolment CSV alone is 562 MB uncompressed, so nothing under
+# raw/dsp/ may ever be committed. Extract to raw/dsp/<year>/extracted/ if needed.
+raw/dsp/**/*.zip
+raw/dsp/**/*.csv
+raw/dsp/**/*.CSV
+raw/dsp/**/extracted/
+
+# Parsed output.
 clean/*.parquet
+clean/*.csv
+
+# The DSP codebook PDFs in docs/ ARE committed — small, public, and the only
+# description of the column meanings.
