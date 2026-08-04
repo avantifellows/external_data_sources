@@ -558,13 +558,31 @@ T35 = ("T35", r"Table\s*35\s*[.:]\s*Out-?turn/Pass-Out at Under Graduate",
 #                   (+38,652). One subject row is being taken as a discipline;
 #                   this edition indents the discipline/subject columns
 #                   differently from the other three.
-#   (2016-17, T35)  this edition prints Table 35 as a *ranked list* split across
-#                   pages — subjects on one page, disciplines on the next — and
-#                   sets each label on a different text line from its numbers.
-#                   Neither the indent rule nor the line reader survives it. The
-#                   published Grand Total is itself misread (314,264,395), so the
-#                   anchor needs fixing before the rows do.
-#   (2017-18, T35)  same ranked-list layout as 2016-17.
+#   (2016-17, T35)  NOT a ranked list — that earlier note was wrong, and looking at
+#   (2017-18, T35)  the rendered page is what corrected it. The layout is the
+#                   standard discipline/subject hierarchy, same shape as Table 12.
+#                   The real defect is a constant ONE-ROW VERTICAL OFFSET between
+#                   the label column and the value columns, so pdfplumber's line
+#                   banding pairs every label with the NEXT row's figures:
+#
+#                     'Journalism & Mass Communication'          <- values missing
+#                     'Social Work 2831 2372 5203'               <- Journalism's
+#                     'Fashion Technology 2573 2567 5140'        <- Social Work's
+#                     'Grand Total 314264395 33137378 645638463' <- two rows merged
+#
+#                   Hence the absurd "published Grand Total" of 314,264,395: the
+#                   last data row's digits are merged into the total's.
+#                   THE FIX is to pair the k-th label with the k-th value-triple by
+#                   rank down the page rather than by text-line banding — a constant
+#                   offset is exactly what banding cannot survive. Wrapped labels
+#                   would break naive rank-pairing, so count both columns first and
+#                   only rank-pair when they agree.
+#                   A good anchor already exists: this table's Grand Total equals
+#                   Table 33's Under Graduate level (3,142,649 Male for 2016-17,
+#                   confirmed against the page).
+#                   Do NOT transcribe these from the image. That freezes the
+#                   figures, breaks on the next edition, and leaves the rows checked
+#                   only against a total read by the same fallible eye.
 #
 #   (2018-19, T34)  FIXED and registered. Was -51: nine rows printing fewer than
 #                   three figures (a blank gender cell, or no out-turn at all)
