@@ -171,6 +171,29 @@ def _key(s: str) -> str:
 
 ROLLUP_LABELS = {"grand", "grandtotal", "allindia", "india", "total"}
 
+# AISHE relabels the social-group columns between editions. Left as printed, one
+# category becomes several values and the series splits — the same hazard as the
+# state spellings. Keyed on the squashed label so spacing/case drift is absorbed.
+SOCIAL_GROUP_CANONICAL = {
+    "all": "All Categories",
+    "allcategories": "All Categories",
+    "otherbackwardclass": "Other Backward Classes",
+    "otherbackwardclasses": "Other Backward Classes",
+    "otherminoritycommunities": "Other Minority Communities",
+    "personswithdisability": "Persons with Disability",
+    # 2023-24 renames it; same category, so it must not become a second value.
+    "personswithbenchmarkdisability": "Persons with Disability",
+    "scheduledcaste": "Scheduled Caste",
+    "scheduledtribe": "Scheduled Tribe",
+    "muslim": "Muslim",
+    "ews": "EWS",
+}
+
+
+def canonical_social_group(label: str) -> str:
+    """One spelling per social category, across editions."""
+    return SOCIAL_GROUP_CANONICAL.get(_key(label), label.strip())
+
 
 def _label_with_merge(row, label_col: int) -> str:
     """The row's label, tolerating the merged cell AISHE uses on its roll-up row.
@@ -323,9 +346,99 @@ def _check_grand_total(rows, grand, year: str, sheet: str) -> None:
             )
 
 
+# ─── Tables 14 / 33a: enrolment or graduates by state × social category ──────
+def state_social_rows(ws, year: str, metric: str, groups, basis: str) -> list[dict]:
+    """State × social-group cross-tab (Table 14 enrolment, Table 33a graduates).
+
+    The Excel counterpart of the PDF Tables 14+15. Group labels come from the
+    registry because they drift between editions, and are canonicalised on the way
+    out so the dimension has one value per category across the whole series.
+    """
+    if not groups:
+        raise SystemExit(
+            f"{year} {ws.title!r}: the state_social cut needs its group list "
+            f"declared in sources.RAW_SHEETS (the read is positional)."
+        )
+    groups = list(groups)
+    label_col, first_val, data_row = _crosstab_geometry(ws, groups)
+    out, india = [], {}
+    for row in ws.iter_rows(min_row=data_row, values_only=True):
+        if len(row) <= label_col:
+            continue
+        state = _label_with_merge(row, label_col)
+        if not state:
+            continue
+        is_rollup = _key(state) in ROLLUP_LABELS
+        state = canonical_state(state)
+        for gi, group in enumerate(groups):
+            cat = canonical_social_group(group)
+            for gj, gender in enumerate(GENDERS):
+                idx = first_val + gi * 3 + gj
+                val = row[idx] if idx < len(row) else None
+                ctx = f"{ws.title} {state}/{cat}/{gender}"
+                if is_rollup:
+                    india.setdefault(cat, {})[gender] = _num(val, ctx)
+                    continue
+                out.append(_row("state_social", year, metric, SENTINEL, state,
+                                SENTINEL, SENTINEL, cat, gender, val, ctx=ctx,
+                                basis=basis))
+    _check_social_india(out, india, year, ws.title)
+    return out
+
+
+# Editions whose published national row is computed independently of its own state
+# rows, so the two disagree by a rounding hair. Value is the largest absolute
+# difference tolerated for that sheet — NOT a blanket epsilon:
+#
+#   * It is per (year, sheet), and only two sheets need it. The 2019-20, 2020-21 and
+#     2021-22 estimated tables reconcile EXACTLY to the unit, so tolerating drift
+#     everywhere would throw away a check that genuinely holds.
+#   * The bound is the state count (36), because each state's grossed-up estimate is
+#     rounded to a whole student independently, and the national figure is rounded
+#     separately — so the sum of rounded parts can differ from the rounded sum by at
+#     most one per state.
+#   * Observed drift is 12 at most, against totals of 22-44 million: a relative error
+#     of 5e-7. A genuine misread is thousands and still fails.
+#
+# Evidence it is theirs: in 2022-23, ten states' OWN published rows are internally
+# inconsistent (Male + Female != Total by 1), and all three genders drift together.
+INDEPENDENTLY_ROUNDED: dict[tuple[str, str], int] = {
+    ("2022-23", "14-15TotalEnrCategory (2)"): 36,
+    ("2023-24", "14-15TotalEnrCategory (2)"): 36,
+}
+
+
+def _check_social_india(rows, india, year: str, sheet: str) -> None:
+    """Each category's states must sum to its published All India figure.
+
+    Per-category rather than in aggregate, so a fault localises to one column
+    block instead of only showing up in the total.
+    """
+    if not india:
+        print(f"  ⚠ {year} {sheet}: no All India row found — social totals unverified")
+        return
+    for cat, by_gender in india.items():
+        for gender, want in by_gender.items():
+            got = sum(r["value"] for r in rows
+                      if r["social_category"] == cat and r["gender"] == gender)
+            slack = INDEPENDENTLY_ROUNDED.get((year, sheet), 0)
+            if abs(got - want) > slack:
+                extra = (f"\nUp to {slack:,} is tolerated for this sheet "
+                         f"(independently-rounded national row), but this exceeds it."
+                         if slack else "")
+                raise SystemExit(
+                    f"{year} {sheet}: states sum to {got:,} for {cat}/{gender} but "
+                    f"the published All India row says {want:,} (off by "
+                    f"{got - want:+,}). A row or column was misread.{extra}"
+                )
+
+
 # ─── Table 34a: graduates by programme × social category (all levels) ────────
-def programme_social_rows(ws, year: str) -> list[dict]:
-    label_col, first_val, data_row = _crosstab_geometry(ws, SOCIAL_CATEGORIES)
+def programme_social_rows(ws, year: str, groups=None) -> list[dict]:
+    """Programme × social category. `groups` comes from the registry: 2019-20's
+    Table 34 has no category breakdown at all, which is one group, not eight."""
+    groups = list(groups) if groups else SOCIAL_CATEGORIES
+    label_col, first_val, data_row = _crosstab_geometry(ws, groups)
     out = []
     for row in ws.iter_rows(min_row=data_row, values_only=True):
         if len(row) <= label_col:
@@ -333,7 +446,7 @@ def programme_social_rows(ws, year: str) -> list[dict]:
         prog = _label_with_merge(row, label_col)
         if not prog or _key(prog) in ROLLUP_LABELS:
             continue
-        for ci, cat in enumerate(SOCIAL_CATEGORIES):
+        for ci, cat in enumerate([canonical_social_group(g) for g in groups]):
             for gi, gender in enumerate(GENDERS):
                 idx = first_val + ci * 3 + gi
                 val = row[idx] if idx < len(row) else None
@@ -429,9 +542,11 @@ def _check_discipline_total(rows, published, year: str, metric: str,
 
 # ─── Driver ──────────────────────────────────────────────────────────────────
 BUILDERS = {
-    "state_level": lambda ws, year, metric: state_level_rows(ws, year),
-    "programme_social": lambda ws, year, metric: programme_social_rows(ws, year),
-    "ug_discipline": discipline_rows,
+    "state_level": lambda ws, rs: state_level_rows(ws, rs.year),
+    "state_social": lambda ws, rs: state_social_rows(ws, rs.year, rs.metric,
+                                                     rs.groups, rs.basis),
+    "programme_social": lambda ws, rs: programme_social_rows(ws, rs.year, rs.groups),
+    "ug_discipline": lambda ws, rs: discipline_rows(ws, rs.year, rs.metric),
 }
 
 
@@ -457,7 +572,7 @@ def build_rows(allow_missing_excel: bool = False) -> tuple[list[dict], list[str]
             build = BUILDERS.get(rs.cut)
             if build is None:
                 raise SystemExit(f"unknown cut {rs.cut!r} in RAW_SHEETS ({year}/{rs.sheet})")
-            got = build(_sheet(wb, rs.sheet), year, rs.metric)
+            got = build(_sheet(wb, rs.sheet), rs)
             print(f"  {year} {rs.sheet:<16} cut={rs.cut:<17} metric={rs.metric:<10} "
                   f"{len(got):>6,} rows")
             rows += got
@@ -486,6 +601,60 @@ def _validate(df: pd.DataFrame) -> None:
         note = f"  anchor={anchor:,}" if anchor else "  (no published anchor)"
         print(f"  {year} UG graduates: state-cut={ug_state:,}  "
               f"discipline-cut={ug_disc:,}{note}  {'OK' if ok else 'CHECK'}")
+
+
+# Editions whose Table 34 covers a NARROWER set of levels than Table 33's Grand
+# Total, so the two are not directly comparable. 2015-16 lists degree programmes
+# only — no PG Diploma, Diploma or Certificate (it does include Integrated). With
+# those three levels removed from the Table 33 side the two agree EXACTLY on all
+# three genders, which is what establishes the exclusion rather than assuming it:
+#
+#   2015-16 Male    T34 3,830,377  vs  T33 minus those levels 3,830,377
+#           Female  T34 3,976,517  vs                         3,976,517
+#           Total   T34 7,806,894  vs                         7,806,894
+#
+# Getting this wrong cost real time: the gap was first recorded as a -638,114 parse
+# bug when the parse was in fact correct and the anchor was wrong for that edition.
+PROGRAMME_CUT_EXCLUDES_LEVELS: dict[str, tuple[str, ...]] = {
+    "2015-16": ("PG Diploma", "Diploma", "Certificate"),
+}
+
+
+def _check_programme_vs_state(df: pd.DataFrame) -> None:
+    """Table 34's population is Table 33's Grand Total — so they must agree.
+
+    An external anchor for the programme cut that costs nothing: the programme
+    table and the state×level table count the same graduates, sliced differently.
+    It is what confirmed the 2018-19 Table 34 read after the sparse-row fix, and
+    it is the check to lean on for any edition that prints no Grand Total row of
+    its own (2015-16, 2016-17).
+    """
+    g = df[df.social_category.isin(["All Categories"]) | (df.cut == "state_level")]
+    for year in sorted(set(df[df.cut == "programme_social"].aishe_year)):
+        if year not in set(df[df.cut == "state_level"].aishe_year):
+            continue
+        excluded = PROGRAMME_CUT_EXCLUDES_LEVELS.get(year, ())
+        for gender in GENDERS:
+            sl = g[(g.cut == "state_level") & (g.aishe_year == year)
+                   & (g.gender == gender)]
+            if excluded:
+                sl = sl[~sl.level.isin(excluded)]
+            a = sl.value.sum()
+            b = g[(g.cut == "programme_social") & (g.aishe_year == year)
+                  & (g.gender == gender)
+                  & (g.social_category == "All Categories")].value.sum()
+            if a != b:
+                raise SystemExit(
+                    f"{year}: programme cut sums to {b:,} for gender={gender} but "
+                    f"the state×level cut sums to {a:,} (off by {b - a:+,}).\n"
+                    f"These count the same graduates — one of the two reads is "
+                    f"wrong, OR this edition's Table 34 covers a different set of "
+                    f"levels (see PROGRAMME_CUT_EXCLUDES_LEVELS; check whether the "
+                    f"gap equals one or more whole levels before touching the "
+                    f"parser)."
+                )
+        note = (f" (excl. {', '.join(excluded)})" if excluded else "")
+        print(f"  {year} programme vs state×level{note}: agree on all genders  OK")
 
 
 def _check_state_labels(df: pd.DataFrame) -> None:
@@ -559,6 +728,7 @@ def main() -> None:
               f"basis={bases:<16} years={yrs}")
 
     _validate(df)
+    _check_programme_vs_state(df)
     _check_state_labels(df)
     print("✓ done.")
 

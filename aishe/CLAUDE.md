@@ -47,19 +47,23 @@ aishe/
 - `value` — the count
 
 Cuts:
-- `state_level` — Table 33, graduates by state × level (2015-16 … 2018-19, 2021-22)
-- `programme_social` — Table 34a, graduates by programme × social category (2021-22 ONLY)
-- `state_social` — Tables 14 (All Categories/SC/ST/OBC) + 15 (PwD/Muslim/Other
-  Minority), ENROLMENT by state × social category, all 7 PDF years
-  (2012-13 … 2018-19). The social time series, and the only `estimated` cut.
+- `state_level` — Table 33, graduates by state × level (2015-16 → 2021-22)
+- `programme_social` — Tables 34 / 34a, graduates by programme (2018-19 → 2021-22).
+  Only 2020-21 and 2021-22 break it out by social category; 2018-19 and 2019-20
+  print no category breakdown, so they are the All Categories slice only.
+- `state_social` — Tables 14/15 (enrolment, 2012-13 → 2021-22, the deepest series
+  here) and Table 33a (GRADUATES by state × category, 2020-21 → 2021-22). Told
+  apart by `metric`. **The only cut carrying both bases**: enrolment is estimated,
+  the 33a graduates are actual response.
 - `ug_discipline` — Tables 12 (enrolment) + 35 (graduates), UG by discipline
   (2015-16, 2016-17, 2018-19, 2019-22)
 
 **`basis` separates actual-response from estimated figures.** AISHE publishes both
-and says which in the caption. `state_social` is entirely `estimated` (grossed up
-for non-response); every other cut is `actual response`. They are different
-populations — estimated runs systematically higher, so comparing across them
-invents growth. Filtering to one cut already keeps you on one basis.
+and says which in the caption. Every cut is `actual response` except
+`state_social`, which carries both — estimated enrolment and actual-response
+graduates — so there, filter `basis` or `metric`, not just `cut`. They are different
+populations: estimated runs systematically higher, so comparing across them
+invents growth. On every other cut, filtering by `cut` already pins the basis.
 
 **AISHE has no income variable and no EWS before 2019-20.** Checked every PDF
 edition: zero hits for household/family income, income group, EWS or
@@ -68,14 +72,26 @@ income use PLFS `mpce`.
 
 **Coverage is ragged and that is the main trap.** Not every year carries every
 cut, so a query that doesn't `GROUP BY aishe_year` will read missing coverage as a
-real trend. `state_social` is the deepest series (all 7 PDF years) and
-`state_level` has five; `programme_social` is 2021-22 only, because the pre-2019
-editions print a Table 34 with no social-category breakdown of programmes.
+real trend. `state_social` is the deepest (all 10 years), `state_level` runs
+2015-16 → 2021-22, `programme_social` 2018-19 → 2021-22, and `ug_discipline` skips
+2017-18. `docs/INGEST_AUDIT.md` has the full year × cut grid, generated from the
+parquet.
 
 Dimensions a cut doesn't break out carry `"All"`. Cuts overlap — always filter to
 one `cut`. Add/change tables in `sources.py` (`TABLES` registry).
 
-**`RAW_SHEETS` is the parse registry.** Each entry is `(year, sheet, cut, metric)`, and
+**Check the workbook's full sheet list before assuming a year lacks a table.** Five
+sheets sat unparsed in workbooks we already held — `33OutTurnState` for 2019-20 and
+2020-21, `14TotalEnrCategory`, `33a CategoryOutTurn`, `34OutTurn Prog`, `34a` —
+which is why `state_level` looked like it stopped in 2018-19 and the social series
+like it stopped in 2018-19. Registering them added ~11,500 rows with no new
+parsing. `inspect_workbook.py --all-sheets` lists them; diff that against
+`RAW_SHEETS`.
+
+**`RAW_SHEETS` is the parse registry.** Each entry is `(year, sheet, cut, metric,
+groups, basis)` — `groups` because the social column headings drift between
+editions ("All" vs "All Categories", "Other Backward Class" vs "…Classes", no EWS
+before 2020-21) and the read is positional, so it cannot be one shared list. And
 `clean_aishe.py` builds exactly what's declared there — so which cuts a year contributes
 is config, not code. It's the same list `upload_to_gcs.py` mirrors to GCS `raw/`, so the
 traceability dump and the parse can't drift apart.

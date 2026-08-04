@@ -678,30 +678,137 @@ THREE_COL_RE = re.compile(
 )
 
 
-def _three_col_rows(page, ctx: str):
+# A line holding only this row's figures — an optional serial then exactly three
+# integers. When a programme name is too long to fit, AISHE sets the name on the
+# lines above and below and leaves the serial + figures on their own line:
+#
+#     M.B.A.(Tech.)-Master of Business Administration in
+#     39 774 577 1351
+#     Technology
+#
+# THREE_COL_RE needs label and figures on ONE line, so all three lines were
+# discarded — which is most of what 2015-16 (-638,114) and 2017-18 (-7,408) were
+# missing on Table 34.
+ONLY_FIGURES_RE = re.compile(
+    r"^(?P<serial>\d{1,3}\s+)?(?P<m>[\d,]+)\s+(?P<f>[\d,]+)\s+(?P<t>[\d,]+)$")
+
+
+def _assemble_wrapped(bands: list[str], ctx: str):
+    """Rows whose label wraps around a figures-only line.
+
+    Returns {index_of_figures_line: (label, [m, f, t])}. The label is the
+    contiguous run of text-only lines immediately before the figures joined to the
+    run immediately after, in reading order — which is how the cell is actually
+    laid out.
+
+    Only safe where the label column is a single column. Tables 12 and 35 carry a
+    second, merged discipline column whose text would be swept up as a wrapped
+    label, so this is opt-in per reader.
+    """
+    kind = []
+    for text in bands:
+        if not text or FURNITURE_RE.match(text):
+            kind.append("skip")
+        elif THREE_COL_RE.match(text):
+            kind.append("row")
+        elif ONLY_FIGURES_RE.match(text):
+            kind.append("figs")
+        elif re.fullmatch(r"[\d\s.]+", text):
+            kind.append("skip")          # the column-number row
+        else:
+            kind.append("text")
+
+    out = {}
+    for i, k in enumerate(kind):
+        if k != "figs":
+            continue
+        before, j = [], i - 1
+        while j >= 0 and kind[j] == "text":
+            before.insert(0, bands[j])
+            j -= 1
+        after, j = [], i + 1
+        while j < len(kind) and kind[j] == "text":
+            after.append(bands[j])
+            j += 1
+        label = " ".join(before + after).strip()
+        # A hyphen at the wrap point is a broken word, not a separator:
+        # "Medical Bio-" + "Chemistry" is one word.
+        label = re.sub(r"-\s+(?=\S)", "-", label)
+        label = re.sub(r"^\d{1,3}\s+", "", label).strip()
+        if not label or label.isdigit():
+            continue
+        m = ONLY_FIGURES_RE.match(bands[i])
+        out[i] = (label, [_num(m.group(k2), f"{ctx} {label}")
+                          for k2 in ("m", "f", "t")])
+    return out
+
+
+def _three_col_rows(page, ctx: str, join_wrapped: bool = False):
     """Yield (label, x0, [male, female, total]) for each data line on the page.
 
     Lines that are not data — captions, headers, page furniture, a merged label
     cell, a wrapped label fragment — simply don't match and are returned as
     skipped so the caller can report them rather than lose them silently.
     """
+    # Column centres, for placing the numbers on a row that doesn't print all
+    # three. None if the page has no usable header (then sparse rows are skipped
+    # as before rather than guessed at).
+    try:
+        _hi, hits = _gender_header(_lines(page))
+        centers = _centers(hits)[:3] if len(hits) >= 3 else None
+    except SystemExit:
+        centers = None
+
+    bands = page.extract_text_lines()
+    texts = [" ".join(b["text"].split()) for b in bands]
+    wrapped = _assemble_wrapped(texts, ctx) if join_wrapped else {}
+    # Lines consumed as part of a wrapped row must not also be read on their own.
+    consumed: set[int] = set()
+    for i in wrapped:
+        j = i - 1
+        while j >= 0 and j not in wrapped and texts[j] and \
+                not THREE_COL_RE.match(texts[j]) and \
+                not ONLY_FIGURES_RE.match(texts[j]) and \
+                not FURNITURE_RE.match(texts[j]):
+            consumed.add(j); j -= 1
+        j = i + 1
+        while j < len(texts) and j not in wrapped and texts[j] and \
+                not THREE_COL_RE.match(texts[j]) and \
+                not ONLY_FIGURES_RE.match(texts[j]) and \
+                not FURNITURE_RE.match(texts[j]):
+            consumed.add(j); j += 1
+
     rows, skipped, totals = [], [], []
-    for band in page.extract_text_lines():
-        text = " ".join(band["text"].split())
+    for bi, band in enumerate(bands):
+        text = texts[bi]
+        if bi in wrapped:
+            label, cells = wrapped[bi]
+            if _key(label) in ALL_INDIA:
+                totals.append(cells)
+            else:
+                rows.append((label, band["x0"], cells))
+            continue
+        if bi in consumed:
+            continue
         if not text or FURNITURE_RE.match(text):
             continue
         m = THREE_COL_RE.match(text)
+        sparse = None
         if not m:
-            skipped.append(text)
-            continue
-        label = m.group("label").strip()
-        # 2016-17 sets the serial hard against the label ("1Ph.D.-Doctor").
-        label = re.sub(r"^\d{1,3}(?=\D)", "", label).strip()
-        # A wholly numeric label is the column-number row ("1 2 3 4"), whose
-        # trailing entries otherwise read as this row's Male/Female/Total.
-        if not label or label.isdigit():
-            continue
-        cells = [_num(m.group(k), f"{ctx} {label}") for k in ("m", "f", "t")]
+            sparse = _sparse_row(band, page, centers, ctx)
+            if sparse is None:
+                skipped.append(text)
+                continue
+            label, cells = sparse
+        else:
+            label = m.group("label").strip()
+            # 2016-17 sets the serial hard against the label ("1Ph.D.-Doctor").
+            label = re.sub(r"^\d{1,3}(?=\D)", "", label).strip()
+            # A wholly numeric label is the column-number row ("1 2 3 4"), whose
+            # trailing entries otherwise read as this row's Male/Female/Total.
+            if not label or label.isdigit():
+                continue
+            cells = [_num(m.group(k), f"{ctx} {label}") for k in ("m", "f", "t")]
         if _key(label) in ALL_INDIA:
             totals.append(cells)
             continue
@@ -709,7 +816,66 @@ def _three_col_rows(page, ctx: str):
     return rows, skipped, totals
 
 
-def _check_total(kept, published, ctx: str, debug=False) -> None:
+# A row that prints fewer than three figures. Anchored on the serial number,
+# because that is what separates a real row from a wrapped label fragment: a
+# programme with no out-turn at all prints its serial and name and nothing else,
+# while a continuation line ("Microbiology", "Pharmaceutical Technology") has no
+# serial. Requiring three figures drops both, which cost 9 of 2018-19 Table 34's
+# 195 rows and left the table 51 short of its published Male total.
+SPARSE_ROW_RE = re.compile(
+    r"^(?P<serial>\d{1,3})\s+(?P<label>\D.*?)(?P<nums>(?:\s+[\d,]+)*)\s*$")
+
+
+def _sparse_row(band, page, centers, ctx: str):
+    """Read a row printing 0, 1 or 2 of its Male/Female/Total cells.
+
+    The figures present are placed by x-position against the gender header, and a
+    third is derived where the other two allow it (Total ≡ Male + Female). Blank
+    cells become 0, which is what the report means by leaving them empty.
+    """
+    text = " ".join(band["text"].split())
+    m = SPARSE_ROW_RE.match(text)
+    if not m or centers is None:
+        return None
+    label = m.group("label").strip()
+    if not label or label.isdigit():
+        return None
+    nums = m.group("nums").split()
+    if len(nums) > 2:
+        return None                      # THREE_COL_RE's job, not this one
+
+    cells: list[int | None] = [None, None, None]
+    if nums:
+        # Locate the actual numeric words to get their x positions; the regex
+        # only tells us how many there are.
+        words = [w for w in page.extract_words()
+                 if band["top"] - 1 <= (w["top"] + w["bottom"]) / 2 <= band["bottom"] + 1
+                 and re.fullmatch(r"[\d,]+", w["text"])]
+        words = words[-len(nums):] if len(words) >= len(nums) else []
+        if len(words) != len(nums):
+            return None
+        bounds = _bounds(centers)
+        for w in words:
+            i = _band_of((w["x0"] + w["x1"]) / 2, bounds, 3)
+            if cells[i] is not None:
+                return None              # two figures in one column: not this shape
+            cells[i] = _num(w["text"], f"{ctx} {label}")
+
+    known = [i for i, c in enumerate(cells) if c is not None]
+    if len(known) == 2 and 2 in known:
+        # Male + Total, or Female + Total → the missing gender is the difference.
+        missing = ({0, 1} - set(known)).pop()
+        cells[missing] = cells[2] - cells[0 if missing == 1 else 1]
+    elif set(known) == {0, 1}:
+        cells[2] = cells[0] + cells[1]
+    filled = [0 if c is None else c for c in cells]
+    if filled[0] + filled[1] != filled[2]:
+        return None                      # inconsistent → let the caller skip it
+    return label, filled
+
+
+def _check_total(kept, published, ctx: str, debug=False,
+                 allow_missing: bool = False) -> None:
     """The kept rows must sum to the table's published Grand Total.
 
     Without this the discipline read fails quietly. Picking discipline rows out of
@@ -719,6 +885,16 @@ def _check_total(kept, published, ctx: str, debug=False) -> None:
     published 28,441,310, and nothing downstream would have noticed.
     """
     if not published:
+        if allow_missing:
+            # 2015-16 and 2016-17 print no Grand Total on the programme table.
+            # Those rows are still validated, one level up: clean_aishe's
+            # _check_programme_vs_state reconciles the whole cut against Table 33's
+            # Grand Total, which counts the same graduates. That check is mandatory
+            # and fails the build — but it only runs via clean_aishe.py, not when
+            # this module is run standalone.
+            print(f"    {ctx}: no Grand Total on this table — validated against "
+                  f"Table 33 instead")
+            return
         raise SystemExit(
             f"{ctx}: no Grand Total row found, so the row selection cannot be "
             f"verified. Refusing to emit unvalidated rows — inspect the table "
@@ -753,7 +929,8 @@ def programme_rows(pdf, year: str, pages: list[int], debug=False) -> list[dict]:
         _assert_single_gender_block(page, f"{year} Table 34 p{pno+1}", extra=(
             "If this edition breaks programme out by social category it is a "
             "Table 34a and needs the cross-tab reader instead."))
-        rows, skipped, totals = _three_col_rows(page, f"{year} T34")
+        rows, skipped, totals = _three_col_rows(page, f"{year} T34",
+                                                 join_wrapped=True)
         if debug:
             print(f"    p{pno+1}: {len(rows)} rows, {len(skipped)} non-data lines")
         collected += rows
@@ -762,7 +939,7 @@ def programme_rows(pdf, year: str, pages: list[int], debug=False) -> list[dict]:
     # Same gate as the discipline tables: programmes must sum to the published
     # Grand Total, or a dropped/duplicated programme row goes unnoticed.
     _check_total([(l, c) for l, _x, c in collected], published,
-                 f"{year} T34 programme", debug)
+                 f"{year} T34 programme", debug, allow_missing=True)
 
     for prog, _x0, cells in collected:
         for j, gender in enumerate(GENDERS):

@@ -32,6 +32,21 @@ CODEMAPS = ROOT / "codemaps"
 
 SENTINEL = "All"          # dimension value for "not broken out on this cut"
 
+# ─── Basis: actual response vs estimated ──────────────────────────────────────
+# AISHE publishes two kinds of figure and says which in the table caption:
+#
+#   "based on actual response"  the totals reported BY the institutions that
+#                               responded to the survey that year.
+#   "Estimated"                 those totals grossed up to the full registered
+#                               population, to account for non-response.
+#
+# They are not comparable. Response rates vary by year and state, so an estimated
+# figure is systematically larger than the actual-response one for the same cell —
+# comparing across the two reads as growth that did not happen. Every row carries
+# `basis` so the two can never be mixed silently.
+BASIS_ACTUAL = "actual response"
+BASIS_ESTIMATED = "estimated"
+
 # ─── Raw source workbooks (gitignored; fetched from the URLs below by fetch.py) ─
 REPORTS: dict[str, Path] = {
     "2019-20": RAW / "aishe_2019-20_final_report.xlsx",
@@ -41,23 +56,29 @@ REPORTS: dict[str, Path] = {
     "2023-24": RAW / "aishe_2023-24_final_report.xlsx",
 }
 
-# ─── Excel editions — NO STATIC SOURCE URL ────────────────────────────────────
-# The Excel workbooks cannot currently be fetched from a URL, so REPORT_URLS is
-# deliberately empty and fetch.py can only pull the PDFs below.
+# ─── Excel editions — 2019-20 onward only ─────────────────────────────────────
+# The download path is `assets/excel/<year>.xlsx`. That is worth spelling out
+# because it was wrong here for a long time: the previous URLs used the *download
+# filename* the viewer sets ("AISHE Final Report 2021-22.xlsx") as if it were the
+# path, so all five 404'd and the workbooks looked unfetchable. The real pattern is
+# in the viewer's own bundle:
 #
-# What was here before: five `he.nic.in/aishereport/assets/excel/AISHE Final
-# Report <year>.xlsx` URLs. All five return 404 (verified 2026-08-03) — including
-# the three years whose workbooks are already parsed, so this was never a
-# 2022-23/2023-24-only problem as the README claimed. On aishe.gov.in the
-# "(Excel)" links point at https://he.nic.in/aishereport/#/report/<year>, a
-# JavaScript report viewer that renders nothing without script execution and
-# exposes no static .xlsx path.
+#   downloadFile(e){ const i = `assets/excel/${e}.xlsx`; …
+#                    r.download = `AISHE Final Report ${e}.xlsx` }
 #
-# Consequence: the 2019-20 … 2021-22 workbooks in raw/ are NOT regenerable from
-# scratch. They must be re-obtained by hand through the viewer. Anyone who finds
-# the real download endpoint should populate this dict — fetch.py picks it up
-# with no other change.
-REPORT_URLS: dict[str, str] = {}
+# Probed every year from 2010-11: 2019-20 through 2023-24 return 200, and every
+# earlier year 404s. So there is no Excel edition before 2019-20 — the PDF is not a
+# fallback for those years, it is the only thing that exists. Re-check with:
+#   for y in 2018-19 2019-20; do curl -sI -o /dev/null -w "$y %{http_code}\n" \
+#     https://he.nic.in/aishereport/assets/excel/$y.xlsx; done
+_XLS = "https://he.nic.in/aishereport/assets/excel"
+REPORT_URLS: dict[str, str] = {
+    "2019-20": f"{_XLS}/2019-20.xlsx",
+    "2020-21": f"{_XLS}/2020-21.xlsx",
+    "2021-22": f"{_XLS}/2021-22.xlsx",
+    "2022-23": f"{_XLS}/2022-23.xlsx",
+    "2023-24": f"{_XLS}/2023-24.xlsx",
+}
 
 # Canonical source URLs — AISHE Final Report PDFs, on the MoE content CDN. These
 # are the *only* machine-fetchable edition, and the only edition at all for
@@ -284,8 +305,14 @@ INSTITUTION_DIRECTORY_RAW_FILES: list[str] = [t.raw_file for t in DIRECTORY_TABL
 class RawSheet:
     year: str
     sheet: str
-    cut: str      # fact `cut` this sheet feeds: state_level | programme_social | ug_discipline
+    cut: str      # state_level | state_social | programme_social | ug_discipline
     metric: str   # 'graduates' | 'enrolment'
+    # Cross-tab group labels AS PRINTED IN THIS YEAR'S SHEET, in order. The read is
+    # positional, and AISHE relabels between editions ("All" vs "All Categories",
+    # "Other Backward Class" vs "…Classes", EWS absent before 2020-21), so this
+    # cannot be one shared list. None means the reader's own default.
+    groups: tuple[str, ...] | None = None
+    basis: str = "actual response"
 
     @property
     def workbook(self) -> Path:
@@ -311,15 +338,113 @@ class RawSheet:
 # Adding a new year: run `inspect_workbook.py --year <new> --all-sheets` FIRST and
 # copy the *actual* sheet names in here. AISHE renumbers tables between editions,
 # so "33OutTurnState" is not guaranteed to be Table 33 in a later report.
+# Social-group column headings, as each edition prints them. Order is load
+# bearing. Note 2019-20 has no EWS column (the category starts in 2020-21) and
+# labels drift, which is why these are per-sheet rather than one constant.
+SOCIAL_XLS_2019 = ("All", "Scheduled Caste", "Scheduled Tribe",
+                   "Other Backward Classes", "Persons with Disability", "Muslim",
+                   "Other Minority Communities")
+SOCIAL_XLS_2020 = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                   "Other Backward Class", "Persons with Disability", "Muslim",
+                   "Other Minority Communities", "EWS")
+SOCIAL_XLS_FULL = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                   "Other Backward Classes", "Persons with Disability", "Muslim",
+                   "Other Minority Communities", "EWS")
+# The 2019-20 programme table is not broken out by category at all — one
+# Male/Female/Total block, which the cross-tab reader handles as a single group.
+SOCIAL_XLS_NONE = ("All Categories",)
+# 2022-23 moves PwD from 5th to 7th; 2023-24 moves it last AND renames it
+# "Persons with Benchmark Disability". Both are positional reads, so both need
+# their own tuple — and the rename is absorbed by canonical_social_group.
+SOCIAL_XLS_2022_ENR = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                       "Other Backward Classes", "Muslim",
+                       "Other Minority Communities", "Persons with Disability",
+                       "EWS")
+SOCIAL_XLS_2023_ENR = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                       "Other Backward Classes", "Muslim",
+                       "Other Minority Communities", "EWS",
+                       "Persons with Benchmark Disability")
+# 2023-24 drops the minority/PwD/EWS columns from its out-turn tables entirely.
+SOCIAL_XLS_CASTE4 = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                     "Other Backward Classes")
+
 RAW_SHEETS: list[RawSheet] = [
     RawSheet("2021-22", "33OutTurnState", "state_level",      "graduates"),
-    RawSheet("2021-22", "34a",            "programme_social", "graduates"),
+    RawSheet("2021-22", "34a",            "programme_social", "graduates",
+             SOCIAL_XLS_FULL),
     RawSheet("2021-22", "35UGDisc",       "ug_discipline",    "graduates"),
     RawSheet("2021-22", "12UGDisc",       "ug_discipline",    "enrolment"),
     RawSheet("2020-21", "35UGDisc",       "ug_discipline",    "graduates"),
     RawSheet("2020-21", "12UGDisc",       "ug_discipline",    "enrolment"),
     RawSheet("2019-20", "35UGDisc",       "ug_discipline",    "graduates"),
     RawSheet("2019-20", "12UGDisc",       "ug_discipline",    "enrolment"),
+
+    # ── Sheets the workbooks always had but nothing read ──────────────────────
+    # Cheaper coverage than any PDF: already-clean Excel in files we hold. Found
+    # by listing the workbooks' sheet names against RAW_SHEETS.
+    #
+    # state_level for the two years it was missing.
+    RawSheet("2019-20", "33OutTurnState", "state_level",      "graduates"),
+    RawSheet("2020-21", "33OutTurnState", "state_level",      "graduates"),
+    #
+    # The social cut, carried forward from the PDF years to 2021-22. Table 14 is
+    # captioned "Estimated" in every edition, so it joins the estimated series.
+    RawSheet("2019-20", "14TotalEnrCategory",        "state_social", "enrolment",
+             SOCIAL_XLS_2019, BASIS_ESTIMATED),
+    RawSheet("2020-21", "14-15TotalEnrCategory",     "state_social", "enrolment",
+             SOCIAL_XLS_2020, BASIS_ESTIMATED),
+    RawSheet("2021-22", "14-15TotalEnrCategory (2)", "state_social", "enrolment",
+             SOCIAL_XLS_FULL, BASIS_ESTIMATED),
+    #
+    # Table 33a — GRADUATES by state x social group. Same grain as the enrolment
+    # social cut, so it shares `state_social` and is told apart by `metric`. Its
+    # caption states no basis, but its All Categories column equals Table 33's
+    # Grand Total exactly in both years, which makes it actual-response and gives
+    # it a built-in anchor.
+    RawSheet("2020-21", "33a CategoryOutTurn", "state_social", "graduates",
+             SOCIAL_XLS_FULL),
+    RawSheet("2021-22", "33a CategoryOutTurn", "state_social", "graduates",
+             SOCIAL_XLS_FULL),
+    #
+    # The programme cut for 2019-20 and 2020-21. 2019-20 prints no category
+    # breakdown, so it lands as the All Categories slice, exactly like the PDF
+    # years' Table 34.
+    RawSheet("2019-20", "34OutTurn Prog", "programme_social", "graduates",
+             SOCIAL_XLS_NONE),
+    RawSheet("2020-21", "34a",            "programme_social", "graduates",
+             SOCIAL_XLS_FULL),
+
+    # ── 2022-23 and 2023-24 ───────────────────────────────────────────────────
+    # Reachable at last: the Excel download path was wrong in REPORT_URLS (see the
+    # note there), so these two workbooks had never been fetched. Sheet names are
+    # renamed again in both editions — hence the exact strings below.
+    #
+    # NB 2022-23 publishes BOTH "34 Out Turn Prog" (no category split) and "34a"
+    # (with it). Only 34a is registered: they are the same population, and taking
+    # both would double the programme cut.
+    RawSheet("2022-23", "12UGDisc",                    "ug_discipline", "enrolment"),
+    RawSheet("2022-23", "35 UG Discipline",            "ug_discipline", "graduates"),
+    RawSheet("2022-23", "33 Out Turn",                 "state_level",   "graduates"),
+    RawSheet("2022-23", "33 (a)(b) Category Out Turn", "state_social",  "graduates",
+             SOCIAL_XLS_FULL),
+    RawSheet("2022-23", "14-15TotalEnrCategory (2)",   "state_social",  "enrolment",
+             SOCIAL_XLS_2022_ENR, BASIS_ESTIMATED),
+    RawSheet("2022-23", "34a",                         "programme_social", "graduates",
+             SOCIAL_XLS_FULL),
+    #
+    # 2023-24 renumbers the programme-by-category table to "Table 35" — its sheet
+    # is called "Table 35 (34a E)" but its caption reads "Table 35. Programme-wise
+    # Out-turn/Pass-Out at Various Social group", so it is 34a's successor and NOT
+    # the UG-discipline Table 35. This edition publishes no UG-discipline out-turn
+    # table at all, and drops the minority/PwD/EWS columns from its out-turn cuts.
+    RawSheet("2023-24", "12UGDisc",                  "ug_discipline", "enrolment"),
+    RawSheet("2023-24", "33 Out Turn",               "state_level",   "graduates"),
+    RawSheet("2023-24", "33 (a) Category Out Turn",  "state_social",  "graduates",
+             SOCIAL_XLS_CASTE4),
+    RawSheet("2023-24", "14-15TotalEnrCategory (2)", "state_social",  "enrolment",
+             SOCIAL_XLS_2023_ENR, BASIS_ESTIMATED),
+    RawSheet("2023-24", "Table 35 (34a E)",          "programme_social", "graduates",
+             SOCIAL_XLS_CASTE4),
     # 2022-23 / 2023-24 — fetch, then inspect_workbook.py, then fill in the real
     # sheet names and uncomment. Left commented rather than guessed: a wrong sheet
     # name here is a silent miss, and the table numbers are likely to have moved.
@@ -383,20 +508,6 @@ class PdfTable:
         return PDF_REPORTS[self.year]
 
 
-# ─── Basis: actual response vs estimated ──────────────────────────────────────
-# AISHE publishes two kinds of figure and says which in the table caption:
-#
-#   "based on actual response"  the totals reported BY the institutions that
-#                               responded to the survey that year.
-#   "Estimated"                 those totals grossed up to the full registered
-#                               population, to account for non-response.
-#
-# They are not comparable. Response rates vary by year and state, so an estimated
-# figure is systematically larger than the actual-response one for the same cell —
-# comparing across the two reads as growth that did not happen. Every row carries
-# `basis` so the two can never be mixed silently.
-BASIS_ACTUAL = "actual response"
-BASIS_ESTIMATED = "estimated"
 
 # Social categories as printed across Tables 14 and 15. Order matters — the
 # cross-tab read is positional — and the labels match the Excel-era
@@ -430,24 +541,54 @@ T35 = ("T35", r"Table\s*35\s*[.:]\s*Out-?turn/Pass-Out at Under Graduate",
 # All four editions print tables 12/33/34/35 with matching captions, but they do
 # NOT all lay them out the same way, so this is deliberately not a cross product.
 #
-# NOT YET INGESTED, with the reason each fails its check:
+# NOT YET INGESTED, with the reason each fails its check. T34's population is the
+# same as T33's Grand Total, so the deltas below are measured against that — an
+# external anchor that works even for the editions printing no Grand Total of
+# their own. clean_aishe._check_programme_vs_state enforces it on every build.
 #
+#   (2015-16, T34)  parses 3,825,596 Male against T33's 4,463,710 (-638,114).
+#                   A large block of programmes is missing, not a stray row — this
+#                   edition needs its layout looked at before anything else.
+#   (2016-17, T34)  parses 4,397,315 against 4,398,169 (-854). Very close; likely
+#                   a handful of rows still printing fewer than three figures in a
+#                   shape _sparse_row does not yet accept.
+#   (2017-18, T34)  sums to 4,315,863 Male vs its own published 4,323,271
+#                   (-7,408).
 #   (2017-18, T12)  disciplines sum to 14,891,226 Male vs published 14,852,574
 #                   (+38,652). One subject row is being taken as a discipline;
 #                   this edition indents the discipline/subject columns
 #                   differently from the other three.
-#   (2016-17, T35)  this edition prints Table 35 as a *ranked list* split across
-#                   pages — subjects on one page, disciplines on the next — and
-#                   sets each label on a different text line from its numbers.
-#                   Neither the indent rule nor the line reader survives it.
-#   (2017-18, T35)  same ranked-list layout as 2016-17.
-#   (all years, T34) the programme table does not reconcile. 2015-16 and 2016-17
-#                   print no Grand Total row at all, so there is nothing to check
-#                   against; 2018-19 sums to 4,308,792 Male vs a published
-#                   4,308,843 (-51), i.e. a wrapped programme name is being
-#                   dropped. Note that T34's population is the same as T33's
-#                   Grand Total, so T33 can serve as the external anchor once the
-#                   dropped row is found.
+#   (2016-17, T35)  NOT a ranked list — that earlier note was wrong, and looking at
+#   (2017-18, T35)  the rendered page is what corrected it. The layout is the
+#                   standard discipline/subject hierarchy, same shape as Table 12.
+#                   The real defect is a constant ONE-ROW VERTICAL OFFSET between
+#                   the label column and the value columns, so pdfplumber's line
+#                   banding pairs every label with the NEXT row's figures:
+#
+#                     'Journalism & Mass Communication'          <- values missing
+#                     'Social Work 2831 2372 5203'               <- Journalism's
+#                     'Fashion Technology 2573 2567 5140'        <- Social Work's
+#                     'Grand Total 314264395 33137378 645638463' <- two rows merged
+#
+#                   Hence the absurd "published Grand Total" of 314,264,395: the
+#                   last data row's digits are merged into the total's.
+#                   THE FIX is to pair the k-th label with the k-th value-triple by
+#                   rank down the page rather than by text-line banding — a constant
+#                   offset is exactly what banding cannot survive. Wrapped labels
+#                   would break naive rank-pairing, so count both columns first and
+#                   only rank-pair when they agree.
+#                   A good anchor already exists: this table's Grand Total equals
+#                   Table 33's Under Graduate level (3,142,649 Male for 2016-17,
+#                   confirmed against the page).
+#                   Do NOT transcribe these from the image. That freezes the
+#                   figures, breaks on the next edition, and leaves the rows checked
+#                   only against a total read by the same fallible eye.
+#
+#   (2018-19, T34)  FIXED and registered. Was -51: nine rows printing fewer than
+#                   three figures (a blank gender cell, or no out-turn at all)
+#                   were dropped whole. _sparse_row now reads them, and the result
+#                   matches T33's Grand Total exactly on all three genders.
+#
 #   Tables 14 and 15 (the social-category cut) are registered for all seven
 #   editions — unlike 12/33/34/35 they are laid out identically throughout, and
 #   each reconciles against its own published All India row per category.
@@ -457,13 +598,13 @@ PDF_TABLES: list[PdfTable] = [
         ("2012-13", T14), ("2012-13", T15),
         ("2013-14", T14), ("2013-14", T15),
         ("2014-15", T14), ("2014-15", T15),
-        ("2015-16", T12), ("2015-16", T33), ("2015-16", T35),
+        ("2015-16", T12), ("2015-16", T33), ("2015-16", T34), ("2015-16", T35),
         ("2015-16", T14), ("2015-16", T15),
         ("2016-17", T12), ("2016-17", T33),
         ("2016-17", T14), ("2016-17", T15),
         ("2017-18", T33),
         ("2017-18", T14), ("2017-18", T15),
-        ("2018-19", T12), ("2018-19", T33), ("2018-19", T35),
+        ("2018-19", T12), ("2018-19", T33), ("2018-19", T34), ("2018-19", T35),
         ("2018-19", T14), ("2018-19", T15),
     ]
 ]

@@ -51,7 +51,7 @@ The single source of truth for filenames, GCS URIs, and BQ destinations is
 
 ## Table produced
 
-**`aishe_fact_higher_ed_students`** — one wide fact (16,248 rows). Grain:
+**`aishe_fact_higher_ed_students`** — one wide fact (28,389 rows). Grain:
 `(cut, aishe_year, metric, level, state, discipline, programme, social_category, gender)`
 → `value`. Each row carries a `cut` (which published cross-tab it came from) and a
 `metric` (`enrolment` = students currently studying, or `graduates` = out-turn /
@@ -60,7 +60,8 @@ qualifiers that year). Dimensions a cut doesn't break out carry the sentinel `"A
 | `cut` | Source | Metric(s) | Set dimensions | Years | Rows |
 |---|---|---|---|---|---:|
 | `state_level`      | Table 33     | graduates             | level, state                       | 2015-16, 2016-17, 2017-18, 2018-19, 2021-22 | 4,320 |
-| `state_social`     | Tables 14+15 | enrolment             | state, social_category             | 2012-13 → 2018-19 (all 7) | 5,292 |
+| `state_social`     | Tables 14+15 / 14 | enrolment        | state, social_category             | 2012-13 → 2021-22 (all 10) | 7,797 |
+| `state_social`     | Table 33a    | graduates             | state, social_category             | 2020-21, 2021-22 | 1,728 |
 | `programme_social` | Table 34a    | graduates             | programme, social_category         | 2021-22 | 5,448 |
 | `ug_discipline`    | Tables 12+35 | enrolment + graduates | level=`Under Graduate`, discipline | 2015-16, 2016-17, 2018-19, 2019-20, 2020-21, 2021-22 | 1,188 |
 
@@ -68,10 +69,12 @@ qualifiers that year). Dimensions a cut doesn't break out carry the sentinel `"A
 `cut`, and never `SUM(value)` across cuts.**
 
 **Coverage is ragged — `GROUP BY aishe_year` before reading any trend.**
-`state_social` has the deepest series (all 7 PDF years) and `state_level` five
-years. `programme_social` is **2021-22 only**: the pre-2019 PDFs print a Table 34
-with no social-category breakdown of programmes. A series that appears to collapse
-is far more likely to be missing coverage than a real change.
+`state_social` has the deepest series (all 10 years, 2012-13 → 2021-22),
+`state_level` runs 2015-16 → 2021-22, `programme_social` 2018-19 → 2021-22, and
+`ug_discipline` skips 2017-18. A series that appears to collapse is far more likely
+to be missing coverage than a real change.
+[`docs/INGEST_AUDIT.md`](docs/INGEST_AUDIT.md) carries the full year × cut grid and
+is generated from the parquet, so it cannot drift.
 
 ### `basis` — actual response vs estimated, never mixed
 
@@ -79,8 +82,11 @@ AISHE publishes two kinds of figure and says which in each caption:
 
 | `basis` | Meaning | Cuts |
 |---|---|---|
-| `actual response` | as reported by the institutions that answered that year | state_level, programme_social, ug_discipline |
-| `estimated` | grossed up to the full registered population for non-response | state_social |
+| `actual response` | as reported by the institutions that answered that year | state_level, programme_social, ug_discipline, **and state_social's Table 33a graduates** |
+| `estimated` | grossed up to the full registered population for non-response | **state_social's Table 14 enrolment** |
+
+`state_social` is the one cut carrying both, so filter `basis` or `metric` there —
+`cut` alone is not enough. Everywhere else, one cut means one basis.
 
 **They are different populations.** Response rates move year to year, so an
 estimated figure runs systematically above the actual-response one for the same
@@ -250,7 +256,7 @@ gcloud auth application-default login
 .venv/bin/python scripts/load_bq.py --table aishe_fact_higher_ed_students
 ```
 
-Expected from step 2: **16,248 rows**, and three `OK` reconciliation lines
+Expected from step 2: **28,389 rows**, and three `OK` reconciliation lines
 (2015-16, 2018-19, 2021-22). Any other output means a parse moved — read the error
 rather than loading the result.
 
@@ -284,9 +290,8 @@ is loaded to BQ — the raw parquet on GCS is for traceability.
   (B.A., MBBS, …); Tables 12/35 are subject-based (Arts, Engineering & Tech, …).
   They use incompatible classifications and can't be cross-walked exactly — use
   the `ug_discipline` cut for subject-based numbers.
-- **Coverage differs by year and cut** — see the table above. Only `state_level`
-  spans 2015-16 → 2021-22, and it skips 2019-20 / 2020-21 because `RAW_SHEETS`
-  registers Table 33 for 2021-22 only.
+- **Coverage differs by year and cut** — see [`docs/INGEST_AUDIT.md`](docs/INGEST_AUDIT.md),
+  which is generated rather than hand-kept.
 - **Discipline labels are whitespace-normalised.** AISHE spells the same
   discipline with a variable number of internal spaces between editions
   (`Footwear  Design` in the 2019-22 workbooks vs `Footwear Design` in the PDFs),
