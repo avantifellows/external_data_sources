@@ -603,6 +603,23 @@ def _validate(df: pd.DataFrame) -> None:
               f"discipline-cut={ug_disc:,}{note}  {'OK' if ok else 'CHECK'}")
 
 
+# Editions whose Table 34 covers a NARROWER set of levels than Table 33's Grand
+# Total, so the two are not directly comparable. 2015-16 lists degree programmes
+# only — no PG Diploma, Diploma or Certificate (it does include Integrated). With
+# those three levels removed from the Table 33 side the two agree EXACTLY on all
+# three genders, which is what establishes the exclusion rather than assuming it:
+#
+#   2015-16 Male    T34 3,830,377  vs  T33 minus those levels 3,830,377
+#           Female  T34 3,976,517  vs                         3,976,517
+#           Total   T34 7,806,894  vs                         7,806,894
+#
+# Getting this wrong cost real time: the gap was first recorded as a -638,114 parse
+# bug when the parse was in fact correct and the anchor was wrong for that edition.
+PROGRAMME_CUT_EXCLUDES_LEVELS: dict[str, tuple[str, ...]] = {
+    "2015-16": ("PG Diploma", "Diploma", "Certificate"),
+}
+
+
 def _check_programme_vs_state(df: pd.DataFrame) -> None:
     """Table 34's population is Table 33's Grand Total — so they must agree.
 
@@ -616,9 +633,13 @@ def _check_programme_vs_state(df: pd.DataFrame) -> None:
     for year in sorted(set(df[df.cut == "programme_social"].aishe_year)):
         if year not in set(df[df.cut == "state_level"].aishe_year):
             continue
+        excluded = PROGRAMME_CUT_EXCLUDES_LEVELS.get(year, ())
         for gender in GENDERS:
-            a = g[(g.cut == "state_level") & (g.aishe_year == year)
-                  & (g.gender == gender)].value.sum()
+            sl = g[(g.cut == "state_level") & (g.aishe_year == year)
+                   & (g.gender == gender)]
+            if excluded:
+                sl = sl[~sl.level.isin(excluded)]
+            a = sl.value.sum()
             b = g[(g.cut == "programme_social") & (g.aishe_year == year)
                   & (g.gender == gender)
                   & (g.social_category == "All Categories")].value.sum()
@@ -627,9 +648,13 @@ def _check_programme_vs_state(df: pd.DataFrame) -> None:
                     f"{year}: programme cut sums to {b:,} for gender={gender} but "
                     f"the state×level cut sums to {a:,} (off by {b - a:+,}).\n"
                     f"These count the same graduates — one of the two reads is "
-                    f"wrong."
+                    f"wrong, OR this edition's Table 34 covers a different set of "
+                    f"levels (see PROGRAMME_CUT_EXCLUDES_LEVELS; check whether the "
+                    f"gap equals one or more whole levels before touching the "
+                    f"parser)."
                 )
-        print(f"  {year} programme vs state×level: agree on all genders  OK")
+        note = (f" (excl. {', '.join(excluded)})" if excluded else "")
+        print(f"  {year} programme vs state×level{note}: agree on all genders  OK")
 
 
 def _check_state_labels(df: pd.DataFrame) -> None:

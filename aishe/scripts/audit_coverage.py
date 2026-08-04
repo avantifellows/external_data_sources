@@ -44,11 +44,9 @@ WANTED = {
 # Known failures, kept in step with the comment above PDF_TABLES in sources.py.
 # (year, table) -> (delta, what it is measured against, note)
 KNOWN_GAPS = {
-    ("2015-16", "T34"): (-638_114, "T33 Grand Total",
-                         "a large block of programmes missing"),
-    ("2016-17", "T34"): (-854, "T33 Grand Total",
-                         "a few rows printing <3 figures"),
-    ("2017-18", "T34"): (-7_408, "own Grand Total", "same class as 2018-19's -51"),
+    ("2016-17", "T34"): (-1_992, "T33 Grand Total",
+                         "small residual; this edition's T34 does include diplomas"),
+    ("2017-18", "T34"): (-7_328, "own Grand Total", "same class as 2018-19's -51"),
     ("2017-18", "T12"): (+38_652, "own Grand Total",
                          "a subject row read as a discipline"),
     ("2016-17", "T35"): (None, "own Grand Total",

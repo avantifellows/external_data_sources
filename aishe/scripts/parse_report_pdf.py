@@ -678,7 +678,72 @@ THREE_COL_RE = re.compile(
 )
 
 
-def _three_col_rows(page, ctx: str):
+# A line holding only this row's figures — an optional serial then exactly three
+# integers. When a programme name is too long to fit, AISHE sets the name on the
+# lines above and below and leaves the serial + figures on their own line:
+#
+#     M.B.A.(Tech.)-Master of Business Administration in
+#     39 774 577 1351
+#     Technology
+#
+# THREE_COL_RE needs label and figures on ONE line, so all three lines were
+# discarded — which is most of what 2015-16 (-638,114) and 2017-18 (-7,408) were
+# missing on Table 34.
+ONLY_FIGURES_RE = re.compile(
+    r"^(?P<serial>\d{1,3}\s+)?(?P<m>[\d,]+)\s+(?P<f>[\d,]+)\s+(?P<t>[\d,]+)$")
+
+
+def _assemble_wrapped(bands: list[str], ctx: str):
+    """Rows whose label wraps around a figures-only line.
+
+    Returns {index_of_figures_line: (label, [m, f, t])}. The label is the
+    contiguous run of text-only lines immediately before the figures joined to the
+    run immediately after, in reading order — which is how the cell is actually
+    laid out.
+
+    Only safe where the label column is a single column. Tables 12 and 35 carry a
+    second, merged discipline column whose text would be swept up as a wrapped
+    label, so this is opt-in per reader.
+    """
+    kind = []
+    for text in bands:
+        if not text or FURNITURE_RE.match(text):
+            kind.append("skip")
+        elif THREE_COL_RE.match(text):
+            kind.append("row")
+        elif ONLY_FIGURES_RE.match(text):
+            kind.append("figs")
+        elif re.fullmatch(r"[\d\s.]+", text):
+            kind.append("skip")          # the column-number row
+        else:
+            kind.append("text")
+
+    out = {}
+    for i, k in enumerate(kind):
+        if k != "figs":
+            continue
+        before, j = [], i - 1
+        while j >= 0 and kind[j] == "text":
+            before.insert(0, bands[j])
+            j -= 1
+        after, j = [], i + 1
+        while j < len(kind) and kind[j] == "text":
+            after.append(bands[j])
+            j += 1
+        label = " ".join(before + after).strip()
+        # A hyphen at the wrap point is a broken word, not a separator:
+        # "Medical Bio-" + "Chemistry" is one word.
+        label = re.sub(r"-\s+(?=\S)", "-", label)
+        label = re.sub(r"^\d{1,3}\s+", "", label).strip()
+        if not label or label.isdigit():
+            continue
+        m = ONLY_FIGURES_RE.match(bands[i])
+        out[i] = (label, [_num(m.group(k2), f"{ctx} {label}")
+                          for k2 in ("m", "f", "t")])
+    return out
+
+
+def _three_col_rows(page, ctx: str, join_wrapped: bool = False):
     """Yield (label, x0, [male, female, total]) for each data line on the page.
 
     Lines that are not data — captions, headers, page furniture, a merged label
@@ -694,9 +759,37 @@ def _three_col_rows(page, ctx: str):
     except SystemExit:
         centers = None
 
+    bands = page.extract_text_lines()
+    texts = [" ".join(b["text"].split()) for b in bands]
+    wrapped = _assemble_wrapped(texts, ctx) if join_wrapped else {}
+    # Lines consumed as part of a wrapped row must not also be read on their own.
+    consumed: set[int] = set()
+    for i in wrapped:
+        j = i - 1
+        while j >= 0 and j not in wrapped and texts[j] and \
+                not THREE_COL_RE.match(texts[j]) and \
+                not ONLY_FIGURES_RE.match(texts[j]) and \
+                not FURNITURE_RE.match(texts[j]):
+            consumed.add(j); j -= 1
+        j = i + 1
+        while j < len(texts) and j not in wrapped and texts[j] and \
+                not THREE_COL_RE.match(texts[j]) and \
+                not ONLY_FIGURES_RE.match(texts[j]) and \
+                not FURNITURE_RE.match(texts[j]):
+            consumed.add(j); j += 1
+
     rows, skipped, totals = [], [], []
-    for band in page.extract_text_lines():
-        text = " ".join(band["text"].split())
+    for bi, band in enumerate(bands):
+        text = texts[bi]
+        if bi in wrapped:
+            label, cells = wrapped[bi]
+            if _key(label) in ALL_INDIA:
+                totals.append(cells)
+            else:
+                rows.append((label, band["x0"], cells))
+            continue
+        if bi in consumed:
+            continue
         if not text or FURNITURE_RE.match(text):
             continue
         m = THREE_COL_RE.match(text)
@@ -836,7 +929,8 @@ def programme_rows(pdf, year: str, pages: list[int], debug=False) -> list[dict]:
         _assert_single_gender_block(page, f"{year} Table 34 p{pno+1}", extra=(
             "If this edition breaks programme out by social category it is a "
             "Table 34a and needs the cross-tab reader instead."))
-        rows, skipped, totals = _three_col_rows(page, f"{year} T34")
+        rows, skipped, totals = _three_col_rows(page, f"{year} T34",
+                                                 join_wrapped=True)
         if debug:
             print(f"    p{pno+1}: {len(rows)} rows, {len(skipped)} non-data lines")
         collected += rows
