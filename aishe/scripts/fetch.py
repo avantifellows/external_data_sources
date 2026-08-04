@@ -32,6 +32,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ssl
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -55,11 +57,53 @@ _HEADERS = {
 _MAGIC = {".pdf": b"%PDF", ".xlsx": b"PK\x03\x04"}
 
 
+def _ssl_context() -> ssl.SSLContext:
+    """Trust store for the gov.in hosts — certifi's bundle where available."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+def _get(url: str) -> bytes:
+    """Fetch a URL, falling back to curl on an SSL chain error.
+
+    he.nic.in serves an INCOMPLETE certificate chain: it omits the intermediate.
+    curl recovers by fetching the missing cert from the URL in the leaf's
+    Authority Information Access extension; Python's ssl module does not do AIA
+    chasing, so it fails with CERTIFICATE_VERIFY_FAILED even with certifi's roots
+    installed. That is a real server misconfiguration, not a local trust-store
+    problem, so no amount of CA fiddling fixes it here.
+
+    Verification stays ON in both paths — curl verifies too. We are working around
+    a missing intermediate, not skipping validation.
+    """
+    req = urllib.request.Request(url, headers=_HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=180,
+                                    context=_ssl_context()) as resp:
+            return resp.read()
+    except urllib.error.URLError as e:
+        if not isinstance(getattr(e, "reason", None), ssl.SSLError):
+            raise
+        out = subprocess.run(
+            ["curl", "-sS", "-L", "--max-time", "180",
+             "-A", _HEADERS["User-Agent"], url],
+            capture_output=True, check=False)
+        if out.returncode != 0 or not out.stdout:
+            raise SystemExit(
+                f"{url}\n  urllib failed on the TLS chain ({e.reason}) and the "
+                f"curl fallback also failed: "
+                f"{out.stderr.decode('utf-8', 'replace')[:200]}"
+            )
+        print("    (urllib hit the incomplete TLS chain; fetched via curl)")
+        return out.stdout
+
+
 def _download(url: str, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers=_HEADERS)
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        body = resp.read()
+    body = _get(url)
     magic = _MAGIC.get(dest.suffix.lower())
     if magic and not body.startswith(magic):
         head = body[:200].decode("utf-8", "replace").replace("\n", " ")

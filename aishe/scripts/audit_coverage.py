@@ -84,8 +84,17 @@ def build() -> tuple[str, list[str]]:
         pdf_reg.setdefault(t.year, set()).add(t.label)
     xls_reg: dict[str, set[str]] = {}
     for r in RAW_SHEETS:
-        # 33OutTurnState -> T33, 12UGDisc -> T12, 34a -> T34
-        key = "T" + "".join(c for c in r.sheet[:3] if c.isdigit())
+        # Derive the table number from the sheet name: "33OutTurnState" -> T33,
+        # "12UGDisc" -> T12, "34a" -> T34, "33 (a)(b) Category Out Turn" -> T33.
+        # Fall back to the cut when the name carries no number in front (2023-24's
+        # "Table 35 (34a E)" is the programme-by-category table despite its name).
+        import re as _re
+        m = _re.match(r"\D*(\d{1,2})", r.sheet)
+        key = f"T{m.group(1)}" if m else {
+            "programme_social": "T34", "state_level": "T33",
+            "state_social": "T14", "ug_discipline": "T12"}[r.cut]
+        if r.sheet.startswith("Table 35 (34a"):
+            key = "T34"          # renamed upstream; still the programme cut
         xls_reg.setdefault(r.year, set()).add(key)
 
     years = sorted(set(PDF_REPORT_URLS) | set(REPORTS))
@@ -104,14 +113,16 @@ def build() -> tuple[str, list[str]]:
                 d, against, _note = KNOWN_GAPS[(y, tbl)]
                 gaps.append(f"{tbl} ({d:+,} vs {against})" if d is not None
                             else f"{tbl} (unparsed)")
-            elif y <= "2018-19" and tbl not in ("T14", "T15"):
-                gaps.append(f"{tbl} (not attempted)")
-            elif y >= "2022-23":
-                gaps.append(f"{tbl} (no workbook; PDF not parsed)")
-            elif tbl == "T15":
-                # 2019-20 onward fold PwD/Muslim/Minority into the Table 14 sheet
-                # rather than printing a separate Table 15.
+            elif tbl == "T15" and y >= "2019-20":
+                # From 2019-20 the workbook folds PwD/Muslim/Minority into the
+                # Table 14 sheet rather than printing a separate Table 15.
                 continue
+            elif y <= "2018-19":
+                gaps.append(f"{tbl} (not attempted)")
+            elif tbl == "T35" and y == "2023-24":
+                gaps.append("T35 (this edition publishes no UG-discipline out-turn)")
+            else:
+                gaps.append(f"{tbl} (not attempted)")
         if got and not rows:
             problems.append(f"{y}: {len(got)} tables registered but 0 rows in the parquet")
         lines.append(f"| {y} | {_editions(y)} | {', '.join(got) or '—'} "

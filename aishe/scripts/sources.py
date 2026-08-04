@@ -56,23 +56,29 @@ REPORTS: dict[str, Path] = {
     "2023-24": RAW / "aishe_2023-24_final_report.xlsx",
 }
 
-# ─── Excel editions — NO STATIC SOURCE URL ────────────────────────────────────
-# The Excel workbooks cannot currently be fetched from a URL, so REPORT_URLS is
-# deliberately empty and fetch.py can only pull the PDFs below.
+# ─── Excel editions — 2019-20 onward only ─────────────────────────────────────
+# The download path is `assets/excel/<year>.xlsx`. That is worth spelling out
+# because it was wrong here for a long time: the previous URLs used the *download
+# filename* the viewer sets ("AISHE Final Report 2021-22.xlsx") as if it were the
+# path, so all five 404'd and the workbooks looked unfetchable. The real pattern is
+# in the viewer's own bundle:
 #
-# What was here before: five `he.nic.in/aishereport/assets/excel/AISHE Final
-# Report <year>.xlsx` URLs. All five return 404 (verified 2026-08-03) — including
-# the three years whose workbooks are already parsed, so this was never a
-# 2022-23/2023-24-only problem as the README claimed. On aishe.gov.in the
-# "(Excel)" links point at https://he.nic.in/aishereport/#/report/<year>, a
-# JavaScript report viewer that renders nothing without script execution and
-# exposes no static .xlsx path.
+#   downloadFile(e){ const i = `assets/excel/${e}.xlsx`; …
+#                    r.download = `AISHE Final Report ${e}.xlsx` }
 #
-# Consequence: the 2019-20 … 2021-22 workbooks in raw/ are NOT regenerable from
-# scratch. They must be re-obtained by hand through the viewer. Anyone who finds
-# the real download endpoint should populate this dict — fetch.py picks it up
-# with no other change.
-REPORT_URLS: dict[str, str] = {}
+# Probed every year from 2010-11: 2019-20 through 2023-24 return 200, and every
+# earlier year 404s. So there is no Excel edition before 2019-20 — the PDF is not a
+# fallback for those years, it is the only thing that exists. Re-check with:
+#   for y in 2018-19 2019-20; do curl -sI -o /dev/null -w "$y %{http_code}\n" \
+#     https://he.nic.in/aishereport/assets/excel/$y.xlsx; done
+_XLS = "https://he.nic.in/aishereport/assets/excel"
+REPORT_URLS: dict[str, str] = {
+    "2019-20": f"{_XLS}/2019-20.xlsx",
+    "2020-21": f"{_XLS}/2020-21.xlsx",
+    "2021-22": f"{_XLS}/2021-22.xlsx",
+    "2022-23": f"{_XLS}/2022-23.xlsx",
+    "2023-24": f"{_XLS}/2023-24.xlsx",
+}
 
 # Canonical source URLs — AISHE Final Report PDFs, on the MoE content CDN. These
 # are the *only* machine-fetchable edition, and the only edition at all for
@@ -347,6 +353,20 @@ SOCIAL_XLS_FULL = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
 # The 2019-20 programme table is not broken out by category at all — one
 # Male/Female/Total block, which the cross-tab reader handles as a single group.
 SOCIAL_XLS_NONE = ("All Categories",)
+# 2022-23 moves PwD from 5th to 7th; 2023-24 moves it last AND renames it
+# "Persons with Benchmark Disability". Both are positional reads, so both need
+# their own tuple — and the rename is absorbed by canonical_social_group.
+SOCIAL_XLS_2022_ENR = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                       "Other Backward Classes", "Muslim",
+                       "Other Minority Communities", "Persons with Disability",
+                       "EWS")
+SOCIAL_XLS_2023_ENR = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                       "Other Backward Classes", "Muslim",
+                       "Other Minority Communities", "EWS",
+                       "Persons with Benchmark Disability")
+# 2023-24 drops the minority/PwD/EWS columns from its out-turn tables entirely.
+SOCIAL_XLS_CASTE4 = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                     "Other Backward Classes")
 
 RAW_SHEETS: list[RawSheet] = [
     RawSheet("2021-22", "33OutTurnState", "state_level",      "graduates"),
@@ -393,6 +413,38 @@ RAW_SHEETS: list[RawSheet] = [
              SOCIAL_XLS_NONE),
     RawSheet("2020-21", "34a",            "programme_social", "graduates",
              SOCIAL_XLS_FULL),
+
+    # ── 2022-23 and 2023-24 ───────────────────────────────────────────────────
+    # Reachable at last: the Excel download path was wrong in REPORT_URLS (see the
+    # note there), so these two workbooks had never been fetched. Sheet names are
+    # renamed again in both editions — hence the exact strings below.
+    #
+    # NB 2022-23 publishes BOTH "34 Out Turn Prog" (no category split) and "34a"
+    # (with it). Only 34a is registered: they are the same population, and taking
+    # both would double the programme cut.
+    RawSheet("2022-23", "12UGDisc",                    "ug_discipline", "enrolment"),
+    RawSheet("2022-23", "35 UG Discipline",            "ug_discipline", "graduates"),
+    RawSheet("2022-23", "33 Out Turn",                 "state_level",   "graduates"),
+    RawSheet("2022-23", "33 (a)(b) Category Out Turn", "state_social",  "graduates",
+             SOCIAL_XLS_FULL),
+    RawSheet("2022-23", "14-15TotalEnrCategory (2)",   "state_social",  "enrolment",
+             SOCIAL_XLS_2022_ENR, BASIS_ESTIMATED),
+    RawSheet("2022-23", "34a",                         "programme_social", "graduates",
+             SOCIAL_XLS_FULL),
+    #
+    # 2023-24 renumbers the programme-by-category table to "Table 35" — its sheet
+    # is called "Table 35 (34a E)" but its caption reads "Table 35. Programme-wise
+    # Out-turn/Pass-Out at Various Social group", so it is 34a's successor and NOT
+    # the UG-discipline Table 35. This edition publishes no UG-discipline out-turn
+    # table at all, and drops the minority/PwD/EWS columns from its out-turn cuts.
+    RawSheet("2023-24", "12UGDisc",                  "ug_discipline", "enrolment"),
+    RawSheet("2023-24", "33 Out Turn",               "state_level",   "graduates"),
+    RawSheet("2023-24", "33 (a) Category Out Turn",  "state_social",  "graduates",
+             SOCIAL_XLS_CASTE4),
+    RawSheet("2023-24", "14-15TotalEnrCategory (2)", "state_social",  "enrolment",
+             SOCIAL_XLS_2023_ENR, BASIS_ESTIMATED),
+    RawSheet("2023-24", "Table 35 (34a E)",          "programme_social", "graduates",
+             SOCIAL_XLS_CASTE4),
     # 2022-23 / 2023-24 — fetch, then inspect_workbook.py, then fill in the real
     # sheet names and uncomment. Left commented rather than guessed: a wrong sheet
     # name here is a silent miss, and the table numbers are likely to have moved.

@@ -4,6 +4,7 @@ openpyxl>=3.1          # Excel editions (2019-20 onward)
 pdfplumber>=0.10       # PDF editions (the only edition before 2019-20)
 pandas>=2.0
 pyarrow>=14.0
+certifi                # root certs for the gov.in fetches (see fetch.py)
 # GCS staging + BQ load:
 google-cloud-storage>=2.10
 google-cloud-bigquery>=3.11

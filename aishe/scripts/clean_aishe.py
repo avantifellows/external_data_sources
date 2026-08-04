@@ -181,6 +181,8 @@ SOCIAL_GROUP_CANONICAL = {
     "otherbackwardclasses": "Other Backward Classes",
     "otherminoritycommunities": "Other Minority Communities",
     "personswithdisability": "Persons with Disability",
+    # 2023-24 renames it; same category, so it must not become a second value.
+    "personswithbenchmarkdisability": "Persons with Disability",
     "scheduledcaste": "Scheduled Caste",
     "scheduledtribe": "Scheduled Tribe",
     "muslim": "Muslim",
@@ -384,6 +386,28 @@ def state_social_rows(ws, year: str, metric: str, groups, basis: str) -> list[di
     return out
 
 
+# Editions whose published national row is computed independently of its own state
+# rows, so the two disagree by a rounding hair. Value is the largest absolute
+# difference tolerated for that sheet — NOT a blanket epsilon:
+#
+#   * It is per (year, sheet), and only two sheets need it. The 2019-20, 2020-21 and
+#     2021-22 estimated tables reconcile EXACTLY to the unit, so tolerating drift
+#     everywhere would throw away a check that genuinely holds.
+#   * The bound is the state count (36), because each state's grossed-up estimate is
+#     rounded to a whole student independently, and the national figure is rounded
+#     separately — so the sum of rounded parts can differ from the rounded sum by at
+#     most one per state.
+#   * Observed drift is 12 at most, against totals of 22-44 million: a relative error
+#     of 5e-7. A genuine misread is thousands and still fails.
+#
+# Evidence it is theirs: in 2022-23, ten states' OWN published rows are internally
+# inconsistent (Male + Female != Total by 1), and all three genders drift together.
+INDEPENDENTLY_ROUNDED: dict[tuple[str, str], int] = {
+    ("2022-23", "14-15TotalEnrCategory (2)"): 36,
+    ("2023-24", "14-15TotalEnrCategory (2)"): 36,
+}
+
+
 def _check_social_india(rows, india, year: str, sheet: str) -> None:
     """Each category's states must sum to its published All India figure.
 
@@ -397,11 +421,15 @@ def _check_social_india(rows, india, year: str, sheet: str) -> None:
         for gender, want in by_gender.items():
             got = sum(r["value"] for r in rows
                       if r["social_category"] == cat and r["gender"] == gender)
-            if got != want:
+            slack = INDEPENDENTLY_ROUNDED.get((year, sheet), 0)
+            if abs(got - want) > slack:
+                extra = (f"\nUp to {slack:,} is tolerated for this sheet "
+                         f"(independently-rounded national row), but this exceeds it."
+                         if slack else "")
                 raise SystemExit(
                     f"{year} {sheet}: states sum to {got:,} for {cat}/{gender} but "
                     f"the published All India row says {want:,} (off by "
-                    f"{got - want:+,}). A row or column was misread."
+                    f"{got - want:+,}). A row or column was misread.{extra}"
                 )
 
 
