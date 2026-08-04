@@ -1,6 +1,19 @@
 # udise
 
-UDISE+ school enrolment → BigQuery.
+UDISE+ school data → BigQuery.
+
+**Two unrelated UDISE+ products live in this folder.** Do not confuse them:
+
+| | Grain | Status |
+|---|---|---|
+| **Report 4000** (dashboard cross-tab) | state × management × category × class × gender | **ingested** → `udise_fact_enrolment`, 42,270 rows |
+| **DSP microdata** (Data Sharing Portal) | **one row per school**, 2020-21 + 2024-25 | **not ingested** — raw files held, see [`docs/DSP_INGEST_PLAN.md`](docs/DSP_INGEST_PLAN.md) |
+
+The DSP release is the one carrying **BPL and EWS enrolment per school**, which is
+the income/poverty dimension AISHE has no equivalent for. ~754 MB of zips in
+`raw/dsp/` (gitignored); registered in `sources.py` as `DSP_YEARS` / `DSP_GROUPS`.
+
+The rest of this README describes Report 4000.
 
 School enrolment by state × school-management × school-category × location ×
 class × gender, AY 2024-25. The source is a wide dashboard cross-tab; this

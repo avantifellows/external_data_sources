@@ -50,3 +50,28 @@ row above the `Location / … / Girls / Boys / Overall` sub-header; data follows
 - Don't keep the subtotal/"Total" rows in the fact — they double-count.
 - Don't sum across `urban_rural` expecting a "Total" row — there isn't one (it's
   derived); just sum Rural + Urban.
+
+## Two products, one folder — read this first
+
+`udise/` holds two unrelated UDISE+ releases:
+
+1. **Report 4000** — a dashboard cross-tab, already ingested as
+   `udise_fact_enrolment` (42,270 rows, state-level aggregate). Everything else in
+   this file refers to it.
+2. **DSP microdata** — Data Sharing Portal, **one row per school**, 2020-21 and
+   2024-25. Raw zips are in `raw/dsp/` (gitignored, ~754 MB) and registered in
+   `sources.py` (`DSP_YEARS`, `DSP_GROUPS`, `dsp_zip()`). **Nothing is built yet** —
+   read [`docs/DSP_INGEST_PLAN.md`](docs/DSP_INGEST_PLAN.md) before starting, it has
+   the codebook gotchas that will otherwise bite:
+   - `Yes=1, No=2` — not 1/0.
+   - `_b` columns are **"Boys + Transgenders"**, so `_b`/`_g` is not a clean split.
+   - Most attributes are numeric DCF codes needing codemaps;
+     `codemaps/dsp_item_group.csv` decodes the enrolment breakdown (social
+     category, religion, BPL, EWS, 20 disability types, repeaters).
+   - `managment` is misspelt in the source. Keep it raw, rename on the way out.
+   - One enrolment CSV is 562 MB uncompressed — stream it or push it to BQ.
+   - The school key `pseudocode` is pseudonymised: it joins the DSP groups to each
+     other but **cannot be linked to Avanti's school lists**.
+
+Keep the two apart in table names and schemas. A DSP table should be
+`udise_dim_school_dsp` / `udise_fact_*_dsp`, never merged into the Report 4000 fact.
