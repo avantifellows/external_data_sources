@@ -171,6 +171,27 @@ def _key(s: str) -> str:
 
 ROLLUP_LABELS = {"grand", "grandtotal", "allindia", "india", "total"}
 
+# AISHE relabels the social-group columns between editions. Left as printed, one
+# category becomes several values and the series splits — the same hazard as the
+# state spellings. Keyed on the squashed label so spacing/case drift is absorbed.
+SOCIAL_GROUP_CANONICAL = {
+    "all": "All Categories",
+    "allcategories": "All Categories",
+    "otherbackwardclass": "Other Backward Classes",
+    "otherbackwardclasses": "Other Backward Classes",
+    "otherminoritycommunities": "Other Minority Communities",
+    "personswithdisability": "Persons with Disability",
+    "scheduledcaste": "Scheduled Caste",
+    "scheduledtribe": "Scheduled Tribe",
+    "muslim": "Muslim",
+    "ews": "EWS",
+}
+
+
+def canonical_social_group(label: str) -> str:
+    """One spelling per social category, across editions."""
+    return SOCIAL_GROUP_CANONICAL.get(_key(label), label.strip())
+
 
 def _label_with_merge(row, label_col: int) -> str:
     """The row's label, tolerating the merged cell AISHE uses on its roll-up row.
@@ -323,9 +344,73 @@ def _check_grand_total(rows, grand, year: str, sheet: str) -> None:
             )
 
 
+# ─── Tables 14 / 33a: enrolment or graduates by state × social category ──────
+def state_social_rows(ws, year: str, metric: str, groups, basis: str) -> list[dict]:
+    """State × social-group cross-tab (Table 14 enrolment, Table 33a graduates).
+
+    The Excel counterpart of the PDF Tables 14+15. Group labels come from the
+    registry because they drift between editions, and are canonicalised on the way
+    out so the dimension has one value per category across the whole series.
+    """
+    if not groups:
+        raise SystemExit(
+            f"{year} {ws.title!r}: the state_social cut needs its group list "
+            f"declared in sources.RAW_SHEETS (the read is positional)."
+        )
+    groups = list(groups)
+    label_col, first_val, data_row = _crosstab_geometry(ws, groups)
+    out, india = [], {}
+    for row in ws.iter_rows(min_row=data_row, values_only=True):
+        if len(row) <= label_col:
+            continue
+        state = _label_with_merge(row, label_col)
+        if not state:
+            continue
+        is_rollup = _key(state) in ROLLUP_LABELS
+        state = canonical_state(state)
+        for gi, group in enumerate(groups):
+            cat = canonical_social_group(group)
+            for gj, gender in enumerate(GENDERS):
+                idx = first_val + gi * 3 + gj
+                val = row[idx] if idx < len(row) else None
+                ctx = f"{ws.title} {state}/{cat}/{gender}"
+                if is_rollup:
+                    india.setdefault(cat, {})[gender] = _num(val, ctx)
+                    continue
+                out.append(_row("state_social", year, metric, SENTINEL, state,
+                                SENTINEL, SENTINEL, cat, gender, val, ctx=ctx,
+                                basis=basis))
+    _check_social_india(out, india, year, ws.title)
+    return out
+
+
+def _check_social_india(rows, india, year: str, sheet: str) -> None:
+    """Each category's states must sum to its published All India figure.
+
+    Per-category rather than in aggregate, so a fault localises to one column
+    block instead of only showing up in the total.
+    """
+    if not india:
+        print(f"  ⚠ {year} {sheet}: no All India row found — social totals unverified")
+        return
+    for cat, by_gender in india.items():
+        for gender, want in by_gender.items():
+            got = sum(r["value"] for r in rows
+                      if r["social_category"] == cat and r["gender"] == gender)
+            if got != want:
+                raise SystemExit(
+                    f"{year} {sheet}: states sum to {got:,} for {cat}/{gender} but "
+                    f"the published All India row says {want:,} (off by "
+                    f"{got - want:+,}). A row or column was misread."
+                )
+
+
 # ─── Table 34a: graduates by programme × social category (all levels) ────────
-def programme_social_rows(ws, year: str) -> list[dict]:
-    label_col, first_val, data_row = _crosstab_geometry(ws, SOCIAL_CATEGORIES)
+def programme_social_rows(ws, year: str, groups=None) -> list[dict]:
+    """Programme × social category. `groups` comes from the registry: 2019-20's
+    Table 34 has no category breakdown at all, which is one group, not eight."""
+    groups = list(groups) if groups else SOCIAL_CATEGORIES
+    label_col, first_val, data_row = _crosstab_geometry(ws, groups)
     out = []
     for row in ws.iter_rows(min_row=data_row, values_only=True):
         if len(row) <= label_col:
@@ -333,7 +418,7 @@ def programme_social_rows(ws, year: str) -> list[dict]:
         prog = _label_with_merge(row, label_col)
         if not prog or _key(prog) in ROLLUP_LABELS:
             continue
-        for ci, cat in enumerate(SOCIAL_CATEGORIES):
+        for ci, cat in enumerate([canonical_social_group(g) for g in groups]):
             for gi, gender in enumerate(GENDERS):
                 idx = first_val + ci * 3 + gi
                 val = row[idx] if idx < len(row) else None
@@ -429,9 +514,11 @@ def _check_discipline_total(rows, published, year: str, metric: str,
 
 # ─── Driver ──────────────────────────────────────────────────────────────────
 BUILDERS = {
-    "state_level": lambda ws, year, metric: state_level_rows(ws, year),
-    "programme_social": lambda ws, year, metric: programme_social_rows(ws, year),
-    "ug_discipline": discipline_rows,
+    "state_level": lambda ws, rs: state_level_rows(ws, rs.year),
+    "state_social": lambda ws, rs: state_social_rows(ws, rs.year, rs.metric,
+                                                     rs.groups, rs.basis),
+    "programme_social": lambda ws, rs: programme_social_rows(ws, rs.year, rs.groups),
+    "ug_discipline": lambda ws, rs: discipline_rows(ws, rs.year, rs.metric),
 }
 
 
@@ -457,7 +544,7 @@ def build_rows(allow_missing_excel: bool = False) -> tuple[list[dict], list[str]
             build = BUILDERS.get(rs.cut)
             if build is None:
                 raise SystemExit(f"unknown cut {rs.cut!r} in RAW_SHEETS ({year}/{rs.sheet})")
-            got = build(_sheet(wb, rs.sheet), year, rs.metric)
+            got = build(_sheet(wb, rs.sheet), rs)
             print(f"  {year} {rs.sheet:<16} cut={rs.cut:<17} metric={rs.metric:<10} "
                   f"{len(got):>6,} rows")
             rows += got

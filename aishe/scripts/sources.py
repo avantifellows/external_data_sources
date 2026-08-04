@@ -32,6 +32,21 @@ CODEMAPS = ROOT / "codemaps"
 
 SENTINEL = "All"          # dimension value for "not broken out on this cut"
 
+# ─── Basis: actual response vs estimated ──────────────────────────────────────
+# AISHE publishes two kinds of figure and says which in the table caption:
+#
+#   "based on actual response"  the totals reported BY the institutions that
+#                               responded to the survey that year.
+#   "Estimated"                 those totals grossed up to the full registered
+#                               population, to account for non-response.
+#
+# They are not comparable. Response rates vary by year and state, so an estimated
+# figure is systematically larger than the actual-response one for the same cell —
+# comparing across the two reads as growth that did not happen. Every row carries
+# `basis` so the two can never be mixed silently.
+BASIS_ACTUAL = "actual response"
+BASIS_ESTIMATED = "estimated"
+
 # ─── Raw source workbooks (gitignored; fetched from the URLs below by fetch.py) ─
 REPORTS: dict[str, Path] = {
     "2019-20": RAW / "aishe_2019-20_final_report.xlsx",
@@ -284,8 +299,14 @@ INSTITUTION_DIRECTORY_RAW_FILES: list[str] = [t.raw_file for t in DIRECTORY_TABL
 class RawSheet:
     year: str
     sheet: str
-    cut: str      # fact `cut` this sheet feeds: state_level | programme_social | ug_discipline
+    cut: str      # state_level | state_social | programme_social | ug_discipline
     metric: str   # 'graduates' | 'enrolment'
+    # Cross-tab group labels AS PRINTED IN THIS YEAR'S SHEET, in order. The read is
+    # positional, and AISHE relabels between editions ("All" vs "All Categories",
+    # "Other Backward Class" vs "…Classes", EWS absent before 2020-21), so this
+    # cannot be one shared list. None means the reader's own default.
+    groups: tuple[str, ...] | None = None
+    basis: str = "actual response"
 
     @property
     def workbook(self) -> Path:
@@ -311,15 +332,67 @@ class RawSheet:
 # Adding a new year: run `inspect_workbook.py --year <new> --all-sheets` FIRST and
 # copy the *actual* sheet names in here. AISHE renumbers tables between editions,
 # so "33OutTurnState" is not guaranteed to be Table 33 in a later report.
+# Social-group column headings, as each edition prints them. Order is load
+# bearing. Note 2019-20 has no EWS column (the category starts in 2020-21) and
+# labels drift, which is why these are per-sheet rather than one constant.
+SOCIAL_XLS_2019 = ("All", "Scheduled Caste", "Scheduled Tribe",
+                   "Other Backward Classes", "Persons with Disability", "Muslim",
+                   "Other Minority Communities")
+SOCIAL_XLS_2020 = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                   "Other Backward Class", "Persons with Disability", "Muslim",
+                   "Other Minority Communities", "EWS")
+SOCIAL_XLS_FULL = ("All Categories", "Scheduled Caste", "Scheduled Tribe",
+                   "Other Backward Classes", "Persons with Disability", "Muslim",
+                   "Other Minority Communities", "EWS")
+# The 2019-20 programme table is not broken out by category at all — one
+# Male/Female/Total block, which the cross-tab reader handles as a single group.
+SOCIAL_XLS_NONE = ("All Categories",)
+
 RAW_SHEETS: list[RawSheet] = [
     RawSheet("2021-22", "33OutTurnState", "state_level",      "graduates"),
-    RawSheet("2021-22", "34a",            "programme_social", "graduates"),
+    RawSheet("2021-22", "34a",            "programme_social", "graduates",
+             SOCIAL_XLS_FULL),
     RawSheet("2021-22", "35UGDisc",       "ug_discipline",    "graduates"),
     RawSheet("2021-22", "12UGDisc",       "ug_discipline",    "enrolment"),
     RawSheet("2020-21", "35UGDisc",       "ug_discipline",    "graduates"),
     RawSheet("2020-21", "12UGDisc",       "ug_discipline",    "enrolment"),
     RawSheet("2019-20", "35UGDisc",       "ug_discipline",    "graduates"),
     RawSheet("2019-20", "12UGDisc",       "ug_discipline",    "enrolment"),
+
+    # ── Sheets the workbooks always had but nothing read ──────────────────────
+    # Cheaper coverage than any PDF: already-clean Excel in files we hold. Found
+    # by listing the workbooks' sheet names against RAW_SHEETS.
+    #
+    # state_level for the two years it was missing.
+    RawSheet("2019-20", "33OutTurnState", "state_level",      "graduates"),
+    RawSheet("2020-21", "33OutTurnState", "state_level",      "graduates"),
+    #
+    # The social cut, carried forward from the PDF years to 2021-22. Table 14 is
+    # captioned "Estimated" in every edition, so it joins the estimated series.
+    RawSheet("2019-20", "14TotalEnrCategory",        "state_social", "enrolment",
+             SOCIAL_XLS_2019, BASIS_ESTIMATED),
+    RawSheet("2020-21", "14-15TotalEnrCategory",     "state_social", "enrolment",
+             SOCIAL_XLS_2020, BASIS_ESTIMATED),
+    RawSheet("2021-22", "14-15TotalEnrCategory (2)", "state_social", "enrolment",
+             SOCIAL_XLS_FULL, BASIS_ESTIMATED),
+    #
+    # Table 33a — GRADUATES by state x social group. Same grain as the enrolment
+    # social cut, so it shares `state_social` and is told apart by `metric`. Its
+    # caption states no basis, but its All Categories column equals Table 33's
+    # Grand Total exactly in both years, which makes it actual-response and gives
+    # it a built-in anchor.
+    RawSheet("2020-21", "33a CategoryOutTurn", "state_social", "graduates",
+             SOCIAL_XLS_FULL),
+    RawSheet("2021-22", "33a CategoryOutTurn", "state_social", "graduates",
+             SOCIAL_XLS_FULL),
+    #
+    # The programme cut for 2019-20 and 2020-21. 2019-20 prints no category
+    # breakdown, so it lands as the All Categories slice, exactly like the PDF
+    # years' Table 34.
+    RawSheet("2019-20", "34OutTurn Prog", "programme_social", "graduates",
+             SOCIAL_XLS_NONE),
+    RawSheet("2020-21", "34a",            "programme_social", "graduates",
+             SOCIAL_XLS_FULL),
     # 2022-23 / 2023-24 — fetch, then inspect_workbook.py, then fill in the real
     # sheet names and uncomment. Left commented rather than guessed: a wrong sheet
     # name here is a silent miss, and the table numbers are likely to have moved.
@@ -383,20 +456,6 @@ class PdfTable:
         return PDF_REPORTS[self.year]
 
 
-# ─── Basis: actual response vs estimated ──────────────────────────────────────
-# AISHE publishes two kinds of figure and says which in the table caption:
-#
-#   "based on actual response"  the totals reported BY the institutions that
-#                               responded to the survey that year.
-#   "Estimated"                 those totals grossed up to the full registered
-#                               population, to account for non-response.
-#
-# They are not comparable. Response rates vary by year and state, so an estimated
-# figure is systematically larger than the actual-response one for the same cell —
-# comparing across the two reads as growth that did not happen. Every row carries
-# `basis` so the two can never be mixed silently.
-BASIS_ACTUAL = "actual response"
-BASIS_ESTIMATED = "estimated"
 
 # Social categories as printed across Tables 14 and 15. Order matters — the
 # cross-tab read is positional — and the labels match the Excel-era

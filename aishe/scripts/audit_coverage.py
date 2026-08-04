@@ -59,12 +59,10 @@ KNOWN_GAPS = {
 # Excel sheets present in the workbooks but not registered in RAW_SHEETS. Recorded
 # because they are the cheapest remaining coverage: already-clean Excel, no PDF
 # parsing needed. Verified by inspecting the workbooks' sheet names.
-UNUSED_EXCEL = {
-    "2019-20": ["33OutTurnState", "34OutTurn Prog", "14TotalEnrCategory"],
-    "2020-21": ["33OutTurnState", "33a CategoryOutTurn", "34OutTurn Prog", "34a",
-                "14-15TotalEnrCategory"],
-    "2021-22": ["33a CategoryOutTurn", "34OutTurn Prog",
-                "14-15TotalEnrCategory (2)"],
+UNUSED_EXCEL: dict[str, list[str]] = {
+    # All the sheets previously listed here are now registered in RAW_SHEETS.
+    # 2022-23 / 2023-24 have no workbook at all (see sources.REPORT_URLS), so
+    # there is nothing unused left to record.
 }
 
 
@@ -108,8 +106,12 @@ def build() -> tuple[str, list[str]]:
                             else f"{tbl} (unparsed)")
             elif y <= "2018-19" and tbl not in ("T14", "T15"):
                 gaps.append(f"{tbl} (not attempted)")
-            elif y >= "2019-20" and tbl in ("T14", "T15", "T33", "T34"):
-                gaps.append(f"{tbl} (Excel sheet unused)")
+            elif y >= "2022-23":
+                gaps.append(f"{tbl} (no workbook; PDF not parsed)")
+            elif tbl == "T15":
+                # 2019-20 onward fold PwD/Muslim/Minority into the Table 14 sheet
+                # rather than printing a separate Table 15.
+                continue
         if got and not rows:
             problems.append(f"{y}: {len(got)} tables registered but 0 rows in the parquet")
         lines.append(f"| {y} | {_editions(y)} | {', '.join(got) or '—'} "
@@ -143,16 +145,14 @@ def build() -> tuple[str, list[str]]:
         for y, r in ct.iterrows():
             body.append(f"| {y} | " + " | ".join(f"{v:,}" if v else "—"
                                                  for v in r) + " |")
-    body += [
-        "",
-        "## Unused Excel sheets",
-        "",
-        "Already-clean workbook sheets we hold but do not parse. Cheapest remaining",
-        "coverage — no PDF parsing involved.",
-        "",
-    ]
-    for y, sheets in UNUSED_EXCEL.items():
-        body.append(f"- **{y}**: " + ", ".join(f"`{s}`" for s in sheets))
+    body += ["", "## Unused Excel sheets", ""]
+    if UNUSED_EXCEL:
+        body.append("Already-clean workbook sheets we hold but do not parse.")
+        body.append("")
+        for y, sheets in UNUSED_EXCEL.items():
+            body.append(f"- **{y}**: " + ", ".join(f"`{s}`" for s in sheets))
+    else:
+        body.append("None — every sheet in every workbook we hold is now parsed.")
     body += [
         "",
         "## Not available from AISHE at all",
