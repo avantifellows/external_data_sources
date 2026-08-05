@@ -59,6 +59,7 @@ RENAME_PER_STREAM = {
 RAW_REQUIRED = [
     "state", "cet_name", "stream", "year", "round",
     "college_code", "college_name", "college_type", "status",
+    "home_university",
     "branch_code", "branch_name",
     "quota", "category_raw", "category", "gender", "sub_pool",
     "opening_rank", "closing_rank", "num_rank_observations",
@@ -67,6 +68,7 @@ RAW_REQUIRED = [
 OUTPUT_COLS = [
     "state", "cet_name", "stream", "year", "round",
     "college_code", "college_name", "college_type", "status",
+    "home_university",
     "branch_code", "branch_name",
     "quota", "category_raw", "category", "gender", "sub_pool",
     "opening_rank", "closing_rank", "num_rank_observations",
@@ -140,11 +142,21 @@ def build() -> pd.DataFrame:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype("Float64")
 
     df["sub_pool"] = df["sub_pool"].fillna("").astype("string")
+    # home_university is the second clause of the PDF's Status line. Genuinely
+    # absent for whole streams (bdesign) and for some rounds within a stream
+    # (pharmacy ~49%) — those PDFs print a bare "Status: Un-Aided" with no
+    # clause at all. Keep as NULL rather than "" so the distinction between
+    # "not published" and "empty string" survives into BQ.
+    df["home_university"] = (df["home_university"].astype("string")
+                             .str.replace(r"\s{2,}", " ", regex=True)
+                             .str.strip()
+                             .replace("", pd.NA))
     df["source_url"] = df["stream"].map(PORTAL_OF_STREAM)
     df = df[OUTPUT_COLS]
 
     # ── invariants ───────────────────────────────────────────────────────────
-    never_null = [c for c in OUTPUT_COLS if c not in {"sub_pool", *SCORE_COLS}]
+    never_null = [c for c in OUTPUT_COLS
+                  if c not in {"sub_pool", "home_university", *SCORE_COLS}]
     nulls = df[never_null].isna().any()
     if nulls.any():
         raise ValueError(f"Required columns contain nulls: {nulls[nulls].index.tolist()}")
@@ -253,6 +265,12 @@ def main() -> None:
     print(df["category"].value_counts().to_string())
     print("\n  gender split:")
     print(df["gender"].value_counts().to_string())
+    hu = df["home_university"]
+    print(f"\n  home_university: {hu.notna().sum():,}/{len(df):,} rows populated, "
+          f"{hu.nunique()} distinct")
+    print("    per stream:")
+    for stream, grp in df.groupby("stream"):
+        print(f"      {stream:14s} {grp['home_university'].notna().sum():>6,}/{len(grp):<6,}")
 
     if args.dry_run:
         print("\n[dry-run] No file written.")

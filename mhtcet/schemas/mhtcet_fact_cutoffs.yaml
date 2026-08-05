@@ -59,8 +59,9 @@ description: |
      into the headline numbers.
   5. quota IS A DOMICILE PAIR, NOT A CATEGORY. Values are 'State Level',
      'Home → Home', 'Other → Other', 'Home → Other', 'Other → Home' — the
-     candidate's home-university region versus the college's. The same seat
-     bucket closes at very different ranks across these pools, so never
+     candidate's home-university region versus the college's — and the
+     college's side of that comparison is the home_university column. The same
+     seat bucket closes at very different ranks across these pools, so never
      aggregate over quota without meaning to.
   6. ONE COLLEGE CODE CAN HOST TWO FUNDING POOLS. college_type is part of the
      grain because a few institutes genuinely run both Government-Aided and
@@ -150,6 +151,20 @@ columns:
       Raw Status text from the PDF, e.g. 'Government Autonomous' or
       'Un-Aided Home University : Mumbai University'. Provenance only; the
       'Home University : X' clause is the CET Cell's own formatting.
+
+  - name: home_university
+    type: STRING
+    mode: NULLABLE
+    description: >
+      The college's home university, from the second clause of the PDF's Status
+      line ("Status: Government-Aided ... Home University : Mumbai University").
+      This is what the `quota` column is keyed to: a 'Home → Home' seat means
+      the candidate's home university matches THIS value. 19 distinct values;
+      'Autonomous Institute' is legitimate (13,247 engineering rows) — it is
+      what the CET Cell prints for autonomous colleges, not a parse artifact.
+      NULL where the source does not publish the clause: all of bdesign and
+      ~49% of pharmacy print a bare "Status: Un-Aided". 53,478 / 59,380 rows
+      populated.
 
   - name: branch_code
     type: STRING
