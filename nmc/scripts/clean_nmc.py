@@ -221,6 +221,32 @@ def _year(s):
     return int(m.group(1)) if m else None
 
 
+def repair_split_word(value: str) -> str:
+    """Rejoin a word the PDF split across the column boundary.
+
+    Same bleed as the state column, but district has ~750 values and no canonical
+    list to validate against, so we cannot confirm a completion the way
+    canonical_state() does. What we CAN do safely is rejoin a trailing 1-3 letter
+    fragment onto the preceding token when the value is a single word split in two
+    ("Farrukhaba d", "Siddharthna gar", "Shahjahanp ur", "Chengalpatt u").
+
+    Guarded to avoid mangling genuine multi-word districts:
+      - only when the value is exactly two space-separated parts
+      - the tail is 1-3 letters and all lowercase (a real second word would
+        normally be capitalised: "Fatehgarh Sahib", "North Goa")
+      - the head is at least 6 characters, so short real pairs are untouched
+    46 of 780 district values are affected.
+    """
+    v = _norm(value)
+    parts = v.split(" ")
+    if len(parts) != 2:
+        return v
+    head, tail = parts
+    if len(head) >= 6 and 1 <= len(tail) <= 3 and tail.islower():
+        return head + tail
+    return v
+
+
 def build_df() -> pd.DataFrame:
     rows = []
     last_state = ""
@@ -254,7 +280,7 @@ def build_df() -> pd.DataFrame:
                         "sl_no": int(sl_no),
                         "state": state,
                         "college": _norm(college_raw),
-                        "district": _norm(r[C_DISTRICT]),
+                        "district": repair_split_word(r[C_DISTRICT]),
                         "university": _norm(r[C_UNIVERSITY]),
                         "management_category": _mgmt_category(_norm(r[C_MGMT])),
                         "management": _norm(r[C_MGMT]),
