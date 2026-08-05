@@ -111,12 +111,24 @@ NMC_METHOD_PRIORITY  = {"s1_name_exact": 0, "s2_name_short": 1, "s3_ratio": 2, "
 # 1. Truncated/split by the PDF extractor (e.g. "Maharasht ra", "Uttarakhan d")
 # 2. Old official names now changed (Orissa → Odisha, Pondicherry → Puducherry)
 # Apply after _norm so keys are already uppercased and stripped.
+# State-name matching. The NMC PDF prints states in several forms, and _norm strips
+# "&" to a space — so "JAMMU  KASHMIR" never equalled AISHE's "JAMMU AND KASHMIR"
+# and all 12 J&K colleges were state-scoped out of every match. _norm_state also
+# drops the connector word so all three spellings collapse to one key.
+#
+# The truncation entries below ("MAHARASHT RA", "UTTAR PRADE" ...) are a PDF
+# column-bleed artefact, now repaired at the parse step in nmc/scripts/clean_nmc.py.
+# Kept as a one-release safety net for tables loaded before that fix; safe to delete
+# once nmc_fact_mbbs_seats has been reloaded.
 _NMC_STATE_FIXUP: dict[str, str] = {
     "MAHARASHT RA":     "MAHARASHTRA",
+    "MAHARASHTR":       "MAHARASHTRA",
     "MADHYA PRA DESH":  "MADHYA PRADESH",
+    "MADHYA PRA":       "MADHYA PRADESH",
     "UTTAR PRADE SH":   "UTTAR PRADESH",
     "UTTAR PRADE":      "UTTAR PRADESH",
     "UTTARAKHAN D":     "UTTARAKHAND",
+    "UTTARAKHAN":       "UTTARAKHAND",
     "WEST BENGA L":     "WEST BENGAL",
     "WEST BENGA":       "WEST BENGAL",
     "PONDICHERR Y":     "PUDUCHERRY",
@@ -131,6 +143,18 @@ def _norm(s: pd.Series) -> pd.Series:
         s.fillna("").str.upper().str.strip()
         .str.replace(r"[^A-Z0-9 ]", "", regex=True)
         .str.replace(r" {2,}", " ", regex=True)
+    )
+
+
+def _norm_state(s: pd.Series) -> pd.Series:
+    """Normalise a state name for comparison: drop the AND/& connector so
+    "Jammu & Kashmir", "Jammu and Kashmir" and "JAMMU KASHMIR" all match."""
+    return (
+        _norm(s)
+        .str.replace(r"\bAND\b", " ", regex=True)
+        .str.replace(r" {2,}", " ", regex=True)
+        .str.strip()
+        .replace(_NMC_STATE_FIXUP)
     )
 
 
@@ -158,7 +182,7 @@ def _read_aishe(client) -> pd.DataFrame:
         parts.append(client.query(sql).to_dataframe())
     df = pd.concat(parts, ignore_index=True).drop_duplicates(subset="aishe_code", keep="first")
     df["norm_name"]       = _norm(df["college_name"])
-    df["norm_state"]      = _norm(df["college_state"])
+    df["norm_state"]      = _norm_state(df["college_state"])
     df["short_norm_name"] = _short_norm(df["college_name"])
     df["spaceless_name"]  = _spaceless(df["college_name"])
     return df
@@ -181,7 +205,7 @@ def _read_nirf(client) -> pd.DataFrame:
     """
     df = client.query(sql).to_dataframe()
     df["norm_name"]  = _norm(df["institute_name"])
-    df["norm_state"] = _norm(df["state"])
+    df["norm_state"] = _norm_state(df["state"])
     df["is_modern"]  = df["institute_id"].str.match(r"^IR-[A-Z]+-[CU]-\d+$", na=False)
 
     def _extract(iid: str) -> str | None:
@@ -541,7 +565,7 @@ def _read_nmc(client) -> pd.DataFrame:
     # short_norm_name strips everything after the first comma or paren.
     df["short_norm_name"] = _short_norm(df["college"])
     df["spaceless_name"]  = _spaceless(df["college"])
-    df["norm_state"]      = _norm(df["state"]).replace(_NMC_STATE_FIXUP)
+    df["norm_state"]      = _norm_state(df["state"])
     return df
 
 
