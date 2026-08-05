@@ -159,7 +159,11 @@ columns:
       The college's home university, from the second clause of the PDF's Status
       line ("Status: Government-Aided ... Home University : Mumbai University").
       This is what the `quota` column is keyed to: a 'Home → Home' seat means
-      the candidate's home university matches THIS value. 19 distinct values;
+      the candidate's home university matches THIS value. 14 distinct values —
+      pdftotext truncates the clause at the PDF's column width, so the upstream
+      parser collapses each truncated prefix onto its full form (see
+      state_MH.canonical_university_names in futures-v2). Without that a
+      GROUP BY on this column splits one university across up to four rows;
       'Autonomous Institute' is legitimate (13,247 engineering rows) — it is
       what the CET Cell prints for autonomous colleges, not a parse artifact.
       NULL where the source does not publish the clause: all of bdesign and
