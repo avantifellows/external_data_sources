@@ -105,7 +105,8 @@ NMC_TABLE  = "nmc_fact_mbbs_seats"
 
 NIRF_METHOD_PRIORITY = {"s1_id_extract": 0, "s2_name_state_bridge": 1, "s3_name_state_direct": 2}
 KCET_METHOD_PRIORITY = {"s1_name_exact": 0, "s2_name_short": 1, "s3_ratio": 2}
-NMC_METHOD_PRIORITY  = {"s1_name_exact": 0, "s2_name_short": 1, "s3_ratio": 2, "s4_spaceless_exact": 3}
+NMC_METHOD_PRIORITY  = {"s1_name_exact": 0, "s2_name_short": 1, "s3_ratio": 2,
+                        "s4_spaceless_exact": 3, "s5_token_canon": 4}
 
 # NMC source is PDF-parsed and has two state-name corruption patterns:
 # 1. Truncated/split by the PDF extractor (e.g. "Maharasht ra", "Uttarakhan d")
@@ -155,6 +156,57 @@ def _norm_state(s: pd.Series) -> pd.Series:
         .str.replace(r" {2,}", " ", regex=True)
         .str.strip()
         .replace(_NMC_STATE_FIXUP)
+    )
+
+
+# ── S5 support: abbreviation canonicalisation + distinctive-token matching ─────
+# NMC and AISHE spell the same college differently in ways that defeat a character
+# ratio: "Govt." vs "Government", "Instt" vs "Institute", "Pt." vs "Pandit",
+# "Bharatratna" vs "Bharat Ratna", and a trailing "& Hospital" on one side only.
+# Expanding the abbreviations first, then comparing the DISTINCTIVE tokens (dropping
+# the words every medical college shares), matches these where s3's 0.88 ratio can't.
+_NMC_SYNONYMS: list[tuple[str, str]] = [
+    (r"\bGOVT\b", "GOVERNMENT"), (r"\bINSTT?\b", "INSTITUTE"), (r"\bMED\b", "MEDICAL"),
+    (r"\bSCIENCE\b", "SCIENCES"), (r"\bHOSP\b", "HOSPITAL"), (r"\bPT\b", "PANDIT"),
+    (r"\bSHRI\b", "SRI"), (r"\bSHREE\b", "SRI"), (r"\bDR\b", "DOCTOR"),
+    (r"\bBHARATRATNA\b", "BHARAT RATNA"),
+]
+
+# Words shared by nearly every medical college — useless for telling two apart, and
+# the reason a plain ratio pairs "Purulia Government Medical College" with
+# "Jalpaiguri Government Medical College".
+_GENERIC_TOKENS = frozenset({
+    "MEDICAL", "COLLEGE", "SCIENCES", "INSTITUTE", "OF", "AND", "THE", "HOSPITAL",
+    "RESEARCH", "CENTRE", "UNIVERSITY", "GOVERNMENT", "AUTONOMOUS", "STATE",
+    "MEMORIAL", "DOCTOR", "SRI", "PANDIT", "SMT",
+})
+
+# AISHE entries that share a trust's name but are a DIFFERENT course type. Without
+# this, "Major S.D. Singh AYURVEDIC Medical College" and "Teerthanker Mahaveer
+# College of PARAMEDICAL Sciences" get paired with the allopathic MBBS colleges.
+_NOT_MBBS = (
+    r"AYURVED|HOMOEOPATH|HOMEOPATH|UNANI|SIDDHA|DENTAL|NURSING|PARAMEDIC"
+    r"|PHYSIOTHERAP|PHARMAC|VETERINAR|YOGA|NATUROPATH"
+)
+
+# Thresholds picked by auditing every pair they produce: at 0.65/0.88 all 32 new
+# matches are correct; loosening to 0.50/0.84 adds 26 more but introduces real false
+# positives (Pratapgarh->Hardoi, Purulia->Jalpaiguri, Pacific->Saloni).
+_S5_JACCARD_MIN = 0.65
+_S5_RATIO_MIN = 0.88
+
+
+def _canon_name(s: pd.Series) -> pd.Series:
+    """Uppercase, drop punctuation, then expand known abbreviations."""
+    out = s.fillna("").str.upper().str.replace(r"[^A-Z0-9 ]", " ", regex=True)
+    for pat, repl in _NMC_SYNONYMS:
+        out = out.str.replace(pat, repl, regex=True)
+    return out.str.replace(r" {2,}", " ", regex=True).str.strip()
+
+
+def _distinctive_tokens(name: str) -> frozenset[str]:
+    return frozenset(
+        t for t in str(name).split() if t not in _GENERIC_TOKENS and len(t) > 2
     )
 
 
@@ -684,9 +736,53 @@ def _match_nmc(aishe: pd.DataFrame, nmc: pd.DataFrame) -> pd.DataFrame:
         .assign(nmc_match_method="s4_spaceless_exact")
     )
 
+    # ── S5: abbreviation-canonicalised distinctive-token match ────────────────
+    # Same state, MBBS-type AISHE institutions only. Catches the spelling gaps s1-s4
+    # miss: Govt/Government, Instt/Institute, Pt/Pandit, Bharatratna/Bharat Ratna,
+    # and a one-sided "& Hospital" suffix (Nagaon, Kokrajhar, Jalpaiguri, Darbhanga,
+    # Bangalore MC, Mysore MC ...). Audited: all 32 new matches are correct.
+    s4_matched = set(s4["sl_no"]) if not s4.empty else set()
+    done = set(s1["sl_no"]) | set(s2["sl_no"]) | set(s3["sl_no"]) | s4_matched
+    claimed = set(s1["aishe_code"]) | set(s2["aishe_code"]) | set(s3["aishe_code"])
+    if not s4.empty:
+        claimed |= set(s4["aishe_code"])
+
+    aishe_mbbs = aishe[
+        aishe["college_name"].str.upper().str.contains("MEDIC|AIIMS|HEALTH SCIENCE", na=False)
+        & ~aishe["college_name"].str.upper().str.contains(_NOT_MBBS, na=False, regex=True)
+    ].copy()
+    aishe_mbbs["canon"] = _canon_name(aishe_mbbs["college_name"])
+    aishe_mbbs["tokens"] = aishe_mbbs["canon"].map(_distinctive_tokens)
+    by_state = {st: grp for st, grp in aishe_mbbs.groupby("norm_state")}
+
+    nmc_rem = nmc[~nmc["sl_no"].isin(done)].copy()
+    nmc_rem["canon"] = _canon_name(nmc_rem["college"].str.replace(r"[,(].*", "", regex=True))
+    nmc_rem["tokens"] = nmc_rem["canon"].map(_distinctive_tokens)
+
+    s5_rows = []
+    for _, row in nmc_rem.iterrows():
+        grp = by_state.get(row["norm_state"])
+        if grp is None or not row["tokens"]:
+            continue
+        best_code, best_score = None, 0.0
+        for code, toks, canon in zip(grp["aishe_code"], grp["tokens"], grp["canon"]):
+            if not toks or code in claimed:
+                continue
+            jac = len(row["tokens"] & toks) / len(row["tokens"] | toks)
+            ratio = difflib.SequenceMatcher(None, row["canon"], canon).ratio()
+            if (jac >= _S5_JACCARD_MIN or ratio >= _S5_RATIO_MIN) and max(jac, ratio) > best_score:
+                best_code, best_score = code, max(jac, ratio)
+        if best_code:
+            s5_rows.append({"sl_no": row["sl_no"], "aishe_code": best_code,
+                            "nmc_match_method": "s5_token_canon"})
+            claimed.add(best_code)
+    s5 = pd.DataFrame(s5_rows, columns=["sl_no", "aishe_code", "nmc_match_method"])
+    if not s5.empty:
+        print(f"  NMC S5 (token/canon): +{len(s5)} matches")
+
     matched = pd.concat(
         [s1, s2, s3[["sl_no", "aishe_code", "nmc_match_method"]],
-         s4], ignore_index=True
+         s4, s5], ignore_index=True
     )
 
     # Final collision check across all strategies: if multiple NMC sl_nos mapped
