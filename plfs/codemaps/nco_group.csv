@@ -3,9 +3,9 @@ code,description
 112,Managing Directors and Chief Executives
 121,Business Services and Administration Managers
 122,"Sales, Marketing and Development Managers"
-131,"Production Managers in Agriculture, Forestry"
-132,"Manufacturing, Mining, Construction and"
-133,Information and Communications Technology
+131,"Production Managers in Agriculture, Forestry and Fisheries"
+132,"Manufacturing, Mining, Construction and Distribution Managers"
+133,Information and Communications Technology Services Manager
 134,Professional Services Managers
 141,Hotel and Restaurant Managers
 142,Retail and Wholesale Trade Managers
@@ -13,12 +13,12 @@ code,description
 211,Physical and Earth Science Professionals
 212,"Mathematicians, Actuaries and Statisticians"
 213,Life Sciences Professionals
-214,Engineering Professionals (Excluding
+214,Engineering Professionals (Excluding Electrotechnology)
 215,Electrotechnology Engineers
 216,"Architects, Planners, Surveyors and Designers"
 221,Medical Doctors
 222,Nursing and Midwifery Professionals
-223,Traditional and Complementary Medicine
+223,Traditional and Complementary Medicine Professionals
 224,Paramedical Practitioners
 225,Veterinarians
 226,Other Health Professionals
@@ -29,8 +29,8 @@ code,description
 235,Other Teaching Professionals
 241,Finance Professionals
 242,Administration Professionals
-243,"Sales, Marketing and Public Relations"
-251,"Software and Application Developers, and"
+243,"Sales, Marketing and Public Relations Professionals"
+251,"Software and Application Developers, and Analysts"
 252,Database and Network Professionals
 261,Legal Professionals
 262,"Librarians, Archivists and Curators"
@@ -38,29 +38,29 @@ code,description
 264,"Authors, Journalists and Linguists"
 265,Creative and Performing Artists
 311,Physical and Engineering Science Technicians
-312,"Mining, Manufacturing and Construction"
+312,"Mining, Manufacturing and Construction Supervisors"
 313,Process Control Technicians
-314,Life Science Technicians and Related Associate
+314,Life Science Technicians and Related Associate Professionals
 315,"Ship and Aircraft Controllers, and Technicians"
 321,Medical and Pharmaceutical Technicians
 322,Nursing and Midwifery Associate Professionals
-323,Traditional and Complementary Medicine
+323,Traditional and Complementary Medicine Associate Professionals
 324,Veterinary Technicians and Assistants
 325,Other Health Associate Professionals
-331,Financial and Mathematical Associate
+331,Financial and Mathematical Associate Professionals
 332,Sales and Purchasing Agents and Brokers
 333,Business Service Agents
 334,Administrative and Specialized Secretaries
 335,Government Regulatory Associate Professionals
-341,"Legal, Social and Religious Associate"
+341,"Legal, Social and Religious Associate Professionals"
 342,Sports and Fitness Workers
 343,Administrative Associate Professionals
-351,Information and Communication Technology
-352,Telecommunication and Broadcasting
+351,Information and Communication Technology Operations and User Support Technicians
+352,Telecommunication and Broadcasting Technicians
 411,General Office Clerks
 412,Secretaries (General)
 413,Keyboard Operators
-421,"Tellers, Money Collectors and Related"
+421,"Tellers, Money Collectors and Related Clerks"
 422,Client Information Workers
 431,Numerical Clerks
 432,Material Recording and Transport Clerks
@@ -68,7 +68,7 @@ code,description
 511,"Travel Attendants, Conductors and Guides"
 512,Cooks
 513,Waiters and Bartenders
-514,"Hairdressers, Beauticians and Related"
+514,"Hairdressers, Beauticians and Related Workers"
 515,Building and Housekeeping Supervisors
 516,Other Personal Services Workers
 521,Street and Market Salespersons
@@ -85,39 +85,39 @@ code,description
 622,"Fishery Workers, Hunters and Trappers"
 631,Subsistence Crop Farmers
 632,Subsistence Livestock Farmers
-633,Subsistence Mixed Crop and Livestock
-634,"Subsistence Fishers, Hunters, Trappers and"
-711,Building Frames and Related Trades
-712,Building Finishers and Related Trades
-713,"Painters, Builders, Structure Cleaners and"
-721,"Sheet and Structural Metal Workers,"
-722,"Blacksmiths, Tool Makers and Related"
+633,Subsistence Mixed Crop and Livestock Farmers
+634,"Subsistence Fishers, Hunters, Trappers and Gatherers"
+711,Building Frames and Related Trades Workers
+712,Building Finishers and Related Trades Workers
+713,"Painters, Builders, Structure Cleaners and Related Trades Workers"
+721,"Sheet and Structural Metal Workers, Moulders and Welders, and Related Workers"
+722,"Blacksmiths, Tool Makers and Related Trades Workers"
 723,Machinery Mechanics and Repairers
 731,Handicraft Workers
 732,Printing Trades Workers
-741,Electrical Equipment Installers and
-742,Electronics and Telecommunication
-751,Food Processing and Related Trade
-752,"Wood Treaters, Cabinet Makers and"
+741,Electrical Equipment Installers and Repairers
+742,Electronics and Telecommunication Installers and Repairers
+751,Food Processing and Related Trade Workers
+752,"Wood Treaters, Cabinet Makers and Related Trades Workers"
 753,Garment and Related Trades Workers
 754,Other Craft and Related Workers
-811,Mining and Mineral Processing Plant
-812,Metal Processing and Finishing Plant
-813,Chemical and Photographic Products Plant
-814,"Rubber, Plastic and Paper Products"
-815,"Textile, Fur and Leather Products Machine"
-816,Food and Related Products Machine
-817,Wood Processing and Papermaking Plant
-818,Other Stationary Plant and Machine
+811,Mining and Mineral Processing Plant Operators
+812,Metal Processing and Finishing Plant Operators
+813,Chemical and Photographic Products Plant and Machine Operators
+814,"Rubber, Plastic and Paper Products Machine Operators"
+815,"Textile, Fur and Leather Products Machine Operators"
+816,Food and Related Products Machine Operators
+817,Wood Processing and Papermaking Plant Operators
+818,Other Stationary Plant and Machine Operators
 821,Assemblers
-831,Locomotive Engine Drivers and Related
+831,Locomotive Engine Drivers and Related Workers
 832,"Car, Van and Motorcycle Drivers"
 833,Heavy Truck and Bus Drivers
 834,Mobile Plant Operators
 835,Ships’ Deck Crews and Related Workers
-911,"Domestic, Hotel and Office Cleaners and"
-912,"Vehicle, Window, Laundry and Other Hand"
-921,"Agricultural, Forestry and Fishery"
+911,"Domestic, Hotel and Office Cleaners and Helpers"
+912,"Vehicle, Window, Laundry and Other Hand Cleaners"
+921,"Agricultural, Forestry and Fishery Labourers"
 931,Mining and Construction Labourers
 932,Manufacturing Labourers
 933,Transport and Storage Labourers

@@ -8,14 +8,14 @@ code,description,nco_2004_code
 1112.0300,"Executive Officials, Union Government",1121.30
 1112.0400,"Administrative Official, State Government",1122.10
 1112.0500,"Executive Official, State Government",1122.20
-1112.0600,"Administrative and Executive Officials, Quasi",1123.10
-1112.0700,"Administrative & Executive Officials, Quasi",1123.20
-1112.0800,"Administrative and Executive Officials, Local",1124.10
+1112.0600,"Administrative and Executive Officials, Quasi Government (Central)",1123.10
+1112.0700,"Administrative & Executive Officials, Quasi Government (State)",1123.20
+1112.0800,"Administrative and Executive Officials, Local Bodies",1124.10
 1112.9900,"Senior Government Officials, Other",1129.90
 1114.0100,Political Worker,1141.10
-1114.0200,"Senior Officials of Employers, Workers and Other",1142.00
+1114.0200,"Senior Officials of Employers, Workers and Other Economic Interest Organizations",1142.00
 1114.0300,"Director, Disaster Management Services",1143.10
-1114.9900,"Senior Officials of Special Interest Organizations,",1143.90
+1114.9900,"Senior Officials of Special Interest Organizations, Other",1143.90
 1120.0100,"Working Proprietor, Electricity",1211.10
 1120.0200,"Working Proprietor, Gas",1211.20
 1120.0300,"Working Proprietor, Water Supply",1211.30
@@ -26,16 +26,16 @@ code,description,nco_2004_code
 1120.0800,"Director, Insurance",1212.20
 1120.0900,"Working Proprietor, Mines/Proprietor, Mines",1213.10
 1120.1000,"Working Proprietor, Quarry/Proprietor, Quarry",1213.20
-1120.1100,"Working Proprietor, Well Drilling/Proprietor,",1213.30
-1120.1200,"Working Proprietor, Construction/Proprietor,",1213.40
+1120.1100,"Working Proprietor, Well Drilling/Proprietor, Well Drilling",1213.30
+1120.1200,"Working Proprietor, Construction/Proprietor, Construction",1213.40
 1120.1300,"Director, Construction",1213.50
 1120.1400,"Director, Mines",1213.60
 1120.1500,"Director, Quarry",1213.70
 1120.1600,"Director, Well Drilling",1213.80
-1120.1700,"Working Proprietor, Manufacturing/Proprietor,",1214.10
+1120.1700,"Working Proprietor, Manufacturing/Proprietor, Manufacturing",1214.10
 1120.1800,Director Manufacturing,1214.20
-1120.1900,"Working Proprietor, Wholesale Trade/Proprietor,",1214.30
-1120.2000,"Working Proprietor, Retail Trade/Proprietor,",1214.40
+1120.1900,"Working Proprietor, Wholesale Trade/Proprietor, Wholesale Trade",1214.30
+1120.2000,"Working Proprietor, Retail Trade/Proprietor, Retail Trade",1214.40
 1120.2100,"Director, Wholesale Trade",1214.50
 1120.2200,"Director, Retail Trade",1214.60
 1120.2300,"Working Proprietor, Transport",1215.10
@@ -44,10 +44,10 @@ code,description,nco_2004_code
 1120.2600,"Director, Airport",1215.40
 1120.2700,"Working Proprietor, Storage and Warehousing",1216.10
 1120.2800,"Director, Storage and Warehousing",1216.20
-1120.2900,"Working Proprietor, Lodging and Catering",1217.10
-1120.3000,"Director, Lodging and Catering Services/Director",1217.20
+1120.2900,"Working Proprietor, Lodging and Catering Services",1217.10
+1120.3000,"Director, Lodging and Catering Services/Director Food and Beverage Service",1217.20
 1120.3100,Executive Chef,1217.30
-1120.3200,"Working Proprietor, Recreation and",1218.10
+1120.3200,"Working Proprietor, Recreation and Entertainment",1218.10
 1120.3300,"Director, Recreation and Entertainment",1218.20
 1120.3400,"Station Director, Radio/TV",1218.30
 1120.3500,"Working Proprietor, Other Services",1219.10
@@ -65,13 +65,13 @@ code,description,nco_2004_code
 1213.0200,"Manager, Automotive Service Station",1239.20
 1213.9900,"Managers, Other Services",1239.90
 1219.0100,"Manager, Import and Export",1227.30
-1219.0200,"Manager, Health Club/Manager, Fitness",1228.10
+1219.0200,"Manager, Health Club/Manager, Fitness Club/Centre/Gym",1228.10
 1221.0100,Sales Manager (Wholesale Trade),1233.10
 1221.0200,Sales Manager (Retail Trade),1233.20
 1221.9900,"Sales and Marketing Managers, Other",1233.90
 1222.0100,"Manager, Advertising and Promotion",1234.10
 1222.0200,"Manager, Fashion/Fashion Manager",1234.20
-1222.9900,Advertising and Public Relations Department,1234.90
+1222.9900,"Advertising and Public Relations Department Managers, Others",1234.90
 1311.0100,"General Manager, Plantation",1301.20
 1311.0200,"General Manager, Horticulture",1301.30
 1311.0300,"General Manager, Agricultural Farm",1301.10
@@ -87,7 +87,7 @@ code,description,nco_2004_code
 1311.1300,"Manager, Livestock Farm",1221.40
 1311.1400,"Manager, Dairy Farm",1221.50
 1311.1500,"Manager, Poultry Farm",1221.60
-1311.9900,"Agricultural and Forestry Production Managers,",1221.90
+1311.9900,"Agricultural and Forestry Production Managers, Others",1221.90
 1321.0100,"Manager, Electricity",1222.40
 1321.0200,Terminal Manager,1222.45
 1321.0300,"Manager, Gas",1222.50
@@ -106,9 +106,9 @@ code,description,nco_2004_code
 1322.0500,"General Manager, Quarry",1302.20
 1322.0600,"General Manager, Well Drilling",1302.30
 1322.9900,"Mining Managers, Other",1222.90
-1323.0100,"Manager, Construction/Manager Construction",1223.10
+1323.0100,"Manager, Construction/Manager Construction Projects",1223.10
 1323.0200,"Manager, Land Survey",1223.20
-1323.0300,"General Manager, Construction/General",1303.10
+1323.0300,"General Manager, Construction/General Manager Construction Projects",1303.10
 1323.9900,"Construction Managers, Other",1303.90
 1324.0100,"Manager, Material Control/Manager Materials",1235.10
 1324.0200,"Manager, Transport",1226.10
@@ -132,16 +132,16 @@ code,description,nco_2004_code
 1324.2000,"Accident Officer, Tram",1226.69
 1324.2100,"General Manager, Transport",1306.10
 1324.2200,"General Manager, Storage and Warehousing",1306.30
-1324.9900,"Supply, Distribution and Related Managers and",1226.90
+1324.9900,"Supply, Distribution and Related Managers and General Managers, Other",1226.90
 1330.0100,"Manager, Communication",1226.40
-1330.0200,"Contract Officer, Telephone/Liaising Officer/",1226.70
+1330.0200,"Contract Officer, Telephone/Liaising Officer/ PRO/Business Executive",1226.70
 1330.0300,Post Master,1226.80
 1330.0600,"General Manager, Communication",1306.20
 1345.0100,Headmaster,1229.20
 1346.0100,"Manager, Bank",1227.10
 1346.0200,"Manager, Insurance",1227.20
-1346.9900,Financial and Insurance Service Branch,1227.90
-1411.0100,"Manager, Lodging and Catering",1225.10
+1346.9900,"Financial and Insurance Service Branch Managers, Other",1227.90
+1411.0100,"Manager, Lodging and Catering Services/Resident Manager",1225.10
 1411.0200,"General Manager, Lodging and Catering Services",1305.10
 1411.9900,"Hotel Managers, Others",1225.90
 1412.0100,"Manager, Fast Food Service",1225.20
@@ -150,10 +150,10 @@ code,description,nco_2004_code
 1420.0200,"Manager, Retail Trade",1224.20
 1420.0300,"Manager, Export",1224.30
 1420.0400,"General Manager, Wholesale Trade/Senior",1304.10
-1420.0500,"General Manager, Retail Trade, Senior Manager,",1304.20
+1420.0500,"General Manager, Retail Trade, Senior Manager, Retail Trade",1304.20
 1420.9900,"Retail and Wholesale Trade Managers, Other",1304.90
 1431.0100,"General Manager, Recreation and Entertainment",1309.10
-1431.9900,"Sports, Recreation and Cultural Centre Manager,",1309.90
+1431.9900,"Sports, Recreation and Cultural Centre Manager, Other",1309.90
 2111.0100,"Physicist, General",2111.10
 2111.0200,"Physicist, Mechanics",2111.15
 2111.0300,"Physicist, Heat",2111.20
@@ -209,7 +209,7 @@ code,description,nco_2004_code
 2131.1400,"Chemist, Food",2212.20
 2131.1500,Plant Pathologist,2212.70
 2131.1800,Plant Physiologist,2212.80
-2131.9900,"Biologists, Botanists, Zoologists and Related",2211.90
+2131.9900,"Biologists, Botanists, Zoologists and Related Professionals, Other",2211.90
 2132.0100,Agronomist,2213.10
 2132.0200,Horticulturist,2213.20
 2132.0300,Soil Scientist,2213.30
@@ -225,7 +225,7 @@ code,description,nco_2004_code
 2133.0200,Environment Scientist (Including Health),2211.27
 2133.0300,Taxonomist,2211.30
 2133.0400,Paleobotanist,2211.45
-2141.0100,"Works Inspector, Engineering/Inspection",2149.10
+2141.0100,"Works Inspector, Engineering/Inspection Engineer",2149.10
 2141.0200,Instrument Engineer/Instrumentation Engineer,2149.15
 2141.0300,Industrial Engineer,2149.76
 2141.0400,Packaging Engineer,2149.77
@@ -264,7 +264,7 @@ code,description,nco_2004_code
 2143.0100,Solar Energy System Designer,2149.05
 2143.0200,Bio-Medical Engineer,2149.17
 2143.0300,Radiation Protection Engineer,2149.22
-2143.0400,"Waste Management Engineer, Radioactive",2149.87
+2143.0400,"Waste Management Engineer, Radioactive Material",2149.87
 2143.0500,Pollution Control Engineer,2149.88
 2144.0100,"Mechanical Engineer, General",2145.10
 2144.0200,"Designer, Machine",2145.15
@@ -300,7 +300,7 @@ code,description,nco_2004_code
 2146.0400,"Mining Engineer, Petroleum and Gas",2147.30
 2146.0500,"Metallurgist, Extractive",2147.40
 2146.0600,"Metallurgists, Adaptive",2147.50
-2146.9900,"Mining Engineers, Metallurgists and Related",2147.90
+2146.9900,"Mining Engineers, Metallurgists and Related Professionals, Other",2147.90
 2149.0100,"Engineers and Related Technologists, Other",2149.90
 2151.0100,"Electrical Engineer, General",2143.10
 2151.0200,"Designer, Electrical Engineering",2143.20
@@ -314,7 +314,7 @@ code,description,nco_2004_code
 2153.0100,"Telecommunication Engineer, General",2144.10
 2153.0200,"Radio Engineer, Telecommunication",2144.20
 2153.0300,"Microwave Engineer, Telecommunication",2144.30
-2153.0400,"Line Communication Engineer, Tele-",2144.40
+2153.0400,"Line Communication Engineer, Tele- Communication/Telecommunication Engineer/Technician",2144.40
 2153.0500,Sound Engineer,2144.50
 2161.0100,Architect,2141.10
 2161.9900,"Building Architects, Other",2141.90
@@ -340,7 +340,7 @@ code,description,nco_2004_code
 2211.0300,"Anatomist, Medical",2221.20
 2211.0400,Anaesthetist,2221.25
 2211.0500,Psychiatrist,2221.30
-2211.9900,"Generalist Medical Practitioners, Allopathic,",2221.90
+2211.9900,"Generalist Medical Practitioners, Allopathic, Other",2221.90
 2212.0100,Neurologist,2221.35
 2212.0200,Dermatologist,2221.40
 2212.0300,Allergy Specialist,2221.42
@@ -387,12 +387,12 @@ code,description,nco_2004_code
 2262.0100,"Chemist, Pharmaceuticals",2113.70
 2263.0100,Health Officer,2229.10
 2263.0200,"Administrator, Hospital",2229.15
-2263.9900,Environmental and Occupational Health and,3152.90
+2263.9900,"Environmental and Occupational Health and Hygiene Professionals, Other",3152.90
 2264.0100,Physiotherapist,3226.10
 2264.0200,Occupational Therapist,3226.20
 2264.0300,Chiropodist,3226.30
 2264.0400,Masseur,3226.40
-2264.9900,Physiotherapists and Related Associate,3226.90
+2264.9900,"Physiotherapists and Related Associate Professionals, Other",3226.90
 2265.0100,"Nutritionist, General",3223.10
 2265.0200,"Dietician, General",3223.20
 2265.0300,Animal Nutritionist,3223.30
@@ -408,30 +408,30 @@ code,description,nco_2004_code
 2269.0500,Orthotist and Prosthetist,3229.40
 2269.0600,Orientation & Mobility Instructor,3229.50
 2269.0700,"Medical and Health Technicians, Other",3229.90
-2310.0100,"University and College Teacher, Arts",2310.10
-2310.0200,"University and College Teacher, Commerce",2310.15
-2310.0300,"University and College Teacher, Management",2310.18
-2310.0400,"University and College Teacher,",2310.20
-2310.0500,"University and College Teacher,",2310.30
-2310.0600,"University and College Teacher, Science",2310.40
-2310.0700,"University and College Teacher, Engineering/",2310.45
-2310.0800,"University and College Teacher, Information",2310.48
-2310.0900,"University and College Teacher, Medicine and",2310.50
-2310.1000,"University and College Teacher, Veterinary",2310.60
-2310.1100,"University and College Teacher, Agricultural",2310.70
-2310.1200,"University and College Teacher, Fine",2310.80
+2310.0100,"University and College Teacher, Arts Subjects/Professors/Assistant Professors, Arts",2310.10
+2310.0200,"University and College Teacher, Commerce Subjects/Professors/Assistant Professors, Commerce Subjects",2310.15
+2310.0300,"University and College Teacher, Management Subjects/Professors/Assistant Professors, Management Subjects",2310.18
+2310.0400,"University and College Teacher, Law/Professors/Assistant Professors, Education",2310.20
+2310.0500,"University and College Teacher, Law/Professors/Assistant Professors, Law",2310.30
+2310.0600,"University and College Teacher, Science Subjects/Professors/Assistant Professors, Science Subjects",2310.40
+2310.0700,"University and College Teacher, Engineering/ Professors/Assistant Professors, Engineering",2310.45
+2310.0800,"University and College Teacher, Information Technology/Professors/Assistant Professors, Information Technology",2310.48
+2310.0900,"University and College Teacher, Medicine and Surgery/Professors/Assistant Professors, Medicine and Surgery",2310.50
+2310.1000,"University and College Teacher, Veterinary Science/Professors/Assistant Professors, Veterinary Science",2310.60
+2310.1100,"University and College Teacher, Agricultural Subjects",2310.70
+2310.1200,"University and College Teacher, Fine Arts/Professors/Assistant Professors, Fine Arts",2310.80
 2310.9900,"Professors/Assistant Professors, Other",2310.90
-2330.0100,"Senior Secondary and Secondary School Teacher,",2320.10
-2330.0200,"Senior Secondary and Secondary School Teacher,",2320.12
-2330.0300,"Senior Secondary and Secondary School Teacher,",2320.15
-2330.0400,"Language Teacher, Senior Secondary and",2320.20
-2330.9900,Senior Secondary and Secondary School,2320.90
+2330.0100,"Senior Secondary and Secondary School Teacher, Arts",2320.10
+2330.0200,"Senior Secondary and Secondary School Teacher, Science",2320.12
+2330.0300,"Senior Secondary and Secondary School Teacher, Commerce",2320.15
+2330.0400,"Language Teacher, Senior Secondary and Secondary School",2320.20
+2330.9900,"Senior Secondary and Secondary School Teachers, Other",2320.90
 2341.0100,Middle School Teacher,3311.10
 2341.0200,"Language Teacher, Middle School",3311.20
 2341.0400,Primary School Teacher,3312.10
 2341.9900,"Primary School Teachers, Other",3312.90
 2342.0100,"Teacher, Infant School/Teacher Pre-Primary",3320.10
-2342.9900,Pre-Primary Education Teaching Associate,3320.90
+2342.9900,"Pre-Primary Education Teaching Associate Professionals, Other",3320.90
 2351.0100,School Inspector,2332.10
 2351.9900,"Education Methods Specialists, Other",2331.90
 2352.0100,Teacher for Visually Impaired,3330.10
@@ -457,8 +457,8 @@ code,description,nco_2004_code
 2423.0200,Counsellor,2412.50
 2423.0500,Occupational Analyst,2412.75
 2423.9900,"Personal and Careers Professionals, Other",2412.90
-2424.0100,"Manpower Officer/Area Manager, Human",2412.10
-2424.0200,"Employment Officer/Operation Head,",2412.20
+2424.0100,"Manpower Officer/Area Manager, Human Resource",2412.10
+2424.0200,"Employment Officer/Operation Head, Employment",2412.20
 2424.0300,Human Resource Manager,2412.30
 2431.0100,Market Research Analyst,2419.40
 2431.0300,Caption Writer,2451.47
@@ -476,14 +476,14 @@ code,description,nco_2004_code
 2512.0100,Computer Programmer/Software Engineer,2132.10
 2512.0201,Software Engineer,2132.20
 2512.0300,Programmer Analyst,2132.30
-2512.0800,"Programmer, Engineering and Scientific/System",2132.40
+2512.0800,"Programmer, Engineering and Scientific/System Programmer",2132.40
 2514.9900,"Computer Programmers, Other",2132.90
 2519.0100,System Programmer,2132.50
 2519.0300,Quality Assurance Analyst (Computers),2139.10
 2521.0100,Database Design Analyst,2139.20
 2522.0100,Database Administrator,2139.30
-2523.0100,Data Communication Analyst/Network,2131.20
-2523.0200,Computer System Hardware Analyst/Hardware,2139.40
+2523.0100,Data Communication Analyst/Network Administrator,2131.20
+2523.0200,Computer System Hardware Analyst/Hardware Engineer,2139.40
 2523.9900,"Computer Network Professionals, Other",2139.90
 2611.0100,Attorney General of India,2421.10
 2611.0200,Solicitor General of India,2421.20
@@ -512,7 +512,7 @@ code,description,nco_2004_code
 2619.0100,Prothonotary and Senior Master,2429.10
 2619.0200,"Registrar (Appellate Side, High Court)",2429.20
 2619.0300,Registrar,2429.25
-2619.0400,Master Official Referee and Registrar in Equity,2429.30
+2619.0400,Master Official Referee and Registrar in Equity and Commissioner for Taking Accounts (High Court),2429.30
 2619.0500,Taxing Master,2429.40
 2619.0600,Insolvency Registrar,2429.45
 2619.0700,Official Assignee (High Court),2429.50
@@ -532,7 +532,7 @@ code,description,nco_2004_code
 2622.0200,Librarian (Film),2432.20
 2622.0300,Tape Librarian/Librarian Digital/Librarian Media,2432.25
 2622.0500,News Librarian,2432.40
-2622.9900,"Librarians and Related Information Professionals,",2432.90
+2622.9900,"Librarians and Related Information Professionals, Other",2432.90
 2631.0100,Economist,2441.10
 2631.0200,Energy Economist,2441.20
 2631.0300,Home Economist,2441.30
@@ -549,14 +549,14 @@ code,description,nco_2004_code
 2632.1000,Genealogist,2442.77
 2632.1100,Archaeologist,2442.80
 2632.1200,Geographer,2442.85
-2632.9900,"Sociologists, Anthropologists and Related",2442.90
+2632.9900,"Sociologists, Anthropologists and Related Professionals, Other",2442.90
 2633.0100,Historian,2443.10
 2633.0200,Biographer,2443.20
 2633.0300,Epigraphist,2443.30
 2633.0400,Numismatist,2443.40
 2633.0500,Philatelist,2443.50
 2633.0600,Political Scientist,2443.60
-2633.9900,"Philosophers, Historians and Political Scientists,",2443.90
+2633.9900,"Philosophers, Historians and Political Scientists, Other",2443.90
 2634.0100,Psychologist,2445.10
 2634.0200,Psychometrist,2445.20
 2634.0300,"Psychologist, Engineering",2445.30
@@ -580,7 +580,7 @@ code,description,nco_2004_code
 2635.9900,"Social Work Professionals, Other",2446.90
 2636.0100,Priest,2461.10
 2636.0200,Purohit,2462.10
-2636.9900,Ordained Religious and Non-Ordained Religious,2462.90
+2636.9900,Ordained Religious and Non-Ordained Religious Workers,2462.90
 2641.0100,Author,2451.10
 2641.0200,Critic,2451.15
 2641.0300,Editor,2451.20
@@ -659,29 +659,29 @@ code,description,nco_2004_code
 3112.0500,Computer Topographical,3112.50
 3112.0600,"Surveyor, Tidal",3112.60
 3112.9900,"Civil Engineering Technicians, Other",3112.90
-3113.0101,"Electrical Engineering, Technician/Maintenance",3113.10
+3113.0101,"Electrical Engineering, Technician/Maintenance Technician Electrical",3113.10
 3113.0200,Electrical Technician (High Voltage),3113.20
 3113.0300,Energy Auditor,3113.30
 3113.9900,"Electrical Technicians, Other",3113.90
 3114.0100,Electronics Technician,3114.10
 3114.0200,Television Chassis Inspector/Television Technician,3152.60
-3114.9900,Electronics and Telecommunications Engineering,3114.90
-3115.0101,Mechanical Engineering Technician/Supervisor,3115.10
-3115.0201,Automotive Engineering Technician/Testing,3115.20
+3114.9900,"Electronics and Telecommunications Engineering Technicians, Other",3114.90
+3115.0101,Mechanical Engineering Technician/Supervisor R&D Testing,3115.10
+3115.0201,Automotive Engineering Technician/Testing Manager,3115.20
 3115.1000,Aeronautical Engineering Technician,3115.30
-3115.1100,"Heating, Ventilation and Refrigeration Engineering",3115.40
+3115.1100,"Heating, Ventilation and Refrigeration Engineering Technician",3115.40
 3115.1200,Die Designer,3115.50
 3115.1400,Loco Foreman,3115.60
 3115.1500,"Yard Foreman, Railway",3115.65
 3115.1600,Train Examiner,3115.70
 3115.9900,"Mechanical Engineering Technicians, Other",3115.90
 3116.0100,"Laboratory Assistant, Glass and Ceramics",3116.10
-3116.0200,"Laboratory Assistant, Food & Beverages/ Chemist/",3116.20
-3116.0300,"Laboratory Assistant, Chemical Engineering",3116.30
+3116.0200,"Laboratory Assistant, Food & Beverages/ Chemist/ Analytical Supervisor/Lab Chemist",3116.20
+3116.0300,"Laboratory Assistant, Chemical Engineering General",3116.30
 3116.0400,"Core Analyst, Petrol and Natural Gas",3116.40
 3116.0500,"Laboratory Assistant, Petroleum and Lubricants",3116.50
 3116.0600,"Chemist, Water Purification/Water Treatment",3116.60
-3116.9900,"Chemical Engineering Technicians,",3116.90
+3116.9900,"Chemical Engineering Technicians, Other/Chemical Process Technicians",3116.90
 3117.0100,Rock Slicer,3117.10
 3117.0200,Petroleum and Natural Gas Extraction Technician,3117.20
 3117.0300,"Laboratory Assistant, Metallurgical",3117.30
@@ -707,7 +707,7 @@ code,description,nco_2004_code
 3119.0900,Fire Officer,3151.20
 3119.1000,"Fire Inspectors, Other",3151.90
 3119.1100,Laser Technician,3139.10
-3119.9900,"Optical and Electronic Equipment Controllers,",3139.90
+3119.9900,"Optical and Electronic Equipment Controllers, Other",3139.90
 3121.0100,"Supervisor and Foreman, Mining and Quarrying",8118.10
 3121.0200,"Supervisor and Foreman, Well Drilling",8118.15
 3121.0300,"Supervisor and Foreman, Mineral Treating",8118.20
@@ -716,75 +716,75 @@ code,description,nco_2004_code
 3121.0600,Mud Supervisor,8118.35
 3121.0700,Well Pulling Supervisor,8118.40
 3121.0800,Gas Supervisor,8118.50
-3121.9900,Supervisors and Foremen in Mining and Mineral,8118.90
-3122.0100,"Supervisors and Foremen, Metal Making,",8128.10
+3121.9900,"Supervisors and Foremen in Mining and Mineral Processing Plant Operation Activities, Other",8118.90
+3122.0100,"Supervisors and Foremen, Metal Making, Converting and Refining",8128.10
 3122.0200,"Foreman, Blast Furnace",8128.20
 3122.0300,Stock House Foreman,8128.30
 3122.0400,"Supervisor and Foreman, Metal Treating",8128.40
-3122.0500,"Supervisor and Foreman, Metal Drawing and",8128.50
-3122.0800,"Supervisor and Foreman, Glass Forming and",8138.10
-3122.0900,"Supervisor and Foreman, Ceramics and Related",8138.20
-3122.1000,"Supervisor and Foreman, Wood Preparation and",8148.10
-3122.1100,"Supervisor and Foreman, Paper Pulp and",8148.20
-3122.1300,"Supervisor and Foreman, Chemical Processing and",8158.10
-3122.1400,"Supervisor and Foreman, Petroleum Refining and",8158.20
+3122.0500,"Supervisor and Foreman, Metal Drawing and Extruding",8128.50
+3122.0800,"Supervisor and Foreman, Glass Forming and Related Activities",8138.10
+3122.0900,"Supervisor and Foreman, Ceramics and Related Activities",8138.20
+3122.1000,"Supervisor and Foreman, Wood Preparation and Papermaking",8148.10
+3122.1100,"Supervisor and Foreman, Paper Pulp and Papermaking",8148.20
+3122.1300,"Supervisor and Foreman, Chemical Processing and Related Activities",8158.10
+3122.1400,"Supervisor and Foreman, Petroleum Refining and Related Activities/Operator/Engineering Assistant (Mechanical/Electrical/Civil/Chemical) Related Activities",8158.20
 3122.1600,Boiler Supervisor,8168.10
-3122.1700,"Supervisors and Foremen, Stationary Engine and",8168.20
-3122.1800,"Supervisor and Foreman, Stone Cutting and",8218.10
-3122.1900,"Supervisor and Foreman, Machine Tool",8218.20
+3122.1700,"Supervisors and Foremen, Stationary Engine and Related Equipment",8168.20
+3122.1800,"Supervisor and Foreman, Stone Cutting and Carving",8218.10
+3122.1900,"Supervisor and Foreman, Machine Tool Operations",8218.20
 3122.2000,"Supervisor and Foreman, Rubber Goods Making",8238.10
 3122.2100,"Supervisor and Foreman, Plastic Products Making",8238.20
-3122.2400,"Supervisor and Foreman, Wood Working",8248.10
-3122.2500,"Supervisor and Foreman, Carpentry, Cabinet",8248.20
-3122.2600,"Supervisor and Foreman, Paper and Paper Board",8258.10
+3122.2400,"Supervisor and Foreman, Wood Working (Machine)",8248.10
+3122.2500,"Supervisor and Foreman, Carpentry, Cabinet Making and Related Wood Working Processes",8248.20
+3122.2600,"Supervisor and Foreman, Paper and Paper Board Product Making",8258.10
 3122.2800,Jobber (Textile),8268.10
 3122.2900,"Supervisor and Foreman, Hosiery",8268.20
-3122.3000,"Supervisor and Foreman, Tanning and Pelt",8268.30
+3122.3000,"Supervisor and Foreman, Tanning and Pelt Dressing",8268.30
 3122.3100,"Supervisor and Foreman, Shoemaking",8268.40
-3122.3200,"Supervisor and Foreman, Harness and Saddle",8268.50
+3122.3200,"Supervisor and Foreman, Harness and Saddle Making",8268.50
 3122.3300,"Supervisor and Foreman, Leather Goods Making",8268.60
-3122.3400,"Supervisors and Foremen, Textile-Related",7435.05
+3122.3400,"Supervisors and Foremen, Textile-Related Products",7435.05
 3122.3450,"Scouring Supervisor, Wool",7431.26
-3122.3500,"Supervisors and Foremen, Tailoring and Dress",7433.05
+3122.3500,"Supervisors and Foremen, Tailoring and Dress Making",7433.05
 3122.3600,"Supervisor and Foreman, Brush Making",7424.05
-3122.3800,"Supervisor and Foreman, Tobacco Preparation,",8279.10
+3122.3800,"Supervisor and Foreman, Tobacco Preparation, Cigar and Cigarette Making",8279.10
 3122.3900,"Supervisor and Foreman, Tobacco Product Making",8279.20
-3122.4000,"Supervisor and Foreman, Material and Freight",8290.10
-3122.4100,"Supervisor and Foreman, Checking, Sorting,",8290.20
-3122.4200,"Supervisor and Foreman, Welding and Flame",7218.10
-3122.4300,"Supervisor and Foreman, Sheet and Structural",7218.20
+3122.4000,"Supervisor and Foreman, Material and Freight Handling",8290.10
+3122.4100,"Supervisor and Foreman, Checking, Sorting, Packing and Related Activities",8290.20
+3122.4200,"Supervisor and Foreman, Welding and Flame Cutting",7218.10
+3122.4300,"Supervisor and Foreman, Sheet and Structural Metal Working",7218.20
 3122.4900,"Supervisor and Foreman, Blacksmith",7228.10
 3122.5000,"Supervisor and Foreman, Tool Making/Die Making",7228.20
-3122.5200,"Supervisor and Foreman, Machinery Fitting and",7238.10
+3122.5200,"Supervisor and Foreman, Machinery Fitting and Repairing",7238.10
 3122.5300,"Supervisor and Foreman, Motor Vehicle Repairing",7238.20
 3122.5400,"Supervisor and Foreman, Aircraft Repairing",7238.30
-3122.5600,"Supervisor and Foreman, Electrical and Electronic",7248.10
+3122.5600,"Supervisor and Foreman, Electrical and Electronic Equipment",7248.10
 3122.5700,"Engineering Supervisor, Telephone",7248.20
 3122.5800,"Sub-Inspector, Telephone",7248.30
-3122.5900,"Charge Hand, Rack Wiring (Telephone Equipment)",7248.40
+3122.5900,"Charge Hand, Rack Wiring (Telephone Equipment) Manufacturing",7248.40
 3122.6000,"Line Supervisor, Electrical",7248.50
-3122.6200,"Supervisor and Foreman, Precision Instrument",7318.10
-3122.6300,"Supervisor and Foreman, Musical Instrument",7318.20
-3122.6400,"Supervisor, Jewellery, Engraving and Precision",7318.30
-3122.6600,"Supervisor and Foreman, Photolitho, Photo",7348.10
-3122.6700,"Supervisor and Foreman, Printing and Related",7348.20
-3122.6900,"Supervisor and Foreman, Food",7418.10
+3122.6200,"Supervisor and Foreman, Precision Instrument Making (Except Electrical)",7318.10
+3122.6300,"Supervisor and Foreman, Musical Instrument Making",7318.20
+3122.6400,"Supervisor, Jewellery, Engraving and Precision Metal Workers",7318.30
+3122.6600,"Supervisor and Foreman, Photolitho, Photo Engraving and Dark Room Operations",7348.10
+3122.6700,"Supervisor and Foreman, Printing and Related Work",7348.20
+3122.6900,"Supervisor and Foreman, Food Processing/Production Supervisor",7418.10
 3122.7000,Juice Clarification Supervisor,7418.20
-3122.7100,"Supervisor and Foreman, Brewing, Aerated Water",7418.30
-3122.7200,"Supervisor and Foreman, Dairy Products/Dairy",7418.40
+3122.7100,"Supervisor and Foreman, Brewing, Aerated Water and Beverage Making",7418.30
+3122.7200,"Supervisor and Foreman, Dairy Products/Dairy Technologist",7418.40
 3123.0100,"Work Supervisor, Construction",7138.10
 3123.0200,"Supervisor and Foreman, Insulation",7138.20
-3123.0300,"Supervisor and Foreman, Plumbing and Pipe",7138.30
+3123.0300,"Supervisor and Foreman, Plumbing and Pipe Fitting",7138.30
 3123.0400,"Electrical Supervisor, Wiring,",7138.40
 3123.0500,"Supervisor and Foreman, Painting",7148.10
-3123.9900,Supervisors and Foremen and Related Trades,7148.90
+3123.9900,"Supervisors and Foremen and Related Trades Workers in Painting, Building Structure Cleaning, Other",7148.90
 3131.0100,"Stationary Engine Driver, Steam",8161.10
 3131.0200,"Stationary Engine Driver, Internal Combustion",8161.20
 3131.0300,"Turbine Operator, Steam",8161.30
 3131.0400,"Turbine Operator, Hydel",8161.40
 3131.0500,Power Plant Operator,8161.45
 3131.0600,Electrical Switch Board Operator,8161.50
-3131.0700,"Oiler and Greaser, Stationary Engine and",8161.60
+3131.0700,"Oiler and Greaser, Stationary Engine and Machinery",8161.60
 3131.0800,Nuclear Plant Control Operator,8161.65
 3131.0900,Breaker Tender,8161.70
 3131.1000,Hopper Attendant/Hopper Machine Operator,8161.72
@@ -797,7 +797,7 @@ code,description,nco_2004_code
 3132.0600,"Pump Station Operator, Waterworks",8163.60
 3132.0700,Air Compressor Operator,8169.10
 3132.0800,Ammonia Compressor Attendant,8169.20
-3132.0900,Air Conditioning and Refrigeration Plant,8169.30
+3132.0900,Air Conditioning and Refrigeration Plant Attendant,8169.30
 3132.1000,Pumpman,8169.40
 3132.1100,Exhaust Fan Operator,8169.50
 3132.1200,Blower Operator,8169.60
@@ -808,10 +808,10 @@ code,description,nco_2004_code
 3133.0400,"Batch Still Operator, Chemical",8154.10
 3133.0500,"Continuous Still Operator, Chemical",8154.20
 3133.0600,"Bleaching Operator, Chemical",8159.30
-3133.0700,Chemical Process Operator (Radioactive,8159.50
+3133.0700,Chemical Process Operator (Radioactive Materials),8159.50
 3133.0800,Hot Cell Technician,8159.52
 3134.0100,"Continuous Still Operator, Petroleum",8155.10
-3134.0200,Still Man Gas Plant/Gas Plant Operator (Petrol,8155.20
+3134.0200,Still Man Gas Plant/Gas Plant Operator (Petrol Refining),8155.20
 3134.0300,Pump Man (Petroleum Refining),8155.30
 3134.0400,Control Man (Petroleum Refining),8155.40
 3134.0500,Blender (Petroleum Refining),8155.50
@@ -828,11 +828,11 @@ code,description,nco_2004_code
 3135.1300,Furnace Operator (Smelting & Refining),8121.70
 3135.1700,"Roller, Merchant Mill/Mill Operator",8122.16
 3135.1800,"Roller, Sheet Mill/Mill Operator",8122.20
-3135.1900,"Operator, Hot Rolling Mill (Non-Ferrous",8122.28
-3135.2000,"Roller, Hot Rolling Mill (Non-Ferrous Metal)/Mill",8122.32
+3135.1900,"Operator, Hot Rolling Mill (Non-Ferrous Metal)/Mill Operator",8122.28
+3135.2000,"Roller, Hot Rolling Mill (Non-Ferrous Metal)/Mill Operator",8122.32
 3135.2300,"Operator, Strip Mill (Non-Ferrous Metal)",8122.42
 3135.2500,Seamless Pipe and Tube Roller,8122.46
-3135.2600,"Furnace Man, Reverberatory, Pulverised Coal",8122.48
+3135.2600,"Furnace Man, Reverberatory, Pulverised Coal Fired",8122.48
 3135.3100,Centrifugal Casting Machine Operator,8122.72
 3135.3900,"Control Man, Billet/Process Controller",8124.10
 3135.9900,"Metal Production Process Controllers, Other",8121.90
@@ -851,7 +851,7 @@ code,description,nco_2004_code
 3151.0300,"Third Engineer, Ship",3141.30
 3151.0400,"Fourth Engineer, Ship",3141.40
 3151.0500,"Fifth Engineer, Ship/Junior Engineer",3141.50
-3151.9900,"Ship and Aircraft Controllers and Technicians,",3141.90
+3151.9900,"Ship and Aircraft Controllers and Technicians, Other",3141.90
 3152.0100,"Captain, Ship/Master",3142.10
 3152.0200,"Chief Officer, Ship",3142.20
 3152.0300,"Second Officer, Ship",3142.30
@@ -871,13 +871,13 @@ code,description,nco_2004_code
 3153.0900,Chief Flight Engineer,3143.80
 3153.1000,Check Flight Engineer,3143.82
 3153.1100,Flight Engineer,3143.84
-3153.9900,Aircraft Pilots and Related Associate,3143.90
+3153.9900,"Aircraft Pilots and Related Associate Professionals, Other",3143.90
 3154.0100,Air Traffic Controller Specialist,3144.10
 3154.0200,"Traffic Controller, Air Service",3144.20
 3154.9900,"Air Traffic Controllers, Other",3144.90
 3211.0100,X-Ray Technician,3133.10
 3211.0200,Bio-Medical Equipment Technician,3133.20
-3211.9900,Medical Imaging and Therapeutic Equipment,3133.90
+3211.9900,"Medical Imaging and Therapeutic Equipment Technicians, Other",3133.90
 3212.0101,Operation Theatre Technician,3211.40
 3212.0201,Dialysis Technician,3211.50
 3212.9900,"Dialysis Technician Life Science Technicians, Other",3211.90
@@ -891,7 +891,7 @@ code,description,nco_2004_code
 3221.9900,"Nursing Associate Professionals, Other",3231.90
 3222.0100,Midwife,3232.10
 3222.0200,Midwifery Attendant,3232.20
-3222.0300,Lady Health Visitor/ASHA Worker/Anganwadi,3232.30
+3222.0300,Lady Health Visitor/ASHA Worker/Anganwadi Worker,3232.30
 3222.9900,"Midwifery Associate Professionals, Other",3232.90
 3240.0100,"Vaccinator, Veterinary",3227.10
 3240.0200,Stockman,3227.20
@@ -904,23 +904,23 @@ code,description,nco_2004_code
 3254.0200,"Optician, Contact Lens",3224.20
 3256.9900,"Medical Assistants, Other",3221.90
 3257.0100,Sanitary Inspector,3222.10
-3257.0300,"Environment Science and Protection Technician,",3214.10
+3257.0300,"Environment Science and Protection Technician, Including Health",3214.10
 3257.0400,Environmental Compliance Inspector,3214.20
 3257.0500,Environmental Engineering Technician,3214.30
-3257.9900,"Environment Science and Protection Technicians,",3214.90
+3257.9900,"Environment Science and Protection Technicians, Other",3214.90
 3311.0100,"Broker, Share Market",3411.10
 3311.0200,"Jobber, Share Market",3411.20
 3311.9900,"Securities and Finance Dealers and Brokers, Other",3411.90
 3312.0100,Finance Agent,3411.50
 3314.0100,Economic Investigator,3433.10
 3314.0200,Statistical Assistant,3433.20
-3314.9900,"Statistical, Mathematical and Related Associate",3433.90
+3314.9900,"Statistical, Mathematical and Related Associate Professionals, Other",3433.90
 3315.0100,Valuer,3417.40
 3315.0200,"Claims Inspector, Railways",3417.50
 3315.0300,"Appraiser, Customs",3417.60
 3315.9900,"Valuers and Loss Assessors, Other",3417.90
 3321.0100,Insurance Agent,3412.10
-3321.0200,"Insurance Adjuster, Examiner, Surveyor and",3412.20
+3321.0200,"Insurance Adjuster, Examiner, Surveyor and Investigator",3412.20
 3321.9900,"Insurance Representatives, Other",3412.90
 3322.0101,"Sales Representative, Technical",3415.10
 3322.0200,"Commercial Traveller, General",3415.30
@@ -979,7 +979,7 @@ code,description,nco_2004_code
 3422.0400,Umpire,3475.60
 3422.0500,Marker/Groundsmen & Women,3475.70
 3422.9900,"Sports Coaches, Instructors and Officials, Other",3475.90
-3423.0200,Physical Training Instructor/Physical Education,3475.15
+3423.0200,Physical Training Instructor/Physical Education Teacher,3475.15
 3431.0100,"Photographer, General",3131.25
 3431.0200,Photographer News,3131.30
 3431.0300,"Photographer, Aerial",3131.35
@@ -993,26 +993,26 @@ code,description,nco_2004_code
 3435.0300,Prompter,3474.47
 3435.0400,Merry-Go-Round Operator,3474.80
 3435.0500,Floral Designer,3471.60
-3435.9900,Other Artistic and Cultural Associate,3474.90
+3435.9900,"Other Artistic and Cultural Associate Professionals, Other",3474.90
 3512.0100,Data Recovery Planner/System Administrator,3121.35
 3512.0200,Desktop Publishing Operator,3121.50
 3514.0300,Programming Assistant/Junior Software Engineer,3121.20
 3512.0700,Medical Transcriptionist,3121.40
-3512.9900,Information and Communication Technology User,3121.90
-3513.0100,System Administration Assistant/Junior System,3121.10
+3512.9900,"Information and Communication Technology User Support Technicians, Other",3121.90
+3513.0100,System Administration Assistant/Junior System Administrator,3121.10
 3513.0200,Computer Security Specialist,3121.30
 3521.0100,Cinematographer,3131.10
 3521.0200,Movie Cameraman,3131.15
 3521.0300,"Cameraman, Animation",3131.20
-3521.0401,Sound Recording Equipment Operator/Sound,3131.40
+3521.0401,Sound Recording Equipment Operator/Sound Assistant,3131.40
 3521.0501,Film Editor/Editor,3131.50
-3521.0600,"Supervisor, Broadcasting Audiovisual Projection",3132.10
+3521.0600,"Supervisor, Broadcasting Audiovisual Projection and Sound Equipment Operations",3132.10
 3521.0700,Television Broadcasting Station Operator,3132.20
 3521.0800,"Radio Operator, Broadcasting Station",3132.30
 3521.0900,Cinematograph Operator,3132.40
 3521.1000,Public Address Equipment Operator,3132.50
 3521.1100,"Station Officer, Overseas Communication",3132.55
-3521.1200,"Station Technical Assistant, Overseas",3132.60
+3521.1200,"Station Technical Assistant, Overseas Communication",3132.60
 3521.1300,Wireless Operator,3132.65
 3521.1400,"Radio Operator, Ship",3132.70
 3521.1500,"Radio Operator, Aircraft",3132.75
@@ -1040,7 +1040,7 @@ code,description,nco_2004_code
 4131.0400,Braille Typist,4111.40
 4131.0500,Teleprinter Operator,4112.10
 4131.0600,Computer Operator,4112.20
-4131.9900,"Typists and Word Processing Operators,",4112.90
+4131.9900,"Typists and Word Processing Operators, Other",4112.90
 4132.0401,Data Entry Machine Operator,4113.35
 4132.0600,Coding Machine Operator,4113.50
 4132.0800,Duplicating Machine Operator/Photocopier,4113.65
@@ -1056,13 +1056,13 @@ code,description,nco_2004_code
 4211.9900,"Bank Tellers and Related Clerks, Other",4212.90
 4212.0100,"Booking Clerk, Recreation",4211.60
 4212.0200,Bookmaker,4213.10
-4212.9900,"Bookmakers, Croupiers and Related Gaming",4213.90
+4212.9900,"Bookmakers, Croupiers and Related Gaming Workers, Other",4213.90
 4213.0100,Moneylender,4214.10
 4213.0200,Pawn Broker,4214.20
 4213.9900,"Pawnbrokers and Moneylenders, Other",4214.90
 4214.0100,Bill Collector,4215.10
 4214.9900,"Debt Collectors and Related Workers, Other",4215.90
-4221.0300,"Reservation Clerk, Transport/Reservation",4211.40
+4221.0300,"Reservation Clerk, Transport/Reservation Assistant",4211.40
 4221.0400,"Booking Clerk, Transport/Concierge",4211.50
 4221.9900,"Travel Consultants and Clerks, Others",4211.90
 4223.0100,"Telephone Operator, Trunk",4222.10
@@ -1070,10 +1070,10 @@ code,description,nco_2004_code
 4223.0300,"Telephone Operator, PBX",4222.30
 4223.9900,"Telephone Switchboard Operators, Other",4222.90
 4224.0100,Receptionist (Hotel)/Front Office Associate,4221.10
-4225.0100,Complaint Attending Clerk/Customer Service,4221.30
+4225.0100,Complaint Attending Clerk/Customer Service Desk/Customer Service Executive,4221.30
 4225.9900,"Inquiry Clerks, Other",4221.90
-4226.0100,Reception Clerk/Front Desk,4221.20
-4311.0101,Bookkeeper General/Accounts Executive,4121.10
+4226.0100,Reception Clerk/Front Desk Executive/Receptionist,4221.20
+4311.0101,Bookkeeper General/Accounts Executive (Recording and Reporting),4121.10
 4311.0200,Bank Clerk,4121.30
 4311.0300,Ledger Clerk,4121.40
 4311.0500,"Audit, Clerk",4121.50
@@ -1081,7 +1081,7 @@ code,description,nco_2004_code
 4311.0700,Bill and Accounts Collector,4121.70
 4311.9900,"Accounting and Bookkeeping Clerks, Others",4121.90
 4312.0100,Statistical Clerks,4122.10
-4312.9900,"Statistical Finance and Insurance Clerks,",4122.90
+4312.9900,"Statistical Finance and Insurance Clerks, Others",4122.90
 4313.0101,Accounts Clerk/Accounts Executive (Payroll),4121.20
 4321.0100,Store Keeper,4131.10
 4321.0200,Store Distributor,4131.20
@@ -1103,7 +1103,7 @@ code,description,nco_2004_code
 4412.9900,"Mail Carriers and Sorting Clerks, Other",4142.90
 4413.0100,Coding Clerk,4143.10
 4413.0200,Proofreader,4143.20
-4413.9900,"Coding, Proofreading and Related Clerks,",4143.90
+4413.9900,"Coding, Proofreading and Related Clerks, Others",4143.90
 4414.0100,"Braille Transcriber, Hand",4144.10
 4414.9900,"Scribes and Related Clerks, Other",4144.90
 4419.0100,Publicity Assistant,4190.25
@@ -1120,7 +1120,7 @@ code,description,nco_2004_code
 5111.0400,Flight Steward,5111.40
 5111.0500,Aircraft Cargo Handling Supervisor,5111.50
 5111.0600,Air Crew Member,5111.60
-5111.9900,"Travel Attendants and Travel Stewards,",5111.90
+5111.9900,"Travel Attendants and Travel Stewards, Other",5111.90
 5112.0100,"Guard, Passenger Train",5112.10
 5112.0200,"Guard, Goods Train",5112.20
 5112.0300,"Brakesman, Railway",5112.30
@@ -1144,7 +1144,7 @@ code,description,nco_2004_code
 5131.0100,Butler,5123.10
 5131.0200,"Steward, Hotel",5123.20
 5131.0300,"Bearer, Domestic/Household Workers",5123.30
-5131.0401,"Waiter, Institutional/Food & Beverage",5123.40
+5131.0401,"Waiter, Institutional/Food & Beverage Service –Steward",5123.40
 5131.0500,Wine Waiter,5123.50
 5131.9900,"Waiters, Other",5123.90
 5132.0100,Barman,5123.60
@@ -1159,48 +1159,48 @@ code,description,nco_2004_code
 5142.0600,Wigman,5141.70
 5142.0700,Bath Attendant,5141.80
 5142.9900,"Beauticians and Related Workers, Others",5141.90
-5151.0101,Housekeeper (Institutional)/Housekeeping,5121.10
+5151.0101,Housekeeper (Institutional)/Housekeeping Supervisor,5121.10
 5151.0201,Janitor/Housekeeping Attendant,5121.15
 5151.0300,House Stewards/Domestic Help,5121.30
 5151.0400,"Matron, Housekeeping",5121.35
 5151.0500,Linen Keeper,5121.50
-5151.0600,Hotel and Restaurant Keeper/Hotel and,5121.60
-5151.0701,"Supervisor, Front Office/Customer Service",5121.25
-5151.0800,Room Bearer/Bell Boys/Bell Hop/Hotel,5121.70
-5151.9900,Cleaning and Housekeeping Supervisors in,5121.90
+5151.0600,Hotel and Restaurant Keeper/Hotel and Restaurant Owner,5121.60
+5151.0701,"Supervisor, Front Office/Customer Service Executive (Meet and Greet)",5121.25
+5151.0800,Room Bearer/Bell Boys/Bell Hop/Hotel Porters,5121.70
+5151.9900,"Cleaning and Housekeeping Supervisors in Offices, Hotels and Other Establishments, Other",5121.90
 5152.0100,Housekeeper (Domestic),5121.20
 5153.0100,"Caretaker, Building",9141.10
 5153.0200,"Caretaker, Monument",9141.20
-5153.0300,"Caretaker, Burial Places and Cremation",9141.30
+5153.0300,"Caretaker, Burial Places and Cremation Grounds",9141.30
 5153.9900,"Building Caretakers, Other",9141.90
 5161.0100,Astrologer,5151.10
 5161.0200,Palmist,5152.10
-5161.9900,"Astrologers, Fortune Tellers and Related",5152.90
+5161.9900,"Astrologers, Fortune Tellers and Related Workers, Other",5152.90
 5163.0100,Undertaker,5143.10
 5163.0200,Embalmer,5143.20
 5163.0300,Grave Digger,5143.30
 5163.9900,"Undertakers and Embalmers, Other",5143.90
-5211.0100,Advertising Sales Agent/Advertising,5230.10
+5211.0100,Advertising Sales Agent/Advertising Executive,5230.10
 5211.0200,Shop Attendant/Sales Assistant,5230.20
-5211.0300,Telemarketing Sales Person/Telemarketing,5230.30
+5211.0300,Telemarketing Sales Person/Telemarketing Sales Operator,5230.30
 5211.9900,"Stall and Market Salespersons, Other",5230.90
 5212.0100,Milkman,9111.10
-5212.9900,"Street Food Vendors, Other/Khomchawala,",9111.90
+5212.9900,"Street Food Vendors, Other/Khomchawala, Dhabawala, Chat Thelawala",9111.90
 5222.0100,"Sales Supervisor, Wholesale Trade",5220.10
-5222.0201,"Sales Supervisor, Retail Trade/CRM",5220.15
+5222.0201,"Sales Supervisor, Retail Trade/CRM Manager",5220.15
 5223.0100,Shop Assistant,5220.40
 5241.0100,"Model, Fashion",5210.10
 5241.0200,Model,5210.20
 5241.9900,"Fashion and Models, Other",5210.90
-5242.0101,Technical Demonstrator (Sale)/Area,5220.25
+5242.0101,Technical Demonstrator (Sale)/Area Technical Lead,5220.25
 5242.0501,Associate Network Engineer,5220.20
 5242.9900,"Sales Demonstrators, Other",5220.90
 5243.0100,Newspaper Boy,9113.10
 5243.0200,Order Supplier/Supplier,9113.20
 5243.0300,Home Deliveryman,9113.30
-5243.9900,"Door-to-Door and Telephone Sales Persons,",9113.90
+5243.9900,"Door-to-Door and Telephone Sales Persons, Other",9113.90
 5244.0100,"Operator, Call Centre",5220.22
-5245.0101,Petrol Pump Salesman/Fuel,5220.45
+5245.0101,Petrol Pump Salesman/Fuel Serviceman/Fuel Dispensing Attendant,5220.45
 5249.0200,"Salesman, Wholesale Trade",5220.30
 5249.0301,"Salesman, Retail Trade",5220.35
 5249.0400,Wholesale Dealer,5220.50
@@ -1254,19 +1254,19 @@ code,description,nco_2004_code
 6121.1000,Stableman,6121.55
 6121.1100,Elephant Keeper,6121.60
 6121.1200,"Shearer, Sheep",6121.65
-6121.1300,"Shearer, Animal, Other/Shearer, Other",6121.70
+6121.1300,"Shearer, Animal, Other/Shearer, Other Animals",6121.70
 6121.1400,Grass Cutter,6121.75
 6121.9900,"Dairy and Livestock Producers, Other",6121.90
 6122.0101,"Farmer, Poultry/Broiler Farm Supervisor",6122.10
 6122.0200,"Farmer, Poultry Breeding",6122.20
-6122.0301,"Poultry Farm Worker, General/Broiler Farm",6122.30
+6122.0301,"Poultry Farm Worker, General/Broiler Farm Worker",6122.30
 6122.0401,Hatchery Operator/Hatchery In-Charge,6122.40
 6122.9900,"Poultry Farm Workers, Other",6122.90
 6123.0101,Beekeeper,6123.10
 6123.0201,"Rearer, Silkworm/ Sericulturist",6123.20
 6123.9900,"Apiarists and Sericulturists, Other",6123.90
 6129.0100,"Farmer, Fur-Bearing Animals",6129.10
-6129.9900,"Animal Producers and Related Workers,",6129.90
+6129.9900,"Animal Producers and Related Workers, Other",6129.90
 6130.0100,Artificial Breeding Technician,6130.10
 6130.0201,Seed Grower/Quality Seed Grower,6112.60
 6130.9900,"Mixed Crop and Animal Workers, Other",6130.90
@@ -1292,9 +1292,9 @@ code,description,nco_2004_code
 6210.2000,Lac Treater,6142.40
 6210.9900,"Forestry and Related Workers, Other",6141.90
 6222.0100,"Fisherman, Inland Water",6152.10
-6222.0200,"Fisherman, Estuaries, Coastal and",6152.20
-6222.9900,"Inland and Coastal Water Fishery Workers,",6152.90
-6223.0101,"Fisherman, Deep Sea/Marine Capture",6153.10
+6222.0200,"Fisherman, Estuaries, Coastal and Backwater",6152.20
+6222.9900,"Inland and Coastal Water Fishery Workers, Other",6152.90
+6223.0101,"Fisherman, Deep Sea/Marine Capture Fisherman",6153.10
 6223.9900,"Deep Sea Fishery Workers, Other",6153.90
 6224.0300,Trapper,6154.30
 6224.0400,Tracker,6154.40
@@ -1327,7 +1327,7 @@ code,description,nco_2004_code
 7113.9900,"Stone Splitters, Cutters and Carvers, Other",7113.90
 7114.0100,Concrete Moulder,7123.10
 7114.0200,Cement Finisher,7123.20
-7114.9900,"Concrete Placers, Concrete Finishers and",7123.90
+7114.9900,"Concrete Placers, Concrete Finishers and Related Workers, Other",7123.90
 7115.0100,"Carpenter, General",7124.10
 7115.0200,"Carpenter, Construction",7124.20
 7115.0300,"Carpenter, Structural",7124.25
@@ -1342,7 +1342,7 @@ code,description,nco_2004_code
 7115.9900,"Carpenters and Joiners Operatives, Other",7124.90
 7119.0100,Well Digger,7129.10
 7119.0200,White Washer,7129.20
-7119.9900,Building Frame and Related Trades,7129.90
+7119.9900,"Building Frame and Related Trades Workers, Other",7129.90
 7121.0100,"Tile Layer, Roof",7131.10
 7121.9900,"Roofers, Other",7131.90
 7122.0100,Tile Setter,7132.10
@@ -1357,7 +1357,7 @@ code,description,nco_2004_code
 7124.0100,"Building Insulator, Hand",7134.10
 7124.0200,Acoustical Insulator,7134.20
 7124.0300,"Insulator, Boilers and Pipes",7134.30
-7124.0400,"Insulator, Refrigeration and Air-",7134.40
+7124.0400,"Insulator, Refrigeration and Air- Conditioning Equipment",7134.40
 7124.9900,"Insulation Workers, Other",7134.90
 7125.0100,Glazier (Construction),7135.10
 7125.0200,"Glazier, Vehicle",7135.20
@@ -1370,14 +1370,14 @@ code,description,nco_2004_code
 7126.0500,"Puncher, Metal",7136.50
 7126.0600,Pneumatic Chipper,7136.60
 7126.9900,"Plumbers and Pipe Fitters, Other",7136.90
-7127.0100,"Mechanic, Refrigeration and Air-",7233.50
+7127.0100,"Mechanic, Refrigeration and Air- Conditioning",7233.50
 7131.0100,"Painter, Building",7141.10
 7131.0200,"Painter, Steel Structure",7141.20
 7131.0300,"Painter, Industrial",7141.25
 7131.0500,Paper Hanger/Wallpaper Fixer/Decorator,7141.40
 7131.9900,"Painters and Related Workers, Other",7141.90
 7132.0100,"Painter, General",7142.10
-7132.0201,"Painter, Spray/Painting Technician (Spray",7142.20
+7132.0201,"Painter, Spray/Painting Technician (Spray Painting)",7142.20
 7132.0300,Metal Sprayer,7142.25
 7132.0400,"Painter, Sign and Letter",7142.30
 7132.0500,"Painter, Brush",7142.40
@@ -1400,9 +1400,9 @@ code,description,nco_2004_code
 7212.0600,Lead Burner,7212.60
 7212.0700,"Welder, Resistance",7212.65
 7212.9900,"Welders and Flame Cutters, Other",7212.90
-7213.0101,"Sheet Metal Worker, General/Sheet Metal",7213.10
+7213.0101,"Sheet Metal Worker, General/Sheet Metal Worker – Hand Tools and Manually Operated Machines",7213.10
 7213.0200,"Sheet Metal Worker, Structural",7213.20
-7213.0301,Dent Remover/Auto Body Repair,7213.30
+7213.0301,Dent Remover/Auto Body Repair Technician/ Denter,7213.30
 7213.0400,Tinsmith/Whitesmith,7213.40
 7213.0500,Tin Coater,7213.50
 7213.0600,Machine Feeder and Off-Bearer,7213.60
@@ -1415,7 +1415,7 @@ code,description,nco_2004_code
 7214.0800,"Fitter, Construction",7214.70
 7214.0900,Riveter,7214.80
 7214.1000,Riveter (Railroad Equipment),7214.82
-7214.9900,"Structural Metal Prepares and Erectors,",7214.90
+7214.9900,"Structural Metal Prepares and Erectors, Other",7214.90
 7215.0100,Rigger,7215.10
 7215.0200,Slinger,7215.20
 7215.0300,Splicer (Rope and Cables),7215.30
@@ -1426,9 +1426,9 @@ code,description,nco_2004_code
 7221.0400,Hammer Man,7221.40
 7221.0500,Stamper/Forging Operator,7221.50
 7221.0600,Farrier,7221.60
-7221.0700,Wire Drawer/Wire Drawing Machine,7221.70
-7221.0800,Metal Spinner/Metal spinning Machine,7221.80
-7221.9900,"Blacksmiths, Hammersmith and Forging",7221.90
+7221.0700,Wire Drawer/Wire Drawing Machine Operator,7221.70
+7221.0800,Metal Spinner/Metal spinning Machine Operator,7221.80
+7221.9900,"Blacksmiths, Hammersmith and Forging Press Workers, Other",7221.90
 7222.0200,Tool Maker,7222.20
 7222.0300,Jig and Fixture Marker,7222.30
 7222.0400,Jig Borer,7222.40
@@ -1465,10 +1465,10 @@ code,description,nco_2004_code
 7223.2500,Ball Filling Machine Operator,8211.62
 7223.2600,Ball Lapping Machine Operator,8211.64
 7223.2700,Dividing Machine Operator,8211.66
-7223.2800,Die Copying Machine Operator/Die Sinking,8211.70
+7223.2800,Die Copying Machine Operator/Die Sinking Electric Discharge Machine Operator,8211.70
 7223.2900,Profiling Machine Operator,8211.75
 7223.3000,Metal Stamper,8211.80
-7223.9900,Metal Working Machine Tool Setters and,8211.90
+7223.9900,"Metal Working Machine Tool Setters and Operators, Others",8211.90
 7224.0100,"Grinder, General",7224.10
 7224.0200,"Grinder, Crankshaft",7224.20
 7224.0300,Roll Grinder,7224.25
@@ -1479,7 +1479,7 @@ code,description,nco_2004_code
 7224.0801,Polisher,7224.55
 7224.0900,"Saw Grinder, Hand",7224.65
 7224.1100,Metal Bluer,7224.80
-7224.9900,"Metal Wheel Grinder, Polishing and Tool",7224.90
+7224.9900,"Metal Wheel Grinder, Polishing and Tool Sharpeners, Other",7224.90
 7231.0100,"Mechanic, Automobile",7231.10
 7231.0200,Engine Tester,7231.20
 7231.0300,Tractor Mechanic,7231.30
@@ -1491,7 +1491,7 @@ code,description,nco_2004_code
 7232.0200,"Mechanic Aircraft, Propeller",7232.20
 7232.0300,"Engine Tester, Aircraft",7232.30
 7232.0400,"Engine Tester, Helper, Aircraft",7232.40
-7232.0500,"Mechanic Aircraft Engine, Field           7232.50;",7232.70
+7232.0500,"Mechanic Aircraft Engine, Field           7232.50; Service/Filed Mechanic Aircraft",7232.70
 7232.0600,"Mechanic Aircraft, Engine Overhauling",7232.60
 7232.9900,"Aircraft Mechanics, Other",7232.90
 7233.0100,"Fitter, General",7233.10
@@ -1503,7 +1503,7 @@ code,description,nco_2004_code
 7233.0800,"Mechanic, Road Roller",7233.30
 7233.0900,"Mechanic, Turbine",7233.32
 7233.1000,"Mechanic, Stationery Steam Engine",7233.34
-7233.1100,"Mechanic, Maintenance, Chemical",7233.36
+7233.1100,"Mechanic, Maintenance, Chemical Plant/Technician, Maintenance, Chemical Plant",7233.36
 7233.1200,Millwright,7233.38
 7233.1300,"Mechanic, Pump",7233.40
 7233.1400,"Mechanic, Dairy Maintenance",7233.42
@@ -1512,7 +1512,7 @@ code,description,nco_2004_code
 7233.1700,"Mechanic, Printing Machinery",7233.48
 7233.1800,"Mechanic, Sewing Machine",7233.52
 7233.1900,"Lamp Repairman, Mines",7233.55
-7233.2000,"Mechanic, Repairman (Domestic",7233.58
+7233.2000,"Mechanic, Repairman (Domestic Appliances)",7233.58
 7233.2100,"Fitter, Stationery Steam Engine",7233.60
 7233.2200,"Fitter, Marine",7233.62
 7233.2300,"Fitter, Railway Carriage and Wagon",7233.63
@@ -1532,9 +1532,9 @@ code,description,nco_2004_code
 7311.0900,"Calibrator, Glass",7311.65
 7311.1000,Calibrator (Instrument & Apparatus),7311.67
 7311.1100,"Calibrator, Other",7311.70
-7311.1200,Orthopaedic Appliances and Limb,7311.75
+7311.1200,Orthopaedic Appliances and Limb Technician,7311.75
 7311.1400,"Instrument Maker, Other",7311.85
-7311.9900,"Precision Instrument Makers and Repairers,",7311.90
+7311.9900,"Precision Instrument Makers and Repairers, Other",7311.90
 7312.0100,Musical Instrument Maker (String ),7312.10
 7312.0200,Harmonium Maker,7312.15
 7312.0300,Harmonium Key Maker,7312.18
@@ -1550,9 +1550,9 @@ code,description,nco_2004_code
 7312.1600,Bagpipe Maker,7312.58
 7312.1700,Brass Musical Instruments Assembler,7312.60
 7312.1800,Musical Instrument Repairer,7312.65
-7312.9900,"Musical Instrument Makers and Tuners,",7312.90
+7312.9900,"Musical Instrument Makers and Tuners, Other",7312.90
 7313.0100,"Roller, Gold and Silver",7313.10
-7313.0201,"Wire Maker, Gold and Silver/Component",7313.15
+7313.0201,"Wire Maker, Gold and Silver/Component Maker",7313.15
 7313.0301,"Gold Curer, General/Gold Refiner",7313.18
 7313.0401,"Gold Curer, Mint/Gold Melter and Refiner",7313.20
 7313.0500,Gold Foil Maker,7313.22
@@ -1569,21 +1569,21 @@ code,description,nco_2004_code
 7313.1900,Engraver,7313.71
 7313.2200,"Embosser, Sheet",7313.75
 7313.2300,"Inlayer, Metal",7313.78
-7313.9900,"Jewellery, Goldsmith and Silversmith",7313.90
+7313.9900,"Jewellery, Goldsmith and Silversmith Workers, Other",7313.90
 7314.0100,"Mould Maker, Pottery and Porcelain",7321.10
 7314.0200,"Caster, Pottery and Porcelain",7321.15
 7314.0300,Clay Toy Maker/Hand Moulder,7321.20
 7314.0400,"Moulder, Hand (Ceramics)",7321.25
-7314.0500,Maker (Pottery and Porcelain)/Jigger and,7321.30
+7314.0500,Maker (Pottery and Porcelain)/Jigger and Jolly Operator,7321.30
 7314.0600,Turner Pottery and Porcelain,7321.35
 7314.0700,"Bricks and Tile Moulder, Hand",7321.40
 7314.0800,Abrasive Wheel Moulder,7321.50
-7314.0900,Potter (Pottery and Porcelain)/Potter's,7321.60
+7314.0900,Potter (Pottery and Porcelain)/Potter's Wheel Operator,7321.60
 7314.1000,Granulator Attendant (Cement),7329.20
 7314.1100,Clay Maker (Pottery),7329.25
 7314.1200,Checker (Ceramics),7329.35
 7314.1300,"Sorter, Brick and Tile",7329.40
-7314.9900,"Abrasive Wheel Formers, Potters and",7321.90
+7314.9900,"Abrasive Wheel Formers, Potters and Related Workers, Other",7321.90
 7315.0100,"Blower, Glass",7322.10
 7315.0200,"Blower, Laboratory Apparatus",7322.12
 7315.0600,Mouldman (Glass),7322.20
@@ -1605,19 +1605,19 @@ code,description,nco_2004_code
 7315.2200,"Crusher Attendant, Stone",7329.10
 7315.2300,Grinder (Stone and Clay),7329.15
 7315.2400,"Sorter, Glass Products",7329.30
-7315.9900,"Glass Makers, Cutters, Grinders and",7322.90
+7315.9900,"Glass Makers, Cutters, Grinders and Finishers, Other",7322.90
 7316.0100,"Engraver, Glass",7323.10
 7316.0200,Glass Etcher,7323.20
 7316.0300,Sand Blaster (Glass),7323.30
 7316.0400,Volume Man/Calibrating Technician,7323.40
-7316.0500,Waxing Man (Glass)/Helper,7323.50
+7316.0500,"Waxing Man (Glass)/Helper Calibrator/Decorator, Glass",7323.50
 7316.0600,Glass Enameller,7324.10
 7316.0700,Hand Painter (Ceramics),7324.20
 7316.0800,Decorator (Ceramics),7324.30
 7316.0900,"Spray Painter, (Ceramics)",7324.40
 7316.1000,"Glazer, Pottery and Porcelain",7324.50
 7316.1100,Mirror Silverer,7324.60
-7316.1200,"Signwriter, Decorative Painters, Engravers",7324.90
+7316.1200,"Signwriter, Decorative Painters, Engravers and Etchers, Other",7324.90
 7317.0100,Lamp Shade Maker,7331.10
 7317.0300,"Furniture Maker, Bamboo",7424.10
 7317.0400,"Furniture Maker, Reed",7424.15
@@ -1631,7 +1631,7 @@ code,description,nco_2004_code
 7317.1200,Khas Thatti Maker,7424.55
 7317.1300,Brush Material Preparer,7424.60
 7317.1400,"Brush Maker, Hand",7424.65
-7317.9900,"Basketry Weavers, Brush Makers and",7424.90
+7317.9900,"Basketry Weavers, Brush Makers and Related Workers, Other",7424.90
 7318.0100,Candle Maker,7332.10
 7318.0200,Candle Moulder,7332.20
 7318.0300,Carpet Weaver (Carpet & Rug),7332.30
@@ -1639,13 +1639,13 @@ code,description,nco_2004_code
 7318.0500,"Hand Printer, Textile/Hand Block Printer",7332.50
 7318.0600,Hand Dyer,7332.60
 7318.0800,"Repairer, Fabrics/Fabric Mender",7332.80
-7318.0900,"Bale Breaker Tenter, Cotton/Blow Room",7431.10
+7318.0900,"Bale Breaker Tenter, Cotton/Blow Room Operator",7431.10
 7318.1000,"Batching Worker, Wool",7431.12
 7318.1100,Wool Sorter,7431.14
 7318.1200,"Selector, Jute",7431.16
 7318.1300,"Grader, Coir",7431.18
-7318.1500,Waste Machine Man (Cotton Textile)/Waste,7431.22
-7318.1800,"Scouring Man, Wool/Wool Washing and",7431.28
+7318.1500,Waste Machine Man (Cotton Textile)/Waste Collection Machine Operator,7431.22
+7318.1800,"Scouring Man, Wool/Wool Washing and Scouring Operator",7431.28
 7318.1900,Cooker (Silkworm),7431.30
 7318.2000,"Softener Feeder and Receiver, Jute",7431.32
 7318.2100,"Root Cutter, Jute",7431.34
@@ -1653,8 +1653,8 @@ code,description,nco_2004_code
 7318.2300,"Fibre Preparer, Coir",7431.42
 7318.2700,"Cardtenter, Cotton/Carding Tenter",7431.50
 7318.2800,"Set Framer, Silk",7431.52
-7318.2900,Sliver Lap Man/Combing Preparatory,7431.54
-7318.3400,Comb Minder/Combing Preparatory,7431.66
+7318.2900,Sliver Lap Man/Combing Preparatory Operator,7431.54
+7318.3400,Comb Minder/Combing Preparatory Operator,7431.66
 7318.3500,Gill Box Man,7431.68
 7318.3600,"Spreader Feeder, Jute",7431.70
 7318.3700,"Spreader, Receiver, Jute",7431.71
@@ -1682,7 +1682,7 @@ code,description,nco_2004_code
 7318.6500,"Crochet Worker, Hand",7432.72
 7318.6600,"Knitter, Hand",7432.74
 7318.6700,"Braid Maker, Hand",7432.76
-7318.9900,"Handicraft Workers in Textiles, Leather and",7432.90
+7318.9900,"Handicraft Workers in Textiles, Leather and Related Materials, Others",7432.90
 7321.0100,"Compositor, Hand",7341.15
 7321.0200,Impositor,7341.20
 7321.0300,Distributor (Letter Press),7341.25
@@ -1692,10 +1692,10 @@ code,description,nco_2004_code
 7321.0700,Electrotyper,7342.30
 7321.0800,Lithographic Artist,7343.10
 7321.0900,"Retoucher, Lithographic",7343.15
-7321.1000,Mounter/Mounting Machine Operator/CNC,7343.20
+7321.1000,Mounter/Mounting Machine Operator/CNC Mounting Machine Operator,7343.20
 7321.1200,"Cameraman, Photomechanical",7343.30
 7321.1300,Microstat Cameraman,7343.35
-7321.1400,Photostat Camera Operator/Photocopier,7343.40
+7321.1400,Photostat Camera Operator/Photocopier Operator,7343.40
 7321.1500,"Transferor, Photomechanical",7343.45
 7321.1600,Etcher Photo Engraving,7343.50
 7321.1700,"Barman, Lino Machine",7343.60
@@ -1708,7 +1708,7 @@ code,description,nco_2004_code
 7322.0700,Photo Type Setting Machine Operator,7341.60
 7322.0800,Type Dresser,7341.65
 7322.0900,"Roller Maker, Paper Printing",7341.70
-7322.1000,Braille – Duplicating Machine Operator,7341.80
+7322.1000,Braille – Duplicating Machine Operator (Printing & Publishing),7341.80
 7322.1100,"Stencil Cutter, Silk Screen Printing",7346.10
 7322.1200,Silk Screen Printer,7346.20
 7322.1300,Printing Jobber,7346.30
@@ -1744,21 +1744,21 @@ code,description,nco_2004_code
 7412.9900,"Electrical Mechanics and Fitters, Other",7241.90
 7413.0100,"Lineman, Light and Power",7245.10
 7413.9900,"Electrical Line Installers, Repairers and",7245.90
-7419.0100,Senior Functioner (Telephone Equipment,7249.10
-7419.0200,Junior Functioner (Telephone Equipment,7249.20
-7419.0300,Wiring Inspector and Bank Tester,7249.30
-7419.0400,"Inspector, Assembly (Telephone Equipment",7249.40
+7419.0100,Senior Functioner (Telephone Equipment Manufacturing),7249.10
+7419.0200,Junior Functioner (Telephone Equipment Manufacturing),7249.20
+7419.0300,Wiring Inspector and Bank Tester (Telephone Equipment Manufacturing),7249.30
+7419.0400,"Inspector, Assembly (Telephone Equipment Manufacturing)",7249.40
 7419.0500,Battery Servicing Man,7249.50
-7419.0600,"Operator, Impregnation Plant (Telephone",7249.60
-7419.9900,Electrical and Electronic Equipment,7249.90
+7419.0600,"Operator, Impregnation Plant (Telephone Equipment Manufacturing)",7249.60
+7419.9900,"Electrical and Electronic Equipment Mechanics and Fitters and Related Workers, Other",7249.90
 7421.0100,"Electronics Fitter, General",7242.10
 7421.0300,Electronic Mechanic,7243.10
-7421.9900,"Electronic Fitters, Mechanics and Servicers,",7243.90
+7421.9900,"Electronic Fitters, Mechanics and Servicers, Other",7243.90
 7422.0100,Installation Mechanic,7244.10
 7422.0200,Maintenance Mechanic,7244.20
 7422.0400,"Lineman, Telephone and Telegraph",7244.40
 7422.0600,"Fault Controller, Telephones",7244.60
-7422.0700,Carrier Attendant (Telephone) and,7244.70
+7422.0700,Carrier Attendant (Telephone) and Telegraph,7244.70
 7422.0800,Cable Jointer,7245.20
 7422.0900,Radar Mechanic,7243.20
 7422.1000,X-Ray Mechanic,7243.30
@@ -1786,7 +1786,7 @@ code,description,nco_2004_code
 7512.0800,Chocolate Maker,7412.50
 7512.0900,Conche Operator (Sugar & Confectionery),7412.60
 7512.1000,Yeast Maker (Beverage),7412.70
-7512.9900,"Bakers, Pastry Cooks and Confectionery",7412.90
+7512.9900,"Bakers, Pastry Cooks and Confectionery Makers, Other",7412.90
 7513.0100,"Dairy Worker, General",7413.10
 7513.0200,Separator Man,7413.20
 7513.0300,Butter Maker,7413.30
@@ -1798,18 +1798,18 @@ code,description,nco_2004_code
 7514.0300,"Grinder, Hand (Food Grain)",7414.30
 7514.0400,"Pounder, Hand (Food Grain)",7414.35
 7514.0500,Parcher (Food Grain),7414.36
-7514.0600,"Washing Machine Attendant, Cleaner (Food",7414.38
-7514.0700,"Cook, General (Food Canning and",7414.40
-7514.0800,Condiment Maker (Food Canning &,7414.50
+7514.0600,"Washing Machine Attendant, Cleaner (Food Grain)",7414.38
+7514.0700,"Cook, General (Food Canning and Preserving)",7414.40
+7514.0800,Condiment Maker (Food Canning & Preserving),7414.50
 7514.0900,Cannery Worker (Can & Preservation),7414.52
 7514.1000,Pickler (Can & Preservation),7414.54
-7514.1100,"Preservative Filler, Machine (Can &",7414.56
-7514.9900,"Fruits, Vegetables and Related Preservers,",7414.90
+7514.1100,"Preservative Filler, Machine (Can & Preservation)",7414.56
+7514.9900,"Fruits, Vegetables and Related Preservers, Others",7414.90
 7515.0100,Tea Taster,7415.10
 7515.0200,Liquor Taster,7415.20
 7515.0300,Taster (Food),7415.30
 7515.0400,"Grader, Meat",7415.40
-7515.9900,"Food and Beverage Tasters and Graders,",7415.90
+7515.9900,"Food and Beverage Tasters and Graders, Other",7415.90
 7516.0100,Tobacco Curer,7416.10
 7516.0200,Tobacco Grader,7416.15
 7516.0300,"Blender, Tobacco",7416.20
@@ -1821,7 +1821,7 @@ code,description,nco_2004_code
 7516.0900,Bidi Checker,7416.50
 7516.1000,Snuff Maker,7416.55
 7516.1100,Chewing Tobacco Maker,7416.60
-7516.9900,Tobacco Preparers and Tobacco Products,7416.90
+7516.9900,"Tobacco Preparers and Tobacco Products Makers, Other",7416.90
 7521.0100,"Kiln Operator, Wood",7421.10
 7521.0200,"Impregnator, Wood",7421.20
 7521.0300,Wood Bender,7421.30
@@ -1864,7 +1864,7 @@ code,description,nco_2004_code
 7523.1600,"Wood Carver, Machine",8241.10
 7523.1700,Fret Saw Machine Operator,8241.20
 7523.1800,Sander Operator,8241.30
-7523.9900,Wood Working Machine Setters and Setter,8241.90
+7523.9900,"Wood Working Machine Setters and Setter Operators, Others",8241.90
 7531.0100,"Tailor, General",7433.10
 7531.0200,Dressmaker/Ladies Dressmaker,7433.15
 7531.0300,Coat Maker,7433.20
@@ -1878,7 +1878,7 @@ code,description,nco_2004_code
 7531.1400,"Grader and Matcher, Fur",7434.30
 7531.1500,"Cutter, Fur",7434.40
 7531.1600,"Nailor, Fur",7434.50
-7531.9900,"Tailors, Dressmakers, Furriers and Hatters,",7434.90
+7531.9900,"Tailors, Dressmakers, Furriers and Hatters, Other",7434.90
 7532.0100,Designer (Garment),7435.10
 7532.0200,"Designer, Leather Articles",7435.15
 7532.0300,Case Finisher (Leather Product),7435.18
@@ -1890,10 +1890,10 @@ code,description,nco_2004_code
 7532.1100,"Cutter, Gloves (Leather)",7435.50
 7532.1200,Button Hole Maker,7435.55
 7532.1300,Cutter Tent,7435.60
-7532.9900,Garment and Related Pattern Makers and,7435.90
+7532.9900,"Garment and Related Pattern Makers and Cutters, Other",7435.90
 7533.0100,"Sewer, Hand",7436.10
 7533.0201,"Hand Embroiderer, General",7436.15
-7533.0300,"Hand Embroiderer, Zari/Hand Embroider,",7436.20
+7533.0300,"Hand Embroiderer, Zari/Hand Embroider, Traditional Crafts",7436.20
 7533.0600,Darner,7436.35
 7533.0700,"Sewer, Tent (Hand)",7436.40
 7533.0800,Umbrella Maker,7436.45
@@ -1901,7 +1901,7 @@ code,description,nco_2004_code
 7533.1000,Sail and Awning Maker,7436.60
 7533.1100,"Tailor, Tent (Machine)",7436.70
 7533.1200,Doll Maker,7436.80
-7533.9900,"Sewers, Embroiderers and Related Workers,",7436.90
+7533.9900,"Sewers, Embroiderers and Related Workers, Other",7436.90
 7534.0100,"Upholsterer, Furniture",7437.10
 7534.0200,"Upholsterer, Orthopaedic Appliances",7437.20
 7534.0300,"Upholsterer, Vehicle",7437.30
@@ -1929,7 +1929,7 @@ code,description,nco_2004_code
 7535.2000,Pelt Plucker and Trimmer,7441.52
 7535.2100,"Pelt Dyer, Hand",7441.55
 7535.2200,"Pelt, Stitcher",7441.60
-7535.9900,"Pelt Dressers, Tanners and Fell Mongers,",7441.90
+7535.9900,"Pelt Dressers, Tanners and Fell Mongers, Other",7441.90
 7536.0100,"Shoemaker, Hand",7442.10
 7536.0200,"Shoemaker, Orthopaedic",7442.12
 7536.0300,"Shoe Repairer, Cobbler/Shoemaker Cobbler",7442.14
@@ -1971,7 +1971,7 @@ code,description,nco_2004_code
 7542.9900,"Shotfirers and Blasters, Other",7112.90
 7543.0101,Cloth Examiner/Fabric Checker,3152.10
 7543.0300,"Examiner, (Footwear)/Quality Controller",3152.30
-7543.0400,"Examiner, Dry Cleaning/Fabric Inspection",3152.40
+7543.0400,"Examiner, Dry Cleaning/Fabric Inspection Operator",3152.40
 7543.0500,"Examiner, Wood Working",3152.50
 8111.0100,"Miner, Coal Cutting Machine",8111.10
 8111.0200,"Driller, Machine",8111.20
@@ -1986,7 +1986,7 @@ code,description,nco_2004_code
 8111.1100,Main Header Colliery,7111.40
 8111.1200,"Stone Cutter, Mines",7111.45
 8111.1300,"Roof Bolter, Mining",7111.47
-8111.1400,Mine Cutting and Channelling Machine,7111.49
+8111.1400,Mine Cutting and Channelling Machine Operator,7111.49
 8111.1500,"Timberman, Mines",7111.50
 8111.1600,"Creeperman, Colliery",7111.55
 8111.1700,Stowing Worker,7111.60
@@ -2001,7 +2001,7 @@ code,description,nco_2004_code
 8111.2600,"Scraper Driver, Mines",7111.78
 8111.2700,"Shovel Operator, Mines",7111.80
 8111.2800,"Trammer, Mines",7111.85
-8111.9900,"Mines, Quarrymen and Related Workers,",7111.90
+8111.9900,"Mines, Quarrymen and Related Workers, Other",7111.90
 8112.0200,Pulveriser Operator,8112.15
 8112.0300,Stamp Mill Operator,8112.20
 8112.0400,Cynideman,8112.30
@@ -2011,9 +2011,9 @@ code,description,nco_2004_code
 8112.0800,"Stone Cutter, Machine",8112.55
 8112.0900,"Stone Polisher, Machine",8112.60
 8112.1000,"Pipe Machineman, Stoneware",8112.62
-8112.1100,"Thread Cutting Machine Operator,",8112.65
+8112.1100,"Thread Cutting Machine Operator, Stoneware",8112.65
 8112.1200,Cone Operator (Mine & Quarry),8112.70
-8112.9900,Mineral and Stone Processing Plant,8112.90
+8112.9900,"Mineral and Stone Processing Plant Operators, Other",8112.90
 8113.0100,"Well Drillers, Petroleum and Gas",8113.10
 8113.0200,Derrickman,8113.15
 8113.0300,Mudman,8113.20
@@ -2021,27 +2021,27 @@ code,description,nco_2004_code
 8113.0500,Well Puller,8113.30
 8113.0600,Scaperman,8113.35
 8113.0700,Gauger,8113.40
-8113.0800,"Well Driller, Machine (Other than",8113.45
-8113.9900,Well Drillers and Borers and Related,8113.90
+8113.0800,"Well Driller, Machine (Other than Petroleum and Gas)",8113.45
+8113.9900,"Well Drillers and Borers and Related Workers, Other",8113.90
 8114.0100,Polishing Machine Operator (Mosaic),8212.10
-8114.0200,Batching and Mixing Plant Operator,8212.20
+8114.0200,Batching and Mixing Plant Operator (Construction),8212.20
 8114.0300,Concrete Mixer Operator,8212.30
 8114.0500,Cast Stone Maker,8212.50
 8114.0600,Lead Brush Maker (Abrasive Wheel),8212.60
 8114.0700,Fettler (Brick & Tile),8212.70
-8114.9900,Cement and Other Mineral Products,8212.90
+8114.9900,"Cement and Other Mineral Products Machine Operators, Other",8212.90
 8121.0300,"Larry Car Driver, Furnace",8121.20
-8121.2300,Shearing and Upcoiler Operator (Non-,8122.36
-8121.2400,Flattening Machine and Flying Shear,8122.38
-8121.2500,Slitting Machine Operator (Non-Ferrous,8122.40
-8121.2700,"Roller, Second Hand, Strip Mill (Non-Ferrous",8122.44
-8121.3000,"Charger, Reveraberatory, Pulverised Coal",8122.50
-8121.3100,"Melter Reveraberatory – Furnace,",8122.52
+8121.2300,Shearing and Upcoiler Operator (Non- Ferrous Metal)/Coil Operator,8122.36
+8121.2400,Flattening Machine and Flying Shear Operator (Non-Ferrous Metal),8122.38
+8121.2500,Slitting Machine Operator (Non-Ferrous Metal),8122.40
+8121.2700,"Roller, Second Hand, Strip Mill (Non-Ferrous Metal)",8122.44
+8121.3000,"Charger, Reveraberatory, Pulverised Coal Fired/Reverberatory Furnace Operator",8122.50
+8121.3100,"Melter Reveraberatory – Furnace, Pulverised Coal Fired/Reverberatory",8122.52
 8121.3300,Slag Flusher,8122.56
 8121.3701,Heat Treating Furnace Operator,8122.64
 8121.4200,Die Casting Machine Operator,8122.74
-8121.4300,Casting Machine Operator (Non-Ferrous,8122.76
-8121.4400,Casting – Operator Helper (Non-Ferrous,8122.77
+8121.4300,Casting Machine Operator (Non-Ferrous Metal),8122.76
+8121.4400,Casting – Operator Helper (Non-Ferrous Metal),8122.77
 8121.4500,Spun Pipe Machine Operator,8122.78
 8121.4600,"Core Maker, Machine",8122.80
 8121.4700,"Annealer, Metal",8123.10
@@ -2055,13 +2055,13 @@ code,description,nco_2004_code
 8122.0100,Electroplater,8223.10
 8122.2000,"Enameller, Chemical",8223.20
 8122.3000,Reeling Machine Operator,8223.30
-8122.3500,"Galvanizer/Operator – Electroplating,",8223.35
+8122.3500,"Galvanizer/Operator – Electroplating, Galvanising",8223.35
 8122.5500,Metal Sprayer,8223.55
 8122.6000,"Sample Checker, Metal Making",8223.60
 8122.6200,Shot Blaster,8223.62
 8122.6700,Picker,8223.67
 8122.6900,"Hardness Tester, Metal",8223.69
-8122.7000,Speeder Machine Operator (Abrasive,8223.70
+8122.7000,Speeder Machine Operator (Abrasive Wheel),8223.70
 8122.7100,Sizing Machine Operator (Abrasive Wheel),8223.71
 8122.7200,Abrasive Coated Cloth and Papermaker,8223.72
 8122.7300,Skiving Machine Operator (Abrasive),8223.73
@@ -2073,7 +2073,7 @@ code,description,nco_2004_code
 8122.7900,Splint Feeder (Match),8223.79
 8122.8000,Splint Drying Chamberman (Match),8223.80
 8122.8100,Levelling Machine Attendant (Match),8223.81
-8122.9900,"Metal Finishing, Plating and Coating",8223.90
+8122.9900,"Metal Finishing, Plating and Coating Machine Operators, Other",8223.90
 8131.0100,"Crusher Operator, Chemical",8151.10
 8131.0200,Miller/Mill Operator (Chemical),8151.20
 8131.0300,"Pulveriser Operator, Chemical",8151.30
@@ -2081,11 +2081,11 @@ code,description,nco_2004_code
 8131.0500,Compounding Man (Match),8151.45
 8131.0800,"Sieving Machine Attendant, Chemical",8151.60
 8131.0900,Grading Machine Attendant (Abrasive),8151.65
-8131.1400,Drying Chamber Attendant,8152.30
-8131.1500,Drying Chamber Attendant (Match,8152.35
+8131.1400,Drying Chamber Attendant (Drugs)/Chamber Operators,8152.30
+8131.1500,Drying Chamber Attendant (Match Boxes)/Chamber Operators,8152.35
 8131.1700,Size Maker (Abrasive),8152.45
 8131.1800,Paste Maker,8152.50
-8131.2100,Ammonia Operator/Ammonia Plant,8152.70
+8131.2100,Ammonia Operator/Ammonia Plant Operator,8152.70
 8131.2200,Heat Treater,8152.75
 8131.2300,Filter Press Operator,8153.10
 8131.2400,Filter Press Operator (Ceramics),8153.15
@@ -2102,7 +2102,7 @@ code,description,nco_2004_code
 8131.3700,Reactor Convertor Operator,8154.50
 8131.3800,Converter Operator (Grain Feed Mills),8154.60
 8131.3900,Distiller (Chemical),8154.65
-8131.4000,Continuous Machine Operator (Match Box,8222.10
+8131.4000,Continuous Machine Operator (Match Box Manufacturing),8222.10
 8131.4100,Receiver (Match),8222.20
 8131.4200,Box Making Machine Operator (Match),8222.30
 8131.4300,Box Filling Machine Operator (Match),8222.40
@@ -2116,10 +2116,10 @@ code,description,nco_2004_code
 8131.6000,"Masticator, Rubber",8159.36
 8131.6100,Straining Operator (Rubber Reclaim),8159.38
 8131.6200,"Mixer, Rubber/Mill Operator",8159.40
-8131.6300,"Solution and Dough Making, Operator,",8159.42
+8131.6300,"Solution and Dough Making, Operator, Rubber",8159.42
 8131.6400,Synthetic Fibre Maker,8159.45
-8131.6500,Refining Machine Operator (Oils and,8159.54
-8131.6600,Hydrogenation Operator (Oil & Fats)/Oil,8159.56
+8131.6500,Refining Machine Operator (Oils and Fats)/Oil and Fat Plant Operator,8159.54
+8131.6600,Hydrogenation Operator (Oil & Fats)/Oil and Fat Plant Operator,8159.56
 8131.6700,Deodorizer,8159.58
 8131.6800,Crystallisation Attendant,8159.60
 8131.7000,Tablet Machine Operator,8159.62
@@ -2139,7 +2139,7 @@ code,description,nco_2004_code
 8131.8800,Agarbatti Maker,8229.20
 8131.8900,Pencil Maker,8229.30
 8131.9000,"Assembler, Marking Devices (Pen & Pencil)",8229.40
-8131.9900,"Chemical Products Machine Operators,",8229.90
+8131.9900,"Chemical Products Machine Operators, Other",8229.90
 8132.0100,Printer Photographic,7344.10
 8132.0200,"Developer, Photographic",7344.20
 8132.0300,"Developer, Automatic (Photofinishing)",7344.25
@@ -2150,7 +2150,7 @@ code,description,nco_2004_code
 8132.0800,Film Developing Machine Operator,8224.20
 8132.0900,Photographic Film and Papermaker,8224.30
 8132.1000,Linoleum Maker,8224.40
-8132.9900,"Photographic Products Machine Operators,",8224.90
+8132.9900,"Photographic Products Machine Operators, Other",8224.90
 8141.0100,Calendar Machine Operator,8231.10
 8141.0200,Cord Dipping Operator,8231.15
 8141.0300,Extruding Machine Operator (Rubber),8231.20
@@ -2162,8 +2162,8 @@ code,description,nco_2004_code
 8141.0900,Sealing and Valve Fitting Operator,8231.50
 8141.1000,Finishing Operator (Rubber Tube),8231.60
 8141.1100,Sheet Maker (Rubber),8231.65
-8141.1201,Moulder (Rubber)/Compression Moulding,8231.67
-8141.1301,Calenderer Rubberised Fabric/Operator-,8231.70
+8141.1201,Moulder (Rubber)/Compression Moulding Operator,8231.67
+8141.1301,Calenderer Rubberised Fabric/Operator- Textile Coating,8231.70
 8141.1400,Hose Maker (Rubber Goods),8231.72
 8141.1500,Latex Worker,8231.74
 8141.1600,Latex Foam Cushion Maker,8231.76
@@ -2175,13 +2175,13 @@ code,description,nco_2004_code
 8141.2200,"Moulder, Rubber Tube",8231.86
 8141.2300,Cycle Tube Reverser,8231.87
 8141.2400,Rubber Stamp Maker,8231.88
-8141.9900,"Rubber and Rubberised Product Makers,",8231.90
+8141.9900,"Rubber and Rubberised Product Makers, Other",8231.90
 8142.0100,Tablet Machine Operator,8232.10
 8142.0200,Laminating Press Operator (Plastic),8232.15
 8142.0300,Extruding Machine Setter (Plastic),8232.18
 8142.0400,Extruding Machine Operator (Plastic),8232.20
-8142.0501,Injection Moulding Machine Operator,8232.25
-8142.0600,Compression Moulding Machine Operator,8232.30
+8142.0501,Injection Moulding Machine Operator (Plastic),8232.25
+8142.0600,Compression Moulding Machine Operator (Plastic),8232.30
 8142.0700,Bottle Blowing Machine Operator (Plastic),8232.35
 8142.0800,Vacuum Plastic Forming Machine Operator,8232.40
 8142.0900,Embossing Machine Setter (Plastic),8232.45
@@ -2218,82 +2218,82 @@ code,description,nco_2004_code
 8151.2000,"Waterproofer, Textile",8261.87
 8151.2100,"Weighter, Silk",8261.88
 8151.2200,Fetler (Woollen Textile),8261.89
-8151.9900,"Fibre Preparing, Spinning and Winding",8261.90
+8151.9900,"Fibre Preparing, Spinning and Winding Machine Operators, Other",8261.90
 8152.0100,Drawing Man,7432.10
 8152.0200,"Doffer, Fly Frame/Speed Frame Operator",7432.12
 8152.0300,Knitting Jobber,8262.10
 8152.0400,Card Cutter,8262.20
 8152.0500,Mat Shearing Operator,8262.25
-8152.0600,"Flat Knitter, Machine/Knitting Machine",8262.30
-8152.0700,Sock Knitter/Knitting Machine Operator –,8262.35
+8152.0600,"Flat Knitter, Machine/Knitting Machine Operator – Flat Knitting",8262.30
+8152.0700,Sock Knitter/Knitting Machine Operator – Socks Knitting,8262.35
 8152.0800,"Sock Knitter, Automatic Machine",8262.40
-8152.0900,"Knitter, Machine/Knitting Machine",8262.45
+8152.0900,"Knitter, Machine/Knitting Machine Operator",8262.45
 8152.1000,"Looperman, Hosiery",8262.50
-8152.1100,Warp Knitter/Knitting Machine Operator –,8262.55
+8152.1100,Warp Knitter/Knitting Machine Operator – Warp Knitter,8262.55
 8152.1200,"Weaver, Lace (Machine)",8262.60
-8152.1300,"Braid Maker, Machine/Braiding Machine",8262.65
+8152.1300,"Braid Maker, Machine/Braiding Machine Operator",8262.65
 8152.1400,Lace Maker (Machine),8262.70
 8152.1600,Warp Tying Machineman,8262.80
 8152.1700,Wrapper,8262.81
 8152.2000,Front Sizer (Cotton Textile),8262.85
 8152.2100,Back Sizer,8262.86
-8152.9900,"Weaving and Knitting Machine Operators,",8262.90
+8152.9900,"Weaving and Knitting Machine Operators, Other",8262.90
 8153.0101,"Sewing Machine Operator, General",8263.10
 8153.0200,"Button Hole Maker, Machine",8263.20
 8153.0300,Eyelet Holing Machine Operator,8263.30
 8153.0400,Button Stitching Machine Operator,8263.40
 8153.0500,"Embroider, Machine",8263.45
-8153.0600,Embroidery Machine Operator (Semi-,8263.50
+8153.0600,Embroidery Machine Operator (Semi- Automatic),8263.50
 8153.9900,"Sewers and Embroiders, Other",8263.90
-8154.0200,Kierman (Textile)/Package Dyeing Machine,8264.50
+8154.0200,Kierman (Textile)/Package Dyeing Machine Operator,8264.50
 8154.0300,"Scouringman, Woollen Yarn",8264.55
 8154.0500,Washing Machineman,8264.60
 8154.0600,"De-Gummer, Silk",8264.62
 8154.0700,"Carbonizer, Textile",8264.64
 8154.0800,"Scutcherman, Bleaching",8264.66
 8154.0900,Dyed- Yarn Operator (Textile),8264.67
-8154.1000,Jiggerman (Cotton Textile)/Jigger Machine,8264.68
-8154.1100,Dye Automation Operator (Textile)/ Dyeing,8264.69
+8154.1000,Jiggerman (Cotton Textile)/Jigger Machine Operator,8264.68
+8154.1100,Dye Automation Operator (Textile)/ Dyeing Machine Operator,8264.69
 8154.1200,Wool Dyer,8264.70
 8154.1500,Dyer Garment,8264.75
 8154.1700,Damping Machine Attendant,8264.77
 8154.1800,Calenderman (Cotton Textile),8264.78
 8154.1900,Miller,8264.79
 8154.2000,Raising Machineman (Textile),8264.80
-8154.2100,Stentering Machineman/Stentering,8264.81
+8154.2100,Stentering Machineman/Stentering Operator,8264.81
 8154.2200,Cropper,8264.82
-8154.2300,Padding Machineman/Padding Mangle,8264.83
+8154.2300,Padding Machineman/Padding Mangle Operator,8264.83
 8154.2400,Brushing Machineman (Textile),8264.84
 8154.2500,Crabbing Machineman (Woollen Textile),8264.85
 8154.2600,Sanforizing Machineman,8264.86
-8154.2700,Singeing Machineman/Singeing Machine,8264.87
-8154.9900,"Bleaching, Dyeing and Cleaning Machine",8264.90
-8155.0100,"Dehairer, Machine/Dehairer Machine",8265.10
+8154.2700,Singeing Machineman/Singeing Machine Operator,8264.87
+8154.9900,"Bleaching, Dyeing and Cleaning Machine Operators, Other",8264.90
+8155.0100,"Dehairer, Machine/Dehairer Machine Operator",8265.10
 8155.0201,"Flesher, Machine/Fleshing Operator",8265.20
-8155.0300,"Scudder, Machine/Scudding Machine",8265.25
-8155.0400,"Hide and Skin Setter, Machine/Setting",8265.30
-8155.0500,"Hide Splitter, Machine/Splitting Machine",8265.32
+8155.0300,"Scudder, Machine/Scudding Machine Operator",8265.25
+8155.0400,"Hide and Skin Setter, Machine/Setting Machine Operator",8265.30
+8155.0500,"Hide Splitter, Machine/Splitting Machine Operator",8265.32
 8155.0601,"Hide Shaver, Machine/Shaving Operator",8265.35
 8155.0700,"Staker, Machine/Staking Machine Operator",8265.40
 8155.0801,"Leather Buffer, Machine/Buffing Operator",8265.45
-8155.0900,"Leather Glazer, Machine/Glazing Machine",8265.50
+8155.0900,"Leather Glazer, Machine/Glazing Machine Operator",8265.50
 8155.1000,Rolling Machine Operator (Leather),8265.60
-8155.1101,"Tanner, Rotary Drum, Continuous Process",8265.70
-8155.1200,Leather Measuring Machine,8265.80
-8155.9900,Fur And Leather Preparing Machine,8265.90
+8155.1101,"Tanner, Rotary Drum, Continuous Process (Leather Manufacturing)/Drum Operator",8265.70
+8155.1200,Leather Measuring Machine Man/Measuring Machine Operator,8265.80
+8155.9900,"Fur And Leather Preparing Machine Operators, Other",8265.90
 8156.0100,Pounding Machine Operator (Footwear),8266.10
-8156.0200,"Heel Breaster, Machine",8266.12
-8156.0400,"Heel Builder, Machine (Footwear)/Machine",8266.16
+8156.0200,"Heel Breaster, Machine (Footwear)/Machine Operator – Heel Breasting",8266.12
+8156.0400,"Heel Builder, Machine (Footwear)/Machine Operator – Heel Building",8266.16
 8156.0500,Sole Rounding Machine Operator,8266.18
 8156.0600,"Nailer, Machine/Machine Operator, Nailing",8266.20
 8156.0701,"Cutter, Machine/Cutter (Footwear)",8266.22
 8156.0800,"Leather Cutter, Machine",8266.23
-8156.0900,"Welt Sewer, Machine/Machine Operator,",8266.25
+8156.0900,"Welt Sewer, Machine/Machine Operator, Welt Sewing",8266.25
 8156.1001,"Skiver, Machine/Skiving Operator",8266.26
 8156.1401,"Laster, Machine/Lasting Operator",8266.32
 8156.1500,"Sole Stitcher, Machine",8266.35
-8156.1600,"Seat Laster, Machine/Lasting Machine",8266.36
-8156.1700,"Splitter, Machine/Splitting Machine",8266.38
+8156.1600,"Seat Laster, Machine/Lasting Machine Operator",8266.36
+8156.1700,"Splitter, Machine/Splitting Machine Operator",8266.38
 8156.1800,"Heeler, Machine/Heel Attacher",8266.40
 8156.1900,"Heel Compressor, Machine (Footwear)",8266.42
 8156.2000,"Sole Leveller, Machine",8266.45
@@ -2303,16 +2303,16 @@ code,description,nco_2004_code
 8156.2400,Heel Padding Machine Operator,8266.65
 8156.2500,Eyeleting Machine Operator,8266.68
 8156.2600,Riveting Machine Operator,8266.70
-8156.9900,"Cutting, Lasting and Sewing Machine",8266.90
+8156.9900,"Cutting, Lasting and Sewing Machine Operators, Other",8266.90
 8157.0100,Washing Machine Operator,8264.10
 8157.0200,Drying Machine Operator,8264.20
 8157.0300,"Dry Cleaner, Machine",8264.30
 8157.0400,"Presser, Machine/Ironing Operator",8264.40
 8159.0100,"Folder, Machine/Folding Machine Operator",8269.10
-8159.0200,"Splicing – Machine Operator, Automatic",8269.20
+8159.0200,"Splicing – Machine Operator, Automatic (Textile)",8269.20
 8159.0300,Balling – Machine Operator (Textile),8269.30
 8159.0400,Press Operator,8269.40
-8159.9900,"Leather Cutters, Lasters and Sewers and",8269.90
+8159.9900,"Leather Cutters, Lasters and Sewers and Related Machine Operators, Other",8269.90
 8160.0300,Pasteurising Plant Operator (Dairy),8272.10
 8160.0400,Mixing Tank Operator,8272.20
 8160.0500,Dairy Processing Equipment Operator,8272.30
@@ -2327,19 +2327,19 @@ code,description,nco_2004_code
 8160.1600,Cooker Operator,8274.20
 8160.1700,Cutting Machine Operator (Confectionery),8274.30
 8160.1800,"Chocolate Maker, Helper",8274.40
-8160.1900,"Flake Miller, Wheat and Oats (Grain-Feed",8274.50
+8160.1900,"Flake Miller, Wheat and Oats (Grain-Feed Mills)",8274.50
 8160.2000,Noodle Press Operator,8274.60
-8160.2200,Peeling Machine Operator (Food Canning,8275.10
-8160.2300,Pitting Machine Operator (Food Canning,8275.20
-8160.2400,Fruit Press Operator (Food Canning and,8275.30
-8160.2500,Seaming Machine Operator (Food Canning,8275.40
-8160.2600,Retort Operator (Food Canning and,8275.45
+8160.2200,Peeling Machine Operator (Food Canning and Preserving),8275.10
+8160.2300,Pitting Machine Operator (Food Canning and Preserving),8275.20
+8160.2400,Fruit Press Operator (Food Canning and Preserving),8275.30
+8160.2500,Seaming Machine Operator (Food Canning and Preserving),8275.40
+8160.2600,Retort Operator (Food Canning and Preserving),8275.45
 8160.2700,Processing Man (Food Canning and,8275.50
 8160.2800,Panman (Food Canning and Preserving),8275.55
-8160.2900,Exhaust Box Operator (Food Canning and,8275.60
+8160.2900,Exhaust Box Operator (Food Canning and Preserving),8275.60
 8160.3000,Foodstuff Freezer,8275.65
 8160.3100,Peanut Blancher,8275.70
-8160.3200,Dehydrator Tender (Canning &,8275.72
+8160.3200,Dehydrator Tender (Canning & Preservation),8275.72
 8160.3300,Refining – Machine Operator (Oil & Grease),8275.74
 8160.3400,"Crusher Operator, Sugarcane",8276.10
 8160.3500,Filter Pressman,8276.20
@@ -2399,7 +2399,7 @@ code,description,nco_2004_code
 8171.0400,"Sorter, Paper Pulp",8142.25
 8171.0500,"Cutter, Paper Pulp",8142.30
 8171.0600,"Liquor Maker, Paper Pulp",8142.35
-8171.0800,"Causticman, Paper Pulp/Causticizing",8142.45
+8171.0800,"Causticman, Paper Pulp/Causticizing Operator",8142.45
 8171.0900,"Bleacher, Paper Pulp",8142.50
 8171.1100,"Agitator, Paper Pulp",8142.60
 8171.1200,"Machine Operator, Paper",8143.10
@@ -2412,19 +2412,19 @@ code,description,nco_2004_code
 8171.2100,"Drier, Handmade Paper",8143.55
 8171.2200,"Presser, Handmade Paper",8143.60
 8171.2400,"Calenderman, Handmade Paper",8143.70
-8171.2500,"Coating Machine Operator, Hardboard",8143.80
-8171.9900,"Pulp and Papermaking Plant Operators,",8143.90
+8171.2500,"Coating Machine Operator, Hardboard (Paper Goods)",8143.80
+8171.9900,"Pulp and Papermaking Plant Operators, Other",8143.90
 8172.0100,"Wood Sawyer, Machine, General",8141.10
 8172.0200,"Wood Sawyer, Edger",8141.20
 8172.0300,Band Saw Operator,8141.25
 8172.0400,Circular Saw Operator,8141.30
 8172.0700,Veneer Cutter,8141.55
 8172.0800,Peeling Machine Operator,8141.60
-8172.0900,"Barrel-Lathe Operator, Outside (Wood",8141.62
+8172.0900,"Barrel-Lathe Operator, Outside (Wood Container)",8141.62
 8172.1000,Wood Chopping Machine Operator,8141.65
 8172.1100,Core Laying Machine Operator,8141.70
 8172.1200,"Core Layer, Plywood",8141.75
-8172.9900,Wood Processing Plant Operators and,8141.90
+8172.9900,"Wood Processing Plant Operators and Related Workers, Other",8141.90
 8181.0100,Blowing Machine Operator (Glass),8131.10
 8181.0200,"Machineman, Sheet Glass",8131.15
 8181.0300,Pressman (Glass),8131.20
@@ -2470,10 +2470,10 @@ code,description,nco_2004_code
 8189.0200,"Gem Polisher, Machine",8290.60
 8189.0701,Pantograph Machine Operator,7313.72
 8190.0100,"Saw Grinder, Machine",8290.40
-8211.0100,"Assembler, Workshop Machine and",8281.10
+8211.0100,"Assembler, Workshop Machine and Equipment",8281.10
 8211.0200,Assembler Printing Machinery,8281.15
 8211.0300,"Assembler, Textile Machinery",8281.20
-8211.0400,"Assembler, Refrigerator and Air-",8281.25
+8211.0400,"Assembler, Refrigerator and Air- Conditioning Unit",8281.25
 8211.0500,"Assembler, Stationary Petrol Engine",8281.30
 8211.0600,"Assembler, Stationary Diesel Engine",8281.35
 8211.0700,"Assembler, Tractor",8281.40
@@ -2491,17 +2491,17 @@ code,description,nco_2004_code
 8212.0500,Electric Motor Winder,8282.50
 8212.0600,"Calibrator, Electrical",8282.60
 8212.0700,Assembler Precision Instrument,8283.10
-8212.0800,Assembly Operator (Telephone Equipment,8283.20
+8212.0800,Assembly Operator (Telephone Equipment Manufacturing),8283.20
 8212.0900,Assembly Operator (Radio Manufacturing),8283.30
-8212.1000,"Form Layer, Cable (Telephone Equipment",8283.40
-8212.1100,"Cable Maker, Rack Wiring (Telephone &",8283.50
-8212.1200,"Operator, Rack Wiring (Telephone &",8283.60
-8212.9900,Electrical and Electronic Equipment,8283.90
+8212.1000,"Form Layer, Cable (Telephone Equipment Manufacturing)",8283.40
+8212.1100,"Cable Maker, Rack Wiring (Telephone & Telegraph Equipment Manufacturing)",8283.50
+8212.1200,"Operator, Rack Wiring (Telephone & Telegraph Equipment Manufacturing)",8283.60
+8212.9900,"Electrical and Electronic Equipment Assemblers, Other",8283.90
 8219.0100,"Assembler, Bicycle",8284.10
 8219.0200,"Assembler, Sewing Machine",8284.20
 8219.0300,Assembler (Plastic Product),8284.30
 8219.0400,"Assembler, Metal Furniture",8284.40
-8219.9900,"Paper Board, Textile and Related Products",8286.90
+8219.9900,"Paper Board, Textile and Related Products Assemblers, Other",8286.90
 8311.0100,"Loco Driver, Mines",8311.10
 8311.0200,"Driver, Railway Engine (Steam)",8311.20
 8311.0300,"Driver, Railway Engine (Diesel)",8311.30
@@ -2512,7 +2512,7 @@ code,description,nco_2004_code
 8312.0300,"Points Man, Railway",8312.30
 8312.0400,"Traffic Shunter, Railway",8312.40
 8312.0500,"Braker, Passenger Train",8312.50
-8312.9900,"Pointsmen, Signalmen and Shunters,",8312.90
+8312.9900,"Pointsmen, Signalmen and Shunters, Railways, Other",8312.90
 8321.0101,Driver Auto Rickshaw,8321.10
 8321.0200,Despatch Rider,8321.20
 8321.9900,"Motorcycle Drivers, Other",8321.90
@@ -2553,7 +2553,7 @@ code,description,nco_2004_code
 8342.1700,Road Roller Driver,8332.55
 8342.1800,Bitumen Mixing Machine Operator,8332.60
 8342.1900,"Sand Blast Operator, Construction",8332.65
-8342.9900,"Earth Moving and Related Plant Operators,",8332.90
+8342.9900,"Earth Moving and Related Plant Operators, Other",8332.90
 8343.0100,"Driver, Steam Crane",8333.10
 8343.0200,"Crane Operator, Diesel Electric",8333.12
 8343.0300,"Crane Operator, Pneumatic",8333.14
@@ -2572,9 +2572,9 @@ code,description,nco_2004_code
 8343.1600,"Crane and Hoist Operators, Other",8333.60
 8343.1700,Aerial Ropeway Operator,8333.65
 8343.1800,Liftman,8333.70
-8343.9900,"Crane, Hoist and Related Plant Operators,",8333.90
+8343.9900,"Crane, Hoist and Related Plant Operators, Other",8333.90
 8344.0100,Lift Truck Operator,8334.10
-8344.0201,Fork Lift Truck Operator/Fork Lift,8334.20
+8344.0201,Fork Lift Truck Operator/Fork Lift Operator/Driver,8334.20
 8344.9900,"Lift Truck Operator, Other",8334.90
 8350.0100,"Serang, Deck/Bosun",8340.10
 8350.0300,Seaconny/OS (Ordinary Seaman),8340.20
@@ -2583,14 +2583,14 @@ code,description,nco_2004_code
 8350.0600,Boatman,8340.40
 8350.0700,Rudderman,8340.50
 8350.0800,Oarsman,8340.60
-8350.9900,"Ships’ Deck Ratings, Barge Crews and",8340.90
+8350.9900,"Ships’ Deck Ratings, Barge Crews and Boatmen, Other",8340.90
 9111.0100,Domestic Servant,9131.10
 9111.0200,Char Dust Cleaner and Salvager,9131.20
 9111.0300,"Cleaner, Home Restoration Service",9131.30
-9111.9900,"Domestic and Related Helpers, Cleaners and",9131.90
-9112.0100,"Dusting Man, Office; Farash,",9132.10
+9111.9900,"Domestic and Related Helpers, Cleaners and Launderers, Other",9131.90
+9112.0100,"Dusting Man, Office; Farash, Office/Housekeeping Attendant",9132.10
 9112.0200,Cleaner Hospital,9132.30
-9112.9900,"Helpers and Cleaners in Offices, Hotels and",9132.90
+9112.9900,"Helpers and Cleaners in Offices, Hotels and Other Establishments, Other",9132.90
 9121.0100,Dhobi,9133.10
 9121.0200,"Laundry Workers (Marker, Sorter)",9133.20
 9121.0300,"Dry Cleaner, Hand",9133.30
@@ -2598,22 +2598,22 @@ code,description,nco_2004_code
 9121.0500,Rug Cleaner,9133.50
 9121.0600,"Presser, Hand",9133.60
 9121.0700,"Dry Cleaner, Spot",9133.70
-9121.9900,"Launderers, Dry Cleaners and Pressers,",9133.90
+9121.9900,"Launderers, Dry Cleaners and Pressers, Other",9133.90
 9122.0100,"Cleaner, Window",9142.10
-9122.9900,"Vehicle, Window and Related Cleaners,",9142.90
+9122.9900,"Vehicle, Window and Related Cleaners, Other",9142.90
 9211.0100,Ploughman,9201.10
 9211.0200,"Labourer, Agriculture",9201.20
 9211.0300,Picker (Tobacco),9201.30
 9211.9900,"Farm Hands and Labourers, Other",9201.90
 9215.0100,"Labourer, Plantation",9202.10
 9215.0200,Tappers,9203.90
-9215.9900,"Forestry Labourers and Related Workers,",9202.90
+9215.9900,"Forestry Labourers and Related Workers, Other",9202.90
 9311.0100,"Mines, Quarrymen, Related Workers",9311.10
 9311.0200,Digger (Mine & Quarry),9311.20
 9311.9900,"Mining and Quarrying Labourers, Other",9311.90
 9312.0100,"Labourer, Other",9312.10
 9312.0200,Track Repairer (Rail Transport),9312.20
-9312.9900,"Construction and Maintenance Labourers,",9312.90
+9312.9900,"Construction and Maintenance Labourers, Other",9312.90
 9313.0100,Well Digger Helper,9313.10
 9313.9900,"Building Construction Labourers, Other",9313.90
 9321.0101,"Packer, Hand",9322.10
@@ -2633,21 +2633,21 @@ code,description,nco_2004_code
 9331.0100,"Driver, Cycle Rickshaw",9331.10
 9331.0300,Hand Cart Man,9331.30
 9331.0400,"Traffic Hand, Gliding",9331.40
-9331.0600,Transport Equipment Operators and,9331.60
+9331.0600,"Transport Equipment Operators and Drivers, Other",9331.60
 9331.0700,Transport Service Operator,9331.70
 9331.9900,"Hand Pedal Vehicle Drivers, Other",9331.90
 9332.0100,Horse Carriage Driver,9332.10
 9332.0200,Cart Driver,9332.20
 9332.0300,Mahout,9332.30
 9332.0400,Pack Animal Driver,9332.40
-9332.0500,"Supervisor, Animal-Drawn and Manually",9332.50
-9332.9900,"Animal and Animal Drawn Vehicle Drivers,",9332.90
+9332.0500,"Supervisor, Animal-Drawn and Manually Operated Transport Equipment",9332.50
+9332.9900,"Animal and Animal Drawn Vehicle Drivers, Other",9332.90
 9333.0100,Loader and Unloader,9333.10
 9333.9900,"Freight Handlers, Other",9333.90
 9412.0100,Kitchen Helper,9132.20
 9510.0100,Boot Polisher,9120.10
 9510.0200,Bill Poster,9120.20
-9510.9900,Shoe Cleaning and Other Street Services,9120.90
+9510.9900,"Shoe Cleaning and Other Street Services Elementary Occupations, Other",9120.90
 9520.0100,Hawker,9112.10
 9520.9900,"Street Vendors, Non-Food Products, Other",9112.90
 9611.0100,Garbage Collector (Motor Transport),9161.10
@@ -2665,10 +2665,10 @@ code,description,nco_2004_code
 9621.0900,"Sorter, Mail",9151.75
 9621.1200,Hotel Concierge,9152.10
 9621.1300,Water Carrier,9162.40
-9621.9900,"Messengers, Package Deliverers and",9151.90
+9621.9900,"Messengers, Package Deliverers and Luggage Porters, Other",9151.90
 9623.0100,Vending Machine Attendant,9153.10
 9623.0200,Coin Collector,9153.15
 9623.0300,Meter Reader,9153.20
-9623.9900,"Vending Machine Money Collectors, Meter",9153.90
+9623.9900,"Vending Machine Money Collectors, Meter Readers and Related Workers, Other",9153.90
 9629.0100,Usher,9152.40
-9629.9900,"Doorkeepers, Watchpersons and Related",9152.90
+9629.9900,"Doorkeepers, Watchpersons and Related Workers, Other",9152.90
