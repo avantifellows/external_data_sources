@@ -14,8 +14,45 @@ description: |
   across many NIC industries.)
 
   This table is the full NCO 2015 hierarchy (the current vintage) in one
-  wide table — ~2,700 rows. Each row is one most-detailed 8-digit occupation
-  with all four parent levels denormalized onto the same row.
+  wide table — ~2,750 rows. Most rows are one most-detailed 8-digit
+  occupation with all four parent levels denormalized onto the same row.
+
+  ── code_full IS NULLABLE, AND THAT IS NOT A DEFECT ──────────────────────
+  NCO 2015 publishes no 8-digit detail for 81 families and 6 whole groups.
+  Those branches are emitted at the deepest level they actually reach, with
+  code_full / label_full NULL. 2,673 rows carry an 8-digit code; 81 do not.
+
+  This matters because PLFS codes occupation at the 3-DIGIT GROUP level, so
+  a group with no 8-digit detail is still a group people are coded into.
+  Before this was fixed the table was built by joining upward from the
+  8-digit level, so those branches were dropped entirely — only 122 of 127
+  groups reached BigQuery, and there was simply no row for:
+
+      232  Vocational Education Teachers
+      323  Traditional and Complementary Medicine
+      523  Cashiers and Ticket Clerks
+      632  Subsistence Livestock Farmers
+      633  Subsistence Mixed Crop and Livestock
+      634  Subsistence Fishers, Hunters, Trappers
+
+  5,168 person-rows in calendar_2025 V1 alone carry one of those six codes.
+  An INNER join on ocu_pas = code_group dropped those people with no error;
+  a LEFT join left them unlabelled. Found from the analysis side, where six
+  occupation codes came back with no name.
+
+  So: JOIN ON code_group AND EXPECT NULL code_full. If you need one row per
+  group, SELECT DISTINCT code_group, label_group — do not assume every group
+  has 8-digit children.
+
+  ── FIVE CODES STILL HAVE NO LABEL ───────────────────────────────────────
+  The opposite gap, not yet fixed: group '819' and families '2352', '7222',
+  '8112', '8190' appear as 8-digit leaves but their heading was never
+  captured into the codemaps, so label_group / label_family is NULL for
+  them. The rows are present and usable; only the name is missing.
+  scripts/load_bq.py prints a loud warning listing them on every run.
+  Fixing it means recovering the headings from NCO_2015_VolI.pdf via
+  scripts/parse_nco_2015.py — deliberately not done by hand, because typing
+  official classification labels from memory is how wrong ones get shipped.
 
   ── How the hierarchy works ──────────────────────────────────────────────
   NCO is a nested numeric code, broad skill-grouping → exact occupation:
