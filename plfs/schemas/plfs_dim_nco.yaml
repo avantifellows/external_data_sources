@@ -44,15 +44,22 @@ description: |
   group, SELECT DISTINCT code_group, label_group — do not assume every group
   has 8-digit children.
 
-  ── FIVE CODES STILL HAVE NO LABEL ───────────────────────────────────────
-  The opposite gap, not yet fixed: group '819' and families '2352', '7222',
-  '8112', '8190' appear as 8-digit leaves but their heading was never
-  captured into the codemaps, so label_group / label_family is NULL for
-  them. The rows are present and usable; only the name is missing.
-  scripts/load_bq.py prints a loud warning listing them on every run.
-  Fixing it means recovering the headings from NCO_2015_VolI.pdf via
-  scripts/parse_nco_2015.py — deliberately not done by hand, because typing
-  official classification labels from memory is how wrong ones get shipped.
+  ── ONE BRANCH STILL HAS NO LABEL, AND NCO IS WHY ────────────────────────
+  Group '819' and its only family '8190' have NULL label_group /
+  label_family. This is not a parser gap: the NCO 2015 concordance table
+  prints no heading for either. It runs 8189.0701 straight into
+  8190.0100 "Saw Grinder, Machine" and then on to Sub-Division 82, and the
+  string "Group 819" does not appear anywhere in the document. There is no
+  NCO label to recover, so none is invented — ISCO-08's equivalent title
+  would be a guess from a different classification.
+
+  The branch holds exactly one occupation and NO PLFS respondent in
+  calendar_2025 V1 carries ocu_pas = '819', so nothing downstream is
+  affected. scripts/load_bq.py warns about it on every run.
+
+  Three families that WERE a parser gap — 2352 Special Needs Teachers,
+  7222 Tool Makers and Related Workers, 8112 Mineral and Stone Processing
+  Plant Operators — are fixed and present.
 
   ── How the hierarchy works ──────────────────────────────────────────────
   NCO is a nested numeric code, broad skill-grouping → exact occupation:

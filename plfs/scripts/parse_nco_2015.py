@@ -41,11 +41,21 @@ RE_GROUP = re.compile(r"^\s*Group\s+(\d{3})\s+(.+?)\s*$")
 RE_GROUP_LOOSE = re.compile(r"^\s*(\d{3})\s{2,}([A-Z].+?)\s*$")
 RE_FAMILY = re.compile(r"^\s*Family\s+(\d{4})\s+(.+?)\s*$")
 RE_FAMILY_LOOSE = re.compile(r"^\s*(\d{4})\s{2,}([A-Z].+?)\s*$")
+# A bare heading with no label word in the left column. The LEVEL IS THE CODE'S LENGTH - 2 digits
+# is a sub-division, 3 a group, 4 a family - which is unambiguous here and, unlike the label word,
+# is always present. See the note on the state machine in main().
+RE_HEADING_LOOSE = re.compile(r"^\s*(\d{2,4})\s{2,}([A-Za-z].+?)\s*$")
+# A wrapped title continues on the next line: indented, no code of any kind, may still carry the
+# NCO-2004 column at the end.
+RE_CONTINUATION = re.compile(r"^\s{6,}([A-Za-z(][^\d]*?)(?:\s{2,}\d{4}\.\d{2})?\s*$")
 # 8-digit form is "1111.0100" — code . code, with description and (optional)
 # NCO 2004 code at end (format e.g. "1111.10").
 RE_FULL = re.compile(
     r"^\s*(\d{4}\.\d{4})\s+(.+?)\s+(\d{4}\.\d{2})?\s*$"
 )
+
+
+FULLS = object()   # sentinel: `pending` points at the 8-digit list rather than a dict
 
 
 def main():
@@ -59,9 +69,16 @@ def main():
 
     divs, subs, groups, families, fulls = {}, {}, {}, {}, []
     current_label = None  # "Division" | "Sub-Division" | "Group" | "Family"
+    pending = None        # (dict, code) most recently captured, for wrapped-title continuation
 
-    for line in body.splitlines():
+    for line in body.split("\n"):
         s = line.rstrip()
+
+        # A blank line ends any wrapped title. Without this, continuation text could attach to an
+        # entry several rows away.
+        if not s.strip():
+            pending = None
+            continue
 
         # Set the current label so loose-form lines that follow are interpreted
         # at the right hierarchy level. The PDF puts "Sub-" on one line and
@@ -72,6 +89,7 @@ def main():
             if m:
                 code, name = m.group(1), m.group(2).strip()
                 divs[code] = name
+                pending = (divs, code)
                 current_label = "Group_lookahead"  # next 2-digit line is sub-div
                 continue
         if stripped.startswith("Sub-"):
@@ -80,6 +98,7 @@ def main():
             if m:
                 code, name = m.group(1), m.group(2).strip()
                 subs[code] = name
+                pending = (subs, code)
                 continue
             # bare "Sub-" line, or "Sub-Division" header - just set label
             continue
@@ -92,6 +111,7 @@ def main():
             if m:
                 code, name = m.group(1), m.group(2).strip()
                 groups[code] = name
+                pending = (groups, code)
                 continue
         if stripped.startswith("Family"):
             current_label = "Family"
@@ -99,6 +119,7 @@ def main():
             if m:
                 code, name = m.group(1), m.group(2).strip()
                 families[code] = name
+                pending = (families, code)
                 continue
 
         # 8-digit detailed line (always present with NNNN.NNNN form)
@@ -108,30 +129,47 @@ def main():
             name = m.group(2).strip()
             nco04 = m.group(3) or ""
             fulls.append((full, name, nco04))
+            pending = (FULLS, full)
             current_label = None
             continue
 
-        # Loose-form line (no leading label) — interpret based on current_label
-        if current_label == "Sub-Division":
-            m = RE_SUB_LOOSE.match(s)
+        # Loose-form heading with no label word in the left column.
+        #
+        # WHY THIS NO LONGER DEPENDS ON current_label. The previous version only accepted a bare
+        # "NNNN  Title" line while current_label was already set to the matching level, and every
+        # 8-digit line reset current_label to None. The PDF's label column is vertically centred
+        # in its table cell, so pdftotext -layout sometimes emits the word "Family" on the row
+        # BELOW its heading - or omits it. In those cases the heading arrived with the state
+        # cleared and was silently dropped. Three real families were lost this way:
+        #     2352 Special Needs Teachers, 7222 Tool Makers and Related Workers,
+        #     8112 Mineral and Stone Processing Plant Operators
+        # The code's own length says what level it is, always, so that is what routes it now.
+        m = RE_HEADING_LOOSE.match(s)
+        if m:
+            code, name = m.group(1), m.group(2).strip()
+            target = {2: subs, 3: groups, 4: families}[len(code)]
+            if code not in target:
+                target[code] = name
+                pending = (target, code)
+            current_label = None
+            continue
+
+        # Wrapped title. A heading or 8-digit entry whose name is too long for the column runs on
+        # to the next line, and the old parser kept only the first line - which is why the
+        # committed codemaps contain entries like "741,Electrical Equipment Installers and" and
+        # "634,Subsistence Fishers, Hunters, Trappers and". The continuation is appended to
+        # whatever was captured last, and is cleared by any blank line so text can never migrate
+        # across entries.
+        if pending is not None:
+            m = RE_CONTINUATION.match(s)
             if m:
-                code, name = m.group(1), m.group(2).strip()
-                if code not in subs:
-                    subs[code] = name
-                continue
-        if current_label == "Group":
-            m = RE_GROUP_LOOSE.match(s)
-            if m:
-                code, name = m.group(1), m.group(2).strip()
-                if code not in groups:
-                    groups[code] = name
-                continue
-        if current_label == "Family":
-            m = RE_FAMILY_LOOSE.match(s)
-            if m:
-                code, name = m.group(1), m.group(2).strip()
-                if code not in families:
-                    families[code] = name
+                tail = m.group(1).strip()
+                if tail:
+                    target, code = pending
+                    if target is FULLS:
+                        fulls[-1] = (fulls[-1][0], f"{fulls[-1][1]} {tail}", fulls[-1][2])
+                    else:
+                        target[code] = f"{target[code]} {tail}"
                 continue
 
     # write outputs
