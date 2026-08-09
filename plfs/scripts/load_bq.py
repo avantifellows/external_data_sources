@@ -99,6 +99,40 @@ def load_label_maps() -> dict[str, dict[str, str]]:
 
 # ─── Dim builders ────────────────────────────────────────────────────────────
 
+def _assert_level_coverage(df: pd.DataFrame, codemaps: dict[str, pd.Series], label: str) -> None:
+    """Refuse to emit a hierarchy that has silently dropped part of the classification.
+
+    A wide dim built by joining upward from the leaf level can only contain branches that HAVE a
+    leaf. Any code whose subtree is leafless disappears with no error, and the table still looks
+    complete because every row in it is correct. This asserts the opposite direction: every code in
+    every codemap must appear in the output.
+    """
+    missing = {
+        col: sorted(set(codes) - set(df[col].dropna()))
+        for col, codes in codemaps.items()
+    }
+    missing = {k: v for k, v in missing.items() if v}
+    if missing:
+        detail = "; ".join(f"{k}: {len(v)} missing e.g. {v[:5]}" for k, v in missing.items())
+        raise AssertionError(f"{label} dropped codes present in the codemaps -> {detail}")
+
+
+def _warn_unlabelled_levels(df: pd.DataFrame, levels: list[str], label: str) -> None:
+    """The opposite direction: a leaf whose PARENT is absent from the codemaps.
+
+    Raised as a warning rather than an error, because the row is present and usable - only its
+    label is NULL - and failing here would block an otherwise valid reload. It is printed loudly
+    because a NULL label is easy to miss: it renders as an empty cell, not as an error.
+    """
+    for lvl in levels:
+        code_col, label_col = f"code_{lvl}", f"label_{lvl}"
+        bad = df[df[code_col].notna() & df[label_col].isna()][code_col].unique()
+        if len(bad):
+            print(f"  !! {label}: {len(bad)} {lvl} code(s) have no label in the codemaps - "
+                  f"{sorted(bad)}. Rows load with a NULL label_{lvl}; the codemap or "
+                  f"parse_nco_2015.py needs the heading added.")
+
+
 def build_dim_nco() -> pd.DataFrame:
     """
     Wide NCO hierarchy:
@@ -107,6 +141,20 @@ def build_dim_nco() -> pd.DataFrame:
     NCO 2015 codes are zero-padded text. Each level's code is a prefix of the
     one below it (with a '.' between family and the sub-family digits).
     Example: '2512.0100' → family '2512' → group '251' → subdivision '25' → division '2'.
+
+    NOT EVERY BRANCH REACHES THE 8-DIGIT LEVEL, AND THE TABLE MUST STILL CONTAIN IT.
+    NCO 2015 publishes no 8-digit detail for 81 families and 6 whole groups. Building this table by
+    joining upward from nco_full.csv therefore dropped all of them: 122 of 127 groups reached
+    BigQuery, and `plfs_dim_nco` simply had no row for 232 Vocational Education Teachers, 323
+    Traditional and Complementary Medicine, 523 Cashiers and Ticket Clerks, or 632/633/634
+    Subsistence Farmers. PLFS codes occupation at the 3-digit GROUP level and emits all six, so
+    5,168 person-rows in calendar_2025 V1 alone joined to nothing - and because the documented join
+    is `ocu_pas = code_group`, an INNER join dropped those people silently while a LEFT join left
+    them unlabelled. Found from the analysis side, where six occupation codes had no name.
+
+    So rows are emitted at the DEEPEST LEVEL EACH BRANCH ACTUALLY REACHES. A branch with 8-digit
+    detail behaves exactly as before; one without gets a row with the deeper codes NULL. Nothing
+    is fabricated - a code that NCO does not publish stays absent rather than being invented.
     """
     full = pd.read_csv(CODEMAPS / "nco_full.csv", dtype=str).rename(
         columns={"code": "code_full", "description": "label_full"}
@@ -136,16 +184,65 @@ def build_dim_nco() -> pd.DataFrame:
         .merge(subdiv, on="code_subdivision", how="left")
         .merge(division, on="code_division", how="left")
     )
-    return df[
-        [
-            "code_full", "label_full",
-            "code_family", "label_family",
-            "code_group", "label_group",
-            "code_subdivision", "label_subdivision",
-            "code_division", "label_division",
-            "nco_2004_code",
-        ]
+
+    # Branches that never reach the 8-digit level, added at the deepest level they do reach.
+    # Each stage looks at what is still absent AFTER the stages above it, so a group is only
+    # emitted on its own if none of its families made it either.
+    family["code_group"] = family["code_family"].str[:3]
+    family["code_subdivision"] = family["code_family"].str[:2]
+    family["code_division"] = family["code_family"].str[:1]
+    orphan_fam = (
+        family[~family["code_family"].isin(df["code_family"])]
+        .merge(group, on="code_group", how="left")
+        .merge(subdiv, on="code_subdivision", how="left")
+        .merge(division, on="code_division", how="left")
+    )
+
+    group["code_subdivision"] = group["code_group"].str[:2]
+    group["code_division"] = group["code_group"].str[:1]
+    seen_groups = set(df["code_group"]) | set(orphan_fam["code_group"])
+    orphan_grp = (
+        group[~group["code_group"].isin(seen_groups)]
+        .merge(subdiv, on="code_subdivision", how="left")
+        .merge(division, on="code_division", how="left")
+    )
+
+    subdiv["code_division"] = subdiv["code_subdivision"].str[:1]
+    seen_sub = (set(df["code_subdivision"]) | set(orphan_fam["code_subdivision"])
+                | set(orphan_grp["code_subdivision"]))
+    orphan_sub = (
+        subdiv[~subdiv["code_subdivision"].isin(seen_sub)]
+        .merge(division, on="code_division", how="left")
+    )
+
+    seen_div = (set(df["code_division"]) | set(orphan_fam["code_division"])
+                | set(orphan_grp["code_division"]) | set(orphan_sub["code_division"]))
+    orphan_div = division[~division["code_division"].isin(seen_div)]
+
+    cols = [
+        "code_full", "label_full",
+        "code_family", "label_family",
+        "code_group", "label_group",
+        "code_subdivision", "label_subdivision",
+        "code_division", "label_division",
+        "nco_2004_code",
     ]
+    out = pd.concat(
+        [df, orphan_fam, orphan_grp, orphan_sub, orphan_div], ignore_index=True
+    ).reindex(columns=cols)
+
+    _assert_level_coverage(
+        out,
+        {
+            "code_family": pd.read_csv(CODEMAPS / "nco_family.csv", dtype=str)["code"],
+            "code_group": pd.read_csv(CODEMAPS / "nco_group.csv", dtype=str)["code"],
+            "code_subdivision": pd.read_csv(CODEMAPS / "nco_subdivision.csv", dtype=str)["code"],
+            "code_division": pd.read_csv(CODEMAPS / "nco_division.csv", dtype=str)["code"],
+        },
+        "plfs_dim_nco",
+    )
+    _warn_unlabelled_levels(out, ["family", "group", "subdivision", "division"], "plfs_dim_nco")
+    return out
 
 
 def build_dim_nic() -> pd.DataFrame:
