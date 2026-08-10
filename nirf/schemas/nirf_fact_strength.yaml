@@ -5,12 +5,34 @@
 # counted (total students, male, female, economically backward, …) and
 # "value" holds the count.
 #
-# Source parquet: gs://avantifellows-external-data/nirf/nirf_strength.parquet
+# Source parquet: gs://avantifellows-external-data/nirf/clean/nirf_strength.parquet
 # BQ table:       avantifellows.external_data_sources.nirf_fact_strength
+#
+# DEDUPLICATED by scripts/build_clean.py: 198,660 raw rows → 186,012.
+# Removed 9,624 byte-identical rows plus 3,000 that differed only on `city`.
+# A further 24 grain keys held genuinely CONFLICTING values and were SUMMED —
+# see below. The grain is now unique; build_clean.py fails if it isn't.
+#
+# Values here are trustworthy: an Aug 2026 audit against NIRF's own scorecards
+# matched 384/384 sampled cells across 13 institutes, 2019–2024, 7 categories.
+#
+# See README.md → Data provenance / Known limitations before analysing.
 
-description: Student strength by programme + demographic category (long format).
-rows: ~198660
+description: Student strength by programme + demographic category (long format), deduplicated.
+rows: 186012
 grain: (institute_id, ranking_year, ranking_category, programme, category)
+
+known_limitations:
+  - "⚠️ 24 grain keys (all IR-O-U-0383, Punjabi University, 2020) were SUMMED
+     rather than deduplicated. NIRF's `programme` is a duration bucket, not a
+     programme name, so an institute with two different 2-year PG programmes
+     legitimately files two rows under 'PG [2 Year Program(s)]' — that scorecard
+     shows Total students of both 3,307 AND 73. Summing gives the bucket total.
+     A blind DISTINCT or MAX() would have deleted the real 73-student programme."
+  - "Summing is safe here only because every metric is an additive count —
+     all 198,660 raw rows are unit 'value in Absolute Number'. Do not copy this
+     policy to nirf_fact_master, which mixes in 'value in Rupees'."
+  - "institute_id is NOT stable across ranking_year — see nirf_fact_rankings.yaml."
 
 columns:
   - name: ranking_year

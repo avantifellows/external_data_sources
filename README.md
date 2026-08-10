@@ -8,7 +8,7 @@ BigQuery for analysis. One folder per upstream source.
 | Source | Folder | Status | Description |
 |---|---|---|---|
 | PLFS (India) | [`plfs/`](plfs/) | Active | Periodic Labour Force Survey — MoSPI unit-level microdata across 11 releases (2018-19 → CY2025). Heavy local parsing → 6 `plfs_*` tables. |
-| NIRF (India) | [`nirf/`](nirf/) | Active | National Institutional Ranking Framework — rankings + admissions/placements/strength data, top-200 institutes across 9 disciplines, 2016-2025. Light pipeline (parquet → GCS → BQ) → 4 `nirf_fact_*` tables. |
+| NIRF (India) | [`nirf/`](nirf/) | Active ⚠️ | National Institutional Ranking Framework — rankings + admissions/placements/strength data, top-200 institutes across 9 disciplines, 2016-2025. Parquet → dedup/rebuild → GCS → BQ → 4 `nirf_fact_*` tables. **⚠️ Upstream is Dataful.in (a paid Factly product), not NIRF directly, and has known coverage limits — read [`nirf/README.md`](nirf/README.md#known-limitations) before analysing.** |
 | JNV (entrance + board) | [`jnv/`](jnv/) | Active | JEE Mains + Advanced, NEET, JNVST selection test (2018), EI Asset Test, and CBSE 10th/12th board results for Jawahar Navodaya Vidyalaya students. → 6 tables: `jnv_fact_jee_results`, `jnv_fact_neet_results`, `jnv_fact_selection_test_results`, `jnv_fact_ei_asset_test_results`, `jnv_fact_board_results_10th`, `jnv_fact_board_results_12th`. |
 | UDISE+ (India) | [`udise/`](udise/) | Active | Unified District Information System for Education — school enrolment by state × management × category × location × class × gender, AY 2024-25 (dashboard export, reshaped wide→long). Parse → GCS → BQ → 1 `udise_fact_enrolment` table. |
 | Dakshana | [`dakshana/`](dakshana/) | Active | (1) Navodaya CoE Selection Test (NCST) results — scores, demographics, and coaching preferences for JNV students across 2022–2025, conducted jointly by Dakshana Foundation, ENF, and Avanti; (2) Dakshana's self-reported JEE-Main + NEET result sheets — the authoritative record of who was a Dakshana student and at which CoE. → 2 tables: `dakshana_fact_ncst_results`, `dakshana_fact_reported_results`. |
@@ -41,8 +41,11 @@ Pick the closer skeleton:
 
 - `plfs/` — if upstream is custom-format and needs real parsing logic in
   this repo. Has `raw/`, `clean/`, `codemaps/`, parsing scripts.
-- `nirf/` — if upstream is already analyst-clean (parquet/CSV) and just
-  needs staging through GCS. Smaller: `raw/`, `schemas/`, `scripts/`.
+- `nirf/` — if upstream is already analyst-clean (parquet/CSV) and mostly
+  needs staging through GCS. Smaller: `raw/`, `clean/`, `schemas/`, `scripts/`.
+  Note it still has a `build_clean.py`: "analyst-clean upstream" turned out to
+  mean duplicate rows and silent coverage gaps, so **every** source gets a clean
+  step that owns dedup and grain enforcement.
 
 ### Defaults worth keeping consistent
 

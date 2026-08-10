@@ -1,9 +1,13 @@
 # NIRF-specific ignores. Paths are relative to nirf/.
 
 # Raw parquet files — staged locally before being pushed to GCS.
-# The authoritative copy lives at gs://avantifellows-external-data/nirf/.
+# The authoritative copy lives at gs://avantifellows-external-data/nirf/raw/.
 # Don't commit binaries; the GCS bucket is the source of truth.
 raw/*.parquet
 
 # Local Python env
 .venv/
+
+# Clean parquets built by scripts/build_clean.py — regenerate with that script.
+# The authoritative copy lives at gs://avantifellows-external-data/nirf/clean/.
+clean/*.parquet
