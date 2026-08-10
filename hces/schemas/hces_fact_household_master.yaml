@@ -1,0 +1,250 @@
+# hces_fact_household_master
+#
+# One row per household surveyed in the MoSPI NSS Household Consumption
+# Expenditure Survey (HCES) 2023-24 — the household-level analytic master built
+# from the raw NSS "level" files (L1 = identification + demographics, L3 =
+# dwelling/assets, L15 = consumption totals). 261,953 households.
+#
+# Source CSVs:    gs://avantifellows-external-data/hces/raw/HCES_Data_2023-24_Csv/
+# Source parquet: gs://avantifellows-external-data/hces/clean/hces_fact_household_master.parquet
+# BQ table:       avantifellows.external_data_sources.hces_fact_household_master
+# Built by:       hces/scripts/transform_hces.py (raw -> consumption master)
+#                 hces/scripts/add_income.py     (+ derived income, CMIE schedule)
+
+description: >
+  HCES 2023-24 household master: one row per surveyed household (261,953 rows) with geography,
+  demographics, dwelling/assets, monthly consumption expenditure, MPCE, the NSS survey weight, and a
+  DERIVED income estimate. HCES = the Household Consumption Expenditure Survey, MoSPI's nationally
+  representative survey of what Indian households SPEND. Two things a first-time user must know before
+  querying. (1) SURVEY WEIGHTS ARE MANDATORY for any population number: each row represents many real
+  households via `weight` (= raw multiplier / 100). A plain COUNT(*) is a sample size, not a population;
+  use SUM(weight) for households and SUM(people_weight) for people. (2) HCES MEASURES CONSUMPTION, NOT
+  INCOME. India has no nationwide income survey, so income here is PROJECTED from consumption via the
+  savings identity income = consumption / (1 - s), where the savings rate s rises with the household's
+  position in the spending distribution. The `est_*` columns are that projection under ONE schedule
+  (CMIE-CPHS 2022-23); they are a modelled estimate, not a surveyed fact. Treat consumption (`mpce`,
+  `monthly_exp_*`) as measured and income (`est_*`) as derived.
+rows: 261953
+grain: one row per surveyed household (unique on HHID)
+
+columns:
+  # ── Identity ────────────────────────────────────────────────────────────────
+  - name: HHID
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Composite household id, unique per row. Built from the five NSS fields that together identify a
+      sampled household (FSU serial, sample SU, sub-division, second-stage stratum, sample household no).
+      Stable within this survey round only; not comparable across HCES rounds.
+
+  # ── Geography ───────────────────────────────────────────────────────────────
+  - name: state_code
+    type: STRING
+    mode: NULLABLE
+    description: "NSS state code, zero-padded 2-digit string (e.g. '01' = Jammu & Kashmir, '09' = Uttar Pradesh)."
+  - name: state_name
+    type: STRING
+    mode: NULLABLE
+    description: State/UT name, denormalized from state_code.
+  - name: sector_code
+    type: INTEGER
+    mode: NULLABLE
+    description: "Rural/urban sector: 1 = Rural, 2 = Urban."
+  - name: sector_name
+    type: STRING
+    mode: NULLABLE
+    description: "'Rural' or 'Urban' (label for sector_code)."
+  - name: nss_region
+    type: STRING
+    mode: NULLABLE
+    description: >
+      NSS region code (3-digit string). An NSS region groups districts within a state for sampling; it is
+      scoped within state_code, so join/group on (state_code, nss_region), not nss_region alone.
+  - name: district
+    type: STRING
+    mode: NULLABLE
+    description: >
+      District code as published (2-digit string). District codes are numbered WITHIN each state, so '06'
+      is a different district in every state. Always key on (state_code, district); the raw file carries
+      no district name.
+  - name: stratum
+    type: STRING
+    mode: NULLABLE
+    description: NSS first-stage stratum code (sampling design; rarely needed for analysis).
+  - name: sub_stratum
+    type: STRING
+    mode: NULLABLE
+    description: NSS sub-stratum code (sampling design).
+
+  # ── Sampling design ─────────────────────────────────────────────────────────
+  - name: panel
+    type: INTEGER
+    mode: NULLABLE
+    description: NSS panel number (the survey is fielded in rotating panels across the year).
+  - name: sub_sample
+    type: INTEGER
+    mode: NULLABLE
+    description: Sub-sample indicator (1 or 2); NSS splits the sample for variance estimation.
+
+  # ── Demographics ────────────────────────────────────────────────────────────
+  - name: hh_size
+    type: INTEGER
+    mode: NULLABLE
+    description: Number of persons in the household. Drives people_weight and per-capita income.
+  - name: household_type_code
+    type: INTEGER
+    mode: NULLABLE
+    description: NSS household-type code (means of livelihood).
+  - name: household_type_name
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Means of livelihood, e.g. 'Self-employed in non-agriculture', 'Regular wage/salary earning',
+      'Casual labour', 'Self-employed in agriculture' (rural) etc.
+  - name: religion_code
+    type: INTEGER
+    mode: NULLABLE
+    description: NSS religion code of the household head.
+  - name: religion_name
+    type: STRING
+    mode: NULLABLE
+    description: "Religion label, e.g. 'Hindu', 'Islam', 'Christianity'."
+  - name: social_group_code
+    type: INTEGER
+    mode: NULLABLE
+    description: "NSS social-group code: 1 = ST, 2 = SC, 3 = OBC, 9 = Others."
+  - name: social_group_name
+    type: STRING
+    mode: NULLABLE
+    description: "Social group label: 'Scheduled Tribe', 'Scheduled Caste', 'Other Backward Class', 'Others'."
+
+  # ── Dwelling & assets (from L3) ──────────────────────────────────────────────
+  - name: land_ownership_code
+    type: INTEGER
+    mode: NULLABLE
+    description: Land-possessed band code.
+  - name: land_ownership_name
+    type: STRING
+    mode: NULLABLE
+    description: "Land-possessed band label, e.g. 'Less than 0.005 hectares'."
+  - name: land_area_acres
+    type: FLOAT
+    mode: NULLABLE
+    description: Land possessed, converted to acres.
+  - name: dwelling_type_code
+    type: FLOAT
+    mode: NULLABLE
+    description: "Dwelling tenure code (1 = Owned, 2 = Hired, 9 = Others). FLOAT because it is blank for some households."
+  - name: dwelling_type_name
+    type: STRING
+    mode: NULLABLE
+    description: "Dwelling tenure label: 'Owned', 'Hired', 'Others'."
+  - name: cooking_fuel_code
+    type: INTEGER
+    mode: NULLABLE
+    description: Primary cooking-fuel code.
+  - name: cooking_fuel_name
+    type: STRING
+    mode: NULLABLE
+    description: "Primary cooking fuel, e.g. 'Firewood and chips', 'LPG', 'Kerosene'."
+  - name: lighting_fuel_code
+    type: INTEGER
+    mode: NULLABLE
+    description: Primary lighting-source code.
+  - name: lighting_fuel_name
+    type: STRING
+    mode: NULLABLE
+    description: "Primary lighting source, e.g. 'Electricity', 'Kerosene'."
+  - name: ration_card_code
+    type: INTEGER
+    mode: NULLABLE
+    description: Ration-card type code.
+  - name: ration_card_name
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Ration-card type: 'Antyodaya (AAY)', 'Below Poverty Line (BPL)', 'Above Poverty Line (APL)', or no
+      card. A rough proxy for official poverty status, distinct from the income estimate here.
+  - name: benefitted_from_pmgky
+    type: INTEGER
+    mode: NULLABLE
+    description: "Whether the household received PMGKY (Pradhan Mantri Garib Kalyan) free-foodgrain benefit: 1 = yes, 2 = no."
+
+  # ── Consumption (MEASURED) ───────────────────────────────────────────────────
+  - name: monthly_exp_food
+    type: FLOAT
+    mode: NULLABLE
+    description: Monthly household expenditure on food (₹), NSS-imputed to a monthly basis.
+  - name: monthly_exp_consumables
+    type: FLOAT
+    mode: NULLABLE
+    description: Monthly expenditure on non-food consumables / services (₹).
+  - name: monthly_exp_durables
+    type: FLOAT
+    mode: NULLABLE
+    description: Monthly expenditure on durable goods (₹), NSS-annualised then put on a monthly basis.
+  - name: monthly_exp_total
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Total monthly household consumption expenditure (₹) = food + consumables + durables. This is the
+      survey's core MEASURED quantity and the base for the income projection.
+  - name: online_exp_total
+    type: FLOAT
+    mode: NULLABLE
+    description: Portion of monthly expenditure made via online purchase (₹); subset of the total, informational.
+  - name: mpce
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Monthly Per-Capita (consumption) Expenditure = monthly_exp_total / hh_size (₹). The standard NSS
+      welfare ranking variable; the income projection's percentile is computed on people-weighted MPCE.
+
+  # ── Survey weights (MANDATORY for population estimates) ───────────────────────
+  - name: multiplier_raw
+    type: INTEGER
+    mode: NULLABLE
+    description: Raw NSS design multiplier as published (before the /100 convention).
+  - name: weight
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Household survey weight = multiplier_raw / 100 (NSS convention). Number of real households this row
+      represents. Use SUM(weight) for household population totals; never COUNT(*).
+  - name: people_weight
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      weight * hh_size = number of PERSONS this row represents. Use SUM(people_weight) for people totals
+      (e.g. "how many Indians live below ₹X"), and as the weight when ranking households by MPCE.
+
+  # ── Income (DERIVED — modelled, not surveyed) ────────────────────────────────
+  - name: mpce_percentile
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      The household's people-weighted percentile (0-100) in the national MPCE distribution. Because it is
+      people-weighted, a 6-person household counts 6x, so this is the rank in the population of individuals.
+  - name: savings_rate_assumed
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Assumed household savings rate s used to convert consumption to income, read off the CMIE-CPHS
+      2022-23 savings schedule at mpce_percentile. Negative at the bottom (the poorest dis-save: they
+      consume more than income via transfers/borrowing) rising to ~0.42 at the very top. This is the single
+      biggest modelling assumption; the whitepaper triangulates two other schedules (RBI-NAS, WIL).
+  - name: est_monthly_income
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      DERIVED estimated monthly household income (₹) = monthly_exp_total / (1 - savings_rate_assumed).
+      A modelled projection under the CMIE schedule, NOT a surveyed income. For annual income multiply by 12
+      (the whitepaper's ≤₹4 LPA / ≤₹8 LPA bands are on est_monthly_income * 12).
+  - name: est_monthly_savings
+    type: FLOAT
+    mode: NULLABLE
+    description: est_monthly_income - monthly_exp_total (₹); negative for dis-saving households.
+  - name: est_pcm_income
+    type: FLOAT
+    mode: NULLABLE
+    description: Estimated monthly per-capita income (₹) = est_monthly_income / hh_size.
