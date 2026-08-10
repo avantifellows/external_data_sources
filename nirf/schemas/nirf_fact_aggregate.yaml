@@ -14,11 +14,6 @@
 # under any aggregation rule. 1,790 of 31,718 rows carried inflated measures.
 # build_clean.py now asserts the master grain is unique BEFORE pivoting, so this
 # cannot recur silently. If that assertion fires, fix the dedup — don't relax it.
-# Fix verified against NIRF's official scorecards:
-#   Kalasalingam IR-E-U-0458, 2025, AY 2023-24: was 2,952/2,718/Rs 12.20L
-#                                               now 1,476/1,359/Rs 6.10L  (official)
-#   Amrita       IR-E-U-0436, 2025, AY 2023-24: was 5,268/3,758/Rs 15.50L
-#                                               now 2,634/1,879/Rs 7.75L  (official)
 # percentage_placed and admission_rate were never wrong — being ratios of two
 # equally-inflated numbers, the factor always cancelled.
 #
