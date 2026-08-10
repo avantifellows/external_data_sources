@@ -88,9 +88,8 @@ and identity, not correctness.
 | 4 | **93 institutes never appear in `master`** in any year, plus scattered single-year misses (e.g. Jadavpur University 2022, which has data in every other year). | `master` is not a complete cover of ranked institutes. Left-join from `rankings`, don't inner-join. |
 | 5 | **Upstream is a dead end.** Dataful is a paid product and the exact dataset slug `build_data.py` used now returns "Record not found". | We cannot re-pull a corrected extract. Fixing anything upstream is not an option; fix it in `build_clean.py`. |
 
-Duplicate rows — the defect reported in
-[issue #73](https://github.com/avantifellows/external_data_sources/issues/73) —
-**are fixed** by `build_clean.py`; see below.
+Duplicate rows — which inflated every measure in `nirf_fact_aggregate` — **are
+fixed** by `build_clean.py`; see below.
 
 ### The escape hatch
 
@@ -109,9 +108,9 @@ above by construction. Verified Aug 2026:
   ranking nav stops at 2025 — so building this before it lands is cheap timing.
 
 `nmc/` (single PDF) and `moe/` (multi-PDF, two extractors) are the reference
-implementations. Not built; tracked separately from #73.
+implementations. Not built; tracked separately from the deduplication fix.
 
-## What `build_clean.py` fixes (issue #73)
+## What `build_clean.py` fixes
 
 The upstream repeats rows 2–3× for some institutes, and the old aggregate
 pivoted `master` with `aggfunc='sum'` — so duplicated rows were **added**,
@@ -122,14 +121,6 @@ doubling counts and, nonsensically, median salary.
 | `nirf_fact_master` | 97,166 | 90,707 | 6,459 (5,049 byte-identical + 1,410 differing only on `city`) |
 | `nirf_fact_strength` | 198,660 | 186,012 | 12,648 (9,624 byte-identical + 3,000 `city`-only), plus 24 grain keys summed |
 | `nirf_fact_aggregate` | 31,718 | 31,718 | row count unchanged; **1,790 rows had inflated measures** |
-
-Confirmed against the official scorecards — both institutes named in the issue
-now reproduce exactly:
-
-| Institute | Official NIRF 2025 (AY 2023-24) | Was in BQ | Now |
-|---|---|---|---|
-| Kalasalingam `IR-E-U-0458` | 1,476 grad / 1,359 placed / ₹6.10L | 2,952 / 2,718 / ₹12.20L | **1,476 / 1,359 / ₹6.10L** |
-| Amrita `IR-E-U-0436` | 2,634 / 1,879 / ₹7.75L | 5,268 / 3,758 / ₹15.50L | **2,634 / 1,879 / ₹7.75L** |
 
 `percentage_placed` and `admission_rate` changed on **zero** rows — they are
 ratios of two equally-inflated numbers, so the factor always cancelled. Only
@@ -186,7 +177,8 @@ gcloud auth application-default login
 
    `nirf/raw/nirf_aggregate.parquet` also exists in GCS but is **not** an input —
    `build_clean.py` rebuilds `nirf_fact_aggregate` from the clean master. It's
-   kept only as the historical record of what BQ held before issue #73 was fixed.
+   kept only as the historical record of what BQ held before the duplication was
+   fixed.
 
 2. **Build the clean parquets:**
 

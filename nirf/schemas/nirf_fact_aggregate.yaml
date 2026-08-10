@@ -8,7 +8,7 @@
 # build_clean.py pivots the DEDUPLICATED nirf_fact_master long→wide with
 # aggfunc='max', then left-joins it onto nirf_fact_rankings.
 #
-# ⚠️ HISTORY (issue #73): the previous build pivoted the *un*-deduplicated master
+# ⚠️ HISTORY: the previous build pivoted the *un*-deduplicated master
 # with aggfunc='SUM', so duplicated rows were ADDED — inflating every measure 2–3×
 # for ~40–54 institutes per year, including median_salary, which cannot be summed
 # under any aggregation rule. 1,790 of 31,718 rows carried inflated measures.

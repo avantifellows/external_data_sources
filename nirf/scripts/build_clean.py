@@ -13,7 +13,6 @@ What it does, and why:
      ONE "1476 graduating / 1359 placed / Rs 6.10L" row in the official PDF and
      two byte-identical rows upstream. So the duplication is an ingestion
      artifact and collapsing it restores the filed values.
-     See issue #73.
 
   2. Rebuilds `nirf_fact_aggregate` from the deduplicated master.
      The old build pivoted master with aggfunc='sum', so duplicated rows were
@@ -118,14 +117,16 @@ def _build_aggregate(master: pd.DataFrame, rankings: pd.DataFrame) -> pd.DataFra
     """Pivot the deduplicated master long→wide and attach it to rankings.
 
     Guarded by an assertion: if the master grain is not unique, pivoting would
-    silently aggregate several rows into one measure. That is exactly how issue
-    #73 happened, so it must fail rather than produce a number.
+    silently aggregate several rows into one measure. That is exactly how the
+    doubled counts and doubled median salary happened, so it must fail rather
+    than produce a number.
     """
     dupes = master.duplicated(AGGREGATE_PIVOT_INDEX + ["category"]).sum()
     if dupes:
         raise SystemExit(
             f"nirf_fact_aggregate: master still has {dupes:,} duplicate grain rows after "
-            f"deduplication — refusing to pivot. Aggregating here is what caused issue #73."
+            f"deduplication — refusing to pivot. Aggregating here is what doubled every "
+            f"measure, median salary included."
         )
 
     pivot = master.pivot_table(

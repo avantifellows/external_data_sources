@@ -8,7 +8,7 @@
 # Source parquet: gs://avantifellows-external-data/nirf/clean/nirf_master.parquet
 # BQ table:       avantifellows.external_data_sources.nirf_fact_master
 #
-# DEDUPLICATED by scripts/build_clean.py (issue #73): 97,166 raw rows → 90,707.
+# DEDUPLICATED by scripts/build_clean.py: 97,166 raw rows → 90,707.
 # Removed 5,049 byte-identical rows plus 1,410 that differed only on `city`.
 # Verified against NIRF's scorecards — e.g. Kalasalingam IR-E-U-0458 (2025) has
 # ONE "1476 graduating / 1359 placed / Rs 6.10L" row officially and two upstream.

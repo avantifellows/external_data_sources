@@ -50,7 +50,7 @@ python3 -m venv .venv
 
 # Fetch the raw parquets into raw/ (gitignored; authoritative copies in GCS).
 # nirf/raw/nirf_aggregate.parquet exists too but is NOT an input — build_clean.py
-# rebuilds it; that object is only the pre-#73 historical record.
+# rebuilds it; that object is only the pre-deduplication historical record.
 gcloud storage cp 'gs://avantifellows-external-data/nirf/raw/nirf_rankings.parquet' raw/
 gcloud storage cp 'gs://avantifellows-external-data/nirf/raw/nirf_master.parquet'   raw/
 gcloud storage cp 'gs://avantifellows-external-data/nirf/raw/nirf_strength.parquet' raw/
@@ -110,7 +110,7 @@ Every grain is unique — `build_clean.py` enforces it and fails otherwise.
 ## Design calls worth knowing before you change them
 
 - **`build_clean.py` is the only transform.** It exists because the upstream
-  ships duplicate rows and the old aggregate summed them (issue #73). Don't move
+  ships duplicate rows and the old aggregate summed them. Don't move
   logic into `upload_to_gcs.py` or the BQ load — keeping the transform in one
   place is what makes `clean/` == GCS == BQ, and therefore auditable.
   (The predecessor lived in dashboards' `build_data.py`, deleted Feb 2026 in

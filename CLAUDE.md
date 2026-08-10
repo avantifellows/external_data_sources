@@ -126,7 +126,7 @@ Two patterns, two examples:
   tale:** it originally had no clean step, on the theory that the upstream parquet
   *was* the clean data. The upstream (Dataful.in, a paid Factly product) shipped
   rows duplicated 2–3× and a derived table that summed them, doubling median
-  salary in BQ for ~40–54 institutes a year (issue #73). Read
+  salary in BQ for ~40–54 institutes a year. Read
   [`nirf/README.md`](nirf/README.md#data-provenance) before trusting any
   "upstream is already clean" claim — and give every source a clean step that
   owns dedup and asserts the grain.

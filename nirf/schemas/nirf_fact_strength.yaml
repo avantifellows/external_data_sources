@@ -8,7 +8,7 @@
 # Source parquet: gs://avantifellows-external-data/nirf/clean/nirf_strength.parquet
 # BQ table:       avantifellows.external_data_sources.nirf_fact_strength
 #
-# DEDUPLICATED by scripts/build_clean.py (issue #73): 198,660 raw rows → 186,012.
+# DEDUPLICATED by scripts/build_clean.py: 198,660 raw rows → 186,012.
 # Removed 9,624 byte-identical rows plus 3,000 that differed only on `city`.
 # A further 24 grain keys held genuinely CONFLICTING values and were SUMMED —
 # see below. The grain is now unique; build_clean.py fails if it isn't.
