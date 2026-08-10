@@ -30,14 +30,58 @@
 #                                        Table 33a graduates rows are actual
 #                                        response — so this is the ONE cut that
 #                                        carries both bases. Filter on `basis`.
-#   cut='programme_social' Table 34/34a  graduates by programme x social category
-#                                        (2021-22 only — see the coverage note below)
+#   cut='programme_social' Table 34/34a  graduates by DEGREE (x social category
+#                                        where the edition prints one). 2015-16,
+#                                        2018-19 → 2023-24; no 2016-17 or 2017-18.
+#                                        *** THE DEGREE-LEVEL CUT — 253 programmes
+#                                        in 2023-24: B.Tech., B.E., M.B.B.S.,
+#                                        B.D.S., B.Pharm., B.Arch., LL.B., B.Agri.,
+#                                        M.B.A. Use it whenever a SPECIFIC DEGREE
+#                                        is needed. See the discipline-vs-programme
+#                                        note below. ***
 #   cut='ug_discipline'    Tables 12 + 35  UG enrolment (T12) + graduates (T35) by
-#                                        discipline (2015-16, 2016-17, 2018-19,
-#                                        2019-20, 2020-21, 2021-22)
+#                                        discipline. 2015-16, 2016-17, 2018-19 →
+#                                        2023-24; no 2017-18.
 # `metric` in {enrolment, graduates}; enrolment exists ONLY on the ug_discipline
 # cut. Dimensions a cut doesn't break out carry the sentinel "All" (mirroring
 # AISHE's own "Total" / "All Categories" rows).
+#
+# ── PHARMACY, DENTISTRY AND ARCHITECTURE ARE NOT IN THE DISCIPLINE CUT ────────
+# They do not appear in cut='ug_discipline' in ANY year. Searching that cut for
+# them returns nothing, which reads as "AISHE doesn't have it". AISHE does have
+# them — under cut='programme_social':
+#
+#     need           ug_discipline                    programme_social
+#     Pharmacy       ABSENT                           B.Pharm.   104,581
+#     Dentistry      ABSENT                           B.D.S.      20,098
+#     Architecture   ABSENT*                          B.Arch.     13,481
+#     Doctors        Medical Science 330,839 — the    M.B.B.S.    65,836
+#                    WHOLE health cluster (nursing,
+#                    pharmacy, paramedical)
+#     Engineering    Engineering & Technology         B.Tech. + B.E.
+#     (* only "Architecture and Engineering": 3 years, 10 graduates.)
+#     2023-24 graduates, gender='Total'.
+#
+# The Medical Science row is the trap: it is ~5x M.B.B.S. because it holds the
+# entire health cluster. Using it as a denominator for doctors overstates by
+# roughly five times, and that error has been made in this codebase before.
+#
+# RULE: a question naming a DEGREE, or a regulator's remit (AICTE, NMC, DCI,
+# CoA, BCI), wants programme_social. Use ug_discipline only for broad subject
+# shares — STEM vs non-STEM, Arts vs Science.
+#
+# ── INTEGRATED AND DUAL DEGREES ARE SEPARATE ROWS ─────────────────────────────
+# Law is the clearest case. LL.B. is 114,782 in 2023-24, but the five-year
+# integrated degrees the national law universities actually award are separate
+# rows: B.A. LL.B. 25,908, B.B.A.-LL.B. 5,030, B.Com-LL.B. 1,777, B.Sc. LL.B. 87.
+# A denominator built on LL.B. alone misses about a fifth of the field. Same
+# shape for B.Tech-M.Tech and the integrated M.B.A. Decide explicitly whether
+# integrated degrees are in scope, and say which way you went.
+#
+# ── SOME PROGRAMME NAMES CONTAIN COMMAS ──────────────────────────────────────
+# e.g. "B.A. L.L.B.-Bachelor of Arts, Bachelor of Law or Laws". They break naive
+# CSV export and truncate mid-name. REPLACE(programme, ',', ' /') on export, or
+# read the column back with a real CSV parser.
 #
 # ── discipline vs programme vs level (don't confuse them) ─────────────────────
 #   level      = stage of study: Ph.D. / Post Graduate / Under Graduate / Diploma…
