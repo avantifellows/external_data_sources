@@ -9,12 +9,22 @@
 # overall_score = NULL and nirf_rank = NULL. The current parquet only has
 # ranked institutes so all values are populated.
 #
-# Source parquet: gs://avantifellows-external-data/nirf/nirf_rankings.parquet
+# Source parquet: gs://avantifellows-external-data/nirf/clean/nirf_rankings.parquet
 # BQ table:       avantifellows.external_data_sources.nirf_fact_rankings
+#
+# Clean: no duplicates found in this table (unlike master + strength).
+# See README.md → Data provenance / Known limitations before analysing.
 
 description: NIRF rankings — overall score + computed rank per institute/year/category.
-rows: ~7500
+rows: 7504
 grain: (institute_id, ranking_year, ranking_category)
+
+known_limitations:
+  - institute_id is NOT stable across years — see the column note. 492 of 1,178
+    institutes carry more than one id. Do not join on it across ranking_year.
+  - nirf_rank is recomputed by us, not NIRF's published rank.
+  - NIRF's five parameter scores (TLR, RPC, GO, OI, PERCEPTION) are published on
+    nirfindia.org but discarded upstream — not available in this table.
 
 columns:
   - name: ranking_year
@@ -33,7 +43,15 @@ columns:
   - name: institute_id
     type: STRING
     mode: REQUIRED
-    description: NIRF-assigned institute id (e.g. IR-E-U-XXXX). Stable across years.
+    description: |
+      NIRF-assigned institute id (e.g. IR-E-U-0458).
+      ⚠️ NOT stable across years — this doc previously claimed it was, wrongly.
+      The scheme changed twice: 2016 `NIRF-MGMT-INF-311`, 2017
+      `IR17-MGMT-1-18698`, 2018 `IR-1-M-M-S-8890` (variants IR-1 … IR-7),
+      2019+ `IR-M-S-8890`. 492 of 1,178 institutes carry more than one id
+      (IIM Ahmedabad has four). Joining on institute_id across ranking_year
+      silently drops 2016–2018 or splits one institute into several — resolve
+      on a normalised institute_name for longitudinal work.
 
   - name: institute_name
     type: STRING

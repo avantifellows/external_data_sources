@@ -5,12 +5,35 @@
 # Use this when nirf_fact_aggregate doesn't have what you need (e.g.
 # metric categories that weren't pivoted into the wide table).
 #
-# Source parquet: gs://avantifellows-external-data/nirf/nirf_master.parquet
+# Source parquet: gs://avantifellows-external-data/nirf/clean/nirf_master.parquet
 # BQ table:       avantifellows.external_data_sources.nirf_fact_master
+#
+# DEDUPLICATED by scripts/build_clean.py (issue #73): 97,166 raw rows → 90,707.
+# Removed 5,049 byte-identical rows plus 1,410 that differed only on `city`.
+# Verified against NIRF's scorecards — e.g. Kalasalingam IR-E-U-0458 (2025) has
+# ONE "1476 graduating / 1359 placed / Rs 6.10L" row officially and two upstream.
+# The grain below is now unique; build_clean.py fails if it isn't.
+#
+# See README.md → Data provenance / Known limitations before analysing.
 
-description: Raw master data (admissions, graduations, placements) in long format.
-rows: ~97166
-grain: (institute_id, ranking_year, type, academic_year, category)
+description: Master data (admissions, graduations, placements) in long format, deduplicated.
+rows: 90707
+grain: (institute_id, ranking_year, ranking_category, type, academic_year, category)
+
+known_limitations:
+  - "⚠️ PG outcomes cover only 3 academic years (2021-22 → 2023-24, 742
+     institutes); UG covers ten (2014-15 → 2023-24). The upstream did not extract
+     PG into this table before its 2025 refresh. Any time series pooling UG and PG
+     is biased — PG appears in 2021-22 as an artifact, not a real change. NIRF
+     publishes ~9 academic years of PG per institute; we hold 3."
+  - "93 institutes ranked in nirf_fact_rankings never appear here, plus scattered
+     single-year gaps (e.g. Jadavpur University 2022). Left-join from rankings."
+  - "Completeness vs NIRF's PDFs is unverified. Confirmed case: IR-O-U-0589's 2020
+     scorecard publishes 15 placement rows across five programmes; this table holds
+     one for that vintage. Overlapping vintages recover much of it."
+  - "Mixed units — `unit` is 'value in Absolute Number' (82,455 raw rows) or
+     'value in Rupees' (14,711). NEVER SUM across categories; a summed median is
+     meaningless. This is why build_clean.py refuses to sum conflicts here."
 
 columns:
   - name: ranking_year
