@@ -1,0 +1,222 @@
+# gujcet_fact_cutoffs
+#
+# Source parquet: gs://avantifellows-external-data/gujcet/clean/gujcet_fact_cutoffs.parquet
+# BQ table:       avantifellows.external_data_sources.gujcet_fact_cutoffs
+
+description: |
+  Gujarat ACPC admission cutoffs — the last admitted rank (and its
+  percentile-equivalent composite score) for every (institute, course,
+  category) seat bucket. 2,487 rows: engineering 1,954 across 133 institutes,
+  pharmacy 533 across 118. Source: ACPC's own closure PDFs.
+
+  WHAT THIS IS. ACPC (Admission Committee for Professional Courses) runs
+  Gujarat's centralised admission for degree engineering and degree/diploma
+  pharmacy. This table is the Home-State (Gujarat-domicile) quota closure data
+  — the true last-admitted cutoff for the year, not a numbered intermediate
+  round.
+
+  GOTCHAS (read before writing SQL):
+
+  1. TWO STREAMS, TWO DIFFERENT ADMISSION YEARS. engineering = 2025 (the
+     2025-26 cycle); pharmacy = 2024 (2024-25, the latest ACPC has published
+     in this format). ALWAYS filter or group by year+stream — a query spanning
+     both silently mixes admission cycles. This is the single most likely way
+     to get a wrong answer from this table.
+
+  2. TWO METRICS, AND THEY MOVE IN OPPOSITE DIRECTIONS. closing_rank is a
+     merit rank (LOWER = harder); closing_percentile is a 0-100 composite
+     score (HIGHER = harder). They correlate at -0.96. Don't mix them in one
+     ORDER BY or comparison.
+
+  3. closing_rank IS FLOAT, NOT INT. ACPC publishes tied ranks with a .5
+     suffix (e.g. 36906.5), exactly as KEA does for kcet_fact_cutoffs.
+     Preserve the exact value.
+
+  4. THE ENGINEERING MERIT RANK IS NOT A GUJCET RANK. Gujarat's Home-State
+     merit list blends GUJCET (1/3) + JEE Main (1/3) + Class 12 (1/3) into one
+     composite score per candidate, so there is a single rank per category —
+     no separate GUJCET-based vs JEE-based rows. See rank_basis. Pharmacy is
+     NOT GUJCET-based at all (GUJCET is a PCM engineering test); ACPC has no
+     separate pharmacy CET and admits on its own merit list — the exact
+     formula is not published, so rank_basis says only "ACPC merit rank".
+
+  5. category vs category_raw. category is the canonical rollup
+     (GEN / EWS / OBC-NCL / SC / ST / OTHER). category_raw is what ACPC prints:
+     OP or OPEN (Open), SEBC (Gujarat's OBC label), SC, ST, EWS, plus two
+     horizontal pools — TFWS (Tuition Fee Waiver Scheme, economic) and ESM
+     (Ex-Servicemen). Both horizontals land in category='OTHER' with sub_pool
+     set, so filter sub_pool = '' for a clean base-category aggregate. 642 of
+     2,487 rows are OTHER — not ignorable.
+
+  6. ALL INSTITUTE TYPES SHIP. Government scope is a query:
+     college_type IN ('Govt','Govt-Aided','State-Univ-Dept') gives 696 rows
+     across 34 institutes. The other ~1,791 rows are self-financed/private.
+     institute_type_raw keeps ACPC's own finer taxonomy — GOV, GIA
+     (grant-in-aid), SFI (self-financed), UNI-SFI (self-financed under a
+     university), COE (self-financed "Centre of Excellence"), PPP, Auto.
+
+  7. PPP IS NOT GOVT. Exactly one college (GIDC Degree Engineering, Navsari)
+     is public-private-partnership: GIDC land, privately run and self-financed
+     in practice, and it fills at private-level cutoffs. It maps to
+     'Private/SF'. (The equivalent bug in the UP NEET parser — classifying
+     [PPP] as govt — leaked private-level ranks into govt floors.)
+     'Auto' is the opposite case: one state-legislature-established, fully
+     state-funded autonomous institute (IITRAM), mapped to State-Univ-Dept.
+
+  8. AN ABSENT CATEGORY MEANS NO ADMISSION, NOT MISSING DATA. Rows exist only
+     where ACPC recorded a last-admitted candidate. Cells printed as VAC /
+     ------ / ****** produce no row, so a college+course with no SC row simply
+     had no SC admission that year.
+
+  9. closing_percentile IS NULL FOR PHARMACY ESM ROWS (8 rows). The PDF's
+     ESM_MERIT column is a column-boundary extraction artifact — it always
+     exactly equals the ESM rank rather than a 0-100 score (verified across
+     every such row). The upstream parser nulls it rather than shipping a
+     fabricated percentile.
+
+  10. ALL-INDIA QUOTA IS DELIBERATELY EXCLUDED. The source PDFs also carry
+      JEE-only All-India-quota columns (OP_AI / JEE_AI_RANK / TFWS_AI). This
+      table is Home-State quota only — see the quota column.
+
+rows: 2487
+grain: (stream, college_name, branch_name, category_raw, year)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State. Always 'GUJARAT' in this table.
+
+  - name: cet_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Exam/authority governing the merit list: 'ACPC-GUJCET' for engineering
+      (GUJCET+JEE+Class-12 composite), 'ACPC' for pharmacy (ACPC merit list,
+      not GUJCET-based). See rank_basis for the full statement.
+
+  - name: stream
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'engineering' (1,954 rows, year 2025) or 'pharmacy' (533 rows, year
+      2024). Filter on this together with year — see GOTCHA #1.
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Admission cycle start year. 2025 = the 2025-26 cycle (engineering),
+      2024 = 2024-25 (pharmacy). The two streams are NOT the same cycle.
+
+  - name: round
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Which allotment stage the closure data represents, e.g. 'Final (Online
+      Round, ACPC closure data)'. Both streams are final-closure, not a
+      numbered intermediate round — so these cutoffs are the loosest (most
+      accessible) of the cycle.
+
+  - name: college_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Institute name as printed in the ACPC PDF, with line wrapping
+      flattened. There is no stable ACPC institute code in these PDFs, so this
+      is the join key — match on it exactly.
+
+  - name: college_type
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Normalised funding class: 'Govt', 'Govt-Aided', 'State-Univ-Dept',
+      'Private/SF'. Derived from ACPC's own INST_TYPE column (authoritative,
+      stated in the source — not a name-keyword guess). Govt scope = the first
+      three; see GOTCHA #6 and #7.
+
+  - name: institute_type_raw
+    type: STRING
+    mode: REQUIRED
+    description: >
+      ACPC's own institute-type code, kept for auditability: GOV, GIA, SFI,
+      UNI-SFI, COE, PPP, Auto. Finer than college_type — use this when the
+      distinction between SFI and a university-run UNI-SFI matters.
+
+  - name: branch_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Course name as printed. For pharmacy this is the programme
+      ('Bpharm' / 'Dpharm'). Engineering course names wrap by forced character
+      width in the PDF and are re-joined upstream (105 raw strings collapse to
+      88 real courses).
+
+  - name: quota
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Always the Home-State (Gujarat-domicile) quota. The All-India (JEE-only)
+      columns in the source PDFs are excluded — see GOTCHA #10.
+
+  - name: category_raw
+    type: STRING
+    mode: REQUIRED
+    description: >
+      ACPC's own category code — part of the grain. OP / OPEN, SEBC, SC, ST,
+      EWS, TFWS, ESM. Use this when the real Gujarat category matters.
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Canonical rollup: 'GEN', 'EWS', 'OBC-NCL' (from SEBC), 'SC', 'ST', or
+      'OTHER'. TFWS and ESM are horizontal pools and both become OTHER with
+      sub_pool set — see GOTCHA #5.
+
+  - name: sub_pool
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Horizontal seat flag, empty string for a plain base-category seat:
+      'TFWS' (tuition-fee waiver) or 'ESM' (ex-servicemen). Filter
+      sub_pool = '' for clean base-category aggregates.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Always 'All'. ACPC publishes one merit list per category with no
+      gender-split seat pools, unlike Maharashtra's G*/L* codes in
+      mhtcet_fact_cutoffs.
+
+  - name: closing_rank
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      Last admitted merit rank in this seat bucket. LOWER = harder. FLOAT
+      because ACPC publishes tied ranks with a .5 suffix — see GOTCHA #3.
+
+  - name: closing_percentile
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      The same last-admitted candidate's composite merit score on a 0-100
+      scale. HIGHER = harder — the opposite direction to closing_rank. NULL for
+      the 8 pharmacy ESM rows (source artifact, see GOTCHA #9). Labelled
+      "MARKS" in the raw PDF header, but it is a normalised composite score,
+      not raw exam marks.
+
+  - name: rank_basis
+    type: STRING
+    mode: REQUIRED
+    description: >
+      What the rank actually counts, spelled out — e.g. 'Gujarat State Merit
+      Rank, Home-State quota (GUJCET 1/3 + JEE Main 1/3 + Class 12 1/3
+      composite)'. Differs between streams; filter before comparing ranks
+      across them.
+
+  - name: source_url
+    type: STRING
+    mode: REQUIRED
+    description: URL of the ACPC closure PDF this row was parsed from. Both PDFs are mirrored to gs://avantifellows-external-data/gujcet/raw/pdfs/.
