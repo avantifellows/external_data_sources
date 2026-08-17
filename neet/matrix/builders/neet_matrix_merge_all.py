@@ -153,8 +153,81 @@ ALL_STATES_UTS = [
 # ★ IDEMPOTENCE: this script REWRITES the sheet it reads, so a second run would otherwise append the
 #   new tracks on top of themselves (first re-run produced 520 rows / duplicate blocks for 15 tracks).
 #   Drop any state this pass is responsible for, then re-add it. Safe to run repeatedly.
-OWNED = set(NEW) | set(BLANK)
-existing = [r for r in csv.DictReader(open(SHEET)) if r["state"] not in OWNED]
+
+# ---------------------------------------------------------------- from-scratch registry
+# The sheet was originally assembled INCREMENTALLY (each per-state pass merged its own
+# tracks and stamped source_round/data_status at merge time), so this script only "owned"
+# the final 15 tracks. The registry below makes a from-scratch build possible: it is the
+# other 22 tracks' merge-time stamps, transcribed verbatim from the shipped sheet. These
+# are provenance constants — editorial facts about which round each number came from —
+# not computed data; the decisions behind them are in docs/NEET_2026_MATRIX_DECISIONS.md.
+TRACKS = {  # state -> (final-file key, source_round, data_status)
+    'All India': ('aiq', 'AIQ Round 1 (strictest)',
+        'VERIFIED — official source, parser audited by us'),
+    'Andhra Pradesh': ('andhra', 'State R3 (final)',
+        'VERIFIED — official source, parser audited by us'),
+    'Assam': ('as', 'State R1+merit list',
+        'VERIFIED — official source, parser audited by us'),
+    'Bihar': ('br', 'State R3-revised',
+        'VERIFIED — official source, parser audited by us'),
+    'Chhattisgarh': ('cg', 'State R1+R2',
+        'VERIFIED — official source, parser audited by us'),
+    'Gujarat': ('gujarat', 'State R3 (final)',
+        'VERIFIED — official source, parser audited by us'),
+    'Haryana': ('hr', 'State R1 ONLY (strict, marks-native)',
+        'VERIFIED — official source, parser audited by us'),
+    'Himachal Pradesh': ('hp', 'State R3 (final)',
+        'VERIFIED — official source, parser audited by us'),
+    'Jammu & Kashmir': ('jk', 'State R1/R3 (merit-list marks)',
+        'VERIFIED — official source, parser audited by us'),
+    'Jharkhand': ('jh', 'State R1+R3 (marks-native)',
+        'VERIFIED — official source, parser audited by us'),
+    'Karnataka': ('karnataka', 'State R3',
+        'VERIFIED — official source, parser audited by us'),
+    'Kerala': ('kerala', 'Phase 3 (final)',
+        'VERIFIED — official source, parser audited by us'),
+    'Madhya Pradesh': ('mp', 'State R1 (strict)',
+        'VERIFIED — official source, parser audited by us'),
+    'Maharashtra': ('maharashtra', 'State R3 (final)',
+        'VERIFIED — official source, parser audited by us'),
+    'Odisha': ('od', 'State R3',
+        'VERIFIED — official source, parser audited by us'),
+    'Punjab': ('punjab', 'State R2 (strict)',
+        'VERIFIED — official source, parser audited by us'),
+    'Rajasthan': ('rj', 'State R1 ONLY (strict)',
+        'VERIFIED — official source, parser audited by us'),
+    'Tamil Nadu': ('tn', 'Through R3 (marks-native)',
+        'VERIFIED — official source, parser audited by us'),
+    'Telangana': ('telangana', 'Mop-up (loosest)',
+        'VERIFIED — official source, parser audited by us'),
+    'Uttar Pradesh': ('up', 'State R1+R2+R3',
+        'VERIFIED — official source, parser audited by us'),
+    'Uttarakhand': ('uk', 'State R3',
+        'VERIFIED — official source, parser audited by us'),
+    'West Bengal': ('wb', 'State R1 (strict)',
+        'VERIFIED — official source, parser audited by us'),
+}
+
+# Cells whose status was overridden after review (the "no such quota" fix, 2026-07-28):
+# a blank with a stated reason, never the qualifying floor masquerading as a cutoff.
+OVERRIDES = {  # (state, category) -> data_status; all value columns blanked
+    ('Haryana', 'ST'):
+        'N/A — NO ST QUOTA in Haryana state counselling (verified: 0 ST rows across 2,213 allotments / 27 category codes). Not a cutoff — this door does not exist.',
+    ('Himachal Pradesh', 'Gen-EWS'):
+        'N/A — NO MEANINGFUL EWS POOL in HP counselling (source carries a single EWS row).',
+    ('Odisha', 'OBC'):
+        'N/A — NO OBC QUOTA in Odisha state quota (verified: categories are GN/EW/SC/ST only across 1,940 allotments). 27% OBC applies to AIQ, not the state pool.',
+    ('Punjab', 'ST'):
+        'N/A — NO ST QUOTA in Punjab state counselling (verified: 0 ST rows in 199-row official source covering 18 categories). Not a cutoff — this door does not exist.',
+    ('Tamil Nadu', 'Gen-EWS'):
+        'N/A — NO EWS QUOTA in Tamil Nadu (verified: 8,165 allotments use BC/MBC&DNC/OC/BCM/SC/SCA/ST). TN runs its own communal reservation instead.',
+    ('Uttarakhand', 'ST'):
+        'BLANKED — POOL TOO THIN TO PUBLISH — Uttarakhand has 5 govt colleges and the ST pool is effectively ONE seat, closing past AIR 1,091,883 (below the national qualifying gate). n=1 is not a floor. Treat as AIQ-only.',
+}
+
+OWNED = set(NEW) | set(BLANK) | set(TRACKS)
+existing = ([r for r in csv.DictReader(open(SHEET)) if r["state"] not in OWNED]
+            if SHEET.exists() else [])        # from-scratch: no prior sheet needed
 merged = [dict(r) for r in existing]          # the already-verified tracks stay untouched
 
 def add(rows, state, rnd, status):
@@ -168,6 +241,21 @@ def add(rows, state, rnd, status):
 for state, key in NEW_FILES.items():
     src = list(csv.DictReader(open(OUT / f"{key}_matrix_final.csv")))
     add(src, state, *NEW[state])
+
+for state, (key, rnd, status) in TRACKS.items():
+    src = list(csv.DictReader(open(OUT / f"{key}_matrix_final.csv")))
+    for r in src:
+        if r.get("state", state) not in ("", state):   # aiq final has no state column
+            continue
+        o = {c: r.get(c, "") for c in COLS}
+        o["state"], o["source_round"], o["data_status"] = state, rnd, status
+        ov = OVERRIDES.get((state, o["category"]))
+        if ov:
+            o["data_status"] = ov          # the round stays: the ABSENCE was verified in that round
+            for c in COLS:
+                if c.startswith("B1"):
+                    o[c] = ""
+        merged.append(o)
 
 ne = list(csv.DictReader(open(OUT / "ne_matrix_final.csv")))
 for state in ["Arunachal Pradesh", "Meghalaya", "Nagaland", "Manipur", "Ladakh", "Tripura", "Mizoram"]:
