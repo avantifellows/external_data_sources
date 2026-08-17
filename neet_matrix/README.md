@@ -1,6 +1,14 @@
 # neet_matrix
 
-NEET-2026 **minimum-marks matrix** → BigQuery.
+NEET → BigQuery. **Two tables**: the minimum-marks matrix (the bar) and the per-college
+closing ranks underneath it (the evidence).
+
+| table | rows | grain | answers |
+|---|---|---|---|
+| `neet_dim_marks_matrix_2026` | 370 | state × category | *what is the bar?* |
+| `neet_fact_cutoffs` | 13,700 | college × category × round | *which colleges could I get?* |
+
+## The matrix
 
 For each state/UT and category, the minimum NEET marks that realistically win a
 **government** MBBS (B1a) / BDS (B1b) seat, plus B2b (the national qualifying floor).
@@ -29,7 +37,47 @@ gs://avantifellows-external-data/neet_matrix/{raw,extracted,clean}/
 avantifellows.external_data_sources.neet_dim_marks_matrix_2026   (asia-south1)
 ```
 
-`scripts/sources.py` is the single source of truth for paths, GCS URIs and the BQ target.
+`scripts/sources.py` is the single source of truth for paths, GCS URIs and the BQ targets.
+
+## The fact table
+
+```
+public/data/NEETUG/NEETUG.json      (19 counselling extracts, 13,700 rows, all NEET AIR)
+  +  raw/nmc-dci-roster-2025-26/    (NMC 819 MBBS + DCI 330 BDS colleges, official mgmt)
+       │  scripts/build_fact_parquet.py
+       ▼
+clean/neet_fact_cutoffs.parquet  →  external_data_sources.neet_fact_cutoffs
+```
+
+Built from the same dataset that powers the college predictor, so the app and BigQuery
+cannot drift apart.
+
+**Seat type is not college type.** A government-quota SEAT can sit inside a PRIVATE
+college — 283 such rows across 15 private colleges in Karnataka, 55 across 13 in Punjab.
+Measured across the whole dataset, `seat_type='Government'` sits in a private college on
+**62%** of its rows. A real Karnataka medical student reported this as a predictor bug.
+Use `college_type` for "is this a government college", `seat_type` for "which pool".
+
+`college_type` is **64% filled and never guessed** — NULL means unknown, not "not
+government". It comes from the NMC/DCI rosters via three rungs (exact name, govt-by-
+definition, token+state), recorded per row in `college_type_method`. Measured 96% against
+rows whose source already carried the field; of the 185 disagreements, 153 are cases where
+the *source* was wrong (it derived College Type from the seat type) and only 3 colleges
+genuinely disagree — this classifier is right on all three. True accuracy ≈ 99.6%.
+
+A wrong "Govt" would make a college look ~250 marks easier than it is with nothing about
+the row looking broken, so fuzzy matching — measured at 87.5% with *every* error in that
+direction — is deliberately not used.
+
+`category` collapses 321 raw codes to 5, with everything else preserved in `sub_pool`
+(pwd, rural, kannada-medium, home-univ, earmark...). **Filter `sub_pool=''` for base
+floors.** Karnataka folds caste × language × region into one token (`2AKH` = 2A ×
+Kannada-medium × Hyderabad-Karnataka); its grammar was derived from the data and verified
+to decompose 50 of its 76 codes.
+
+The matrix is **not** currently generated from this table — reproducing it in SQL needs a
+govt flag at higher coverage than 64%, since unclassified private colleges leak into a
+naive floor query and loosen it. Matrix for the bar; fact table to see behind it.
 
 ## Three GCS tiers
 

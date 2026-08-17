@@ -80,4 +80,32 @@ TABLES: list[Table] = [
         parquet="neet_marks_matrix_2026.parquet",
         grain="(snapshot, state, category) — one row per state/UT x category",
     ),
+    Table(
+        bq_name="neet_fact_cutoffs",
+        parquet="neet_fact_cutoffs.parquet",
+        grain="(state, institute, program, category_raw, round) — one row per "
+              "college x category x round, as published",
+    ),
 ]
+
+# ─── extra source documents for neet_fact_cutoffs ─────────────────────────────
+# The fact table needs a per-COLLEGE government flag. NEETUG's own `College Type` cannot
+# supply it: 42% blank (100% of Maharashtra), and where present it was derived per-ROW from
+# the SEAT type, so one government college reads "Govt" on its state-quota row and "Private"
+# on its management-quota row (measured: 153 such rows; NMC confirms GMC Alwar and GMC
+# Banswara are Govt.). Seat type is a property of the SEAT, not the college — measured,
+# `Seat Type = 'Government'` sits inside a PRIVATE college on 62% of its 1,987 rows.
+#
+# So govt-ness comes from the NMC/DCI rosters, which carry the official `mgmt` column
+# (Govt. / Govt. (Society) / Trust / Society / Private / COMPANY). Both files are 2025-26
+# seat-matrix extracts.
+ROSTER_FILES = {
+    "mbbs_all_colleges_2025-26.csv": "NMC MBBS seat matrix 2025-26 — 819 colleges, official mgmt column",
+    "bds_all_colleges_2025-26.csv": "DCI BDS seat matrix 2025-26 — 330 colleges, official mgmt column",
+}
+
+# Where the NEET per-college cutoff rows come from. This is the same dataset that powers the
+# college predictor, so the fact table and the app cannot drift apart.
+FACT_INPUT = {
+    "NEETUG.json": "19 state/AIQ counselling sources, 13,700 rows, all normalised to NEET AIR",
+}
