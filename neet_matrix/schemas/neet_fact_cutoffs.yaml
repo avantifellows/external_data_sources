@@ -1,0 +1,89 @@
+table: neet_fact_cutoffs
+grain: (track, institute, program, category_raw, round) — one row per college x category x round, as published
+rows: 13700
+description: >
+  Per-college NEET closing ranks — the evidence underneath neet_dim_marks_matrix_2026.
+  13,700 rows, 1,308 institutes, 19 counselling tracks (18 states + the 15% All-India
+  Quota), admission year 2025. Programs: MBBS 11,173, BDS 2,462, BSc Nursing 65.
+
+  This answers "which colleges could I get?"; the matrix answers "what is the bar?".
+  Same lineage — this table is built from the same dataset that powers the college
+  predictor, so the app and BigQuery cannot drift apart.
+
+  EVERY closing_rank IS A NEET ALL-INDIA RANK. Tamil Nadu publishes state rank; it was
+  converted upstream via the validated score->AIR model. rank_space records this.
+columns:
+  track:               "the COMPETITION: a state's 85% domicile quota, or 'All India' for the 15% AIQ. Matches neet_dim_marks_matrix_2026.state, so the two tables join."
+  college_state:       "where the college physically is. Differs from track for AIQ, whose one national track spans 33 states — so 'AIQ seats in Karnataka' is answerable."
+  institute:           "college name as the counselling authority printed it. Not canonicalised; join on it with care."
+  address:             "as published; often empty"
+  program:             "MBBS | BDS | BSc Nursing"
+  category:            "canonical: Gen | Gen-EWS | OBC | SC | ST. NULL where the raw code is not a caste category at all (796 rows: NRI/sports/defence/minority-institution pools) — see sub_pool"
+  category_raw:        "the authority's own code, verbatim — part of the grain. 321 distinct values; Karnataka alone has 76"
+  category_label:      "readable expansion where the source gave one"
+  sub_pool:            "what the raw code encoded BEYOND caste: pwd, rural, kannada-medium, hyderabad-karnataka, home-univ, earmark, nri, sports... Empty = a plain base-category row. FILTER sub_pool='' FOR BASE FLOORS."
+  seat_type:           "the seat's own quota: State Quota / All India / Government / Management Quota / NRI ... A PROPERTY OF THE SEAT, NOT THE COLLEGE"
+  college_type:        "Govt | Private | NULL. Of the COLLEGE, from the NMC/DCI roster. 64% filled; never guessed"
+  college_type_method: "which rule decided it: R1-exact-roster | R2-govt-by-name | R3-token+state | NULL. Audit trail — filter to R1 for the strictest subset"
+  seat_gender:         "Gender-Neutral | Female-only. UP and CG split closings by seat gender"
+  closing_rank:        "last admitted candidate's NEET All India Rank. LOWER = harder"
+  rank_space:          "always 'NEET AIR'"
+  round:               "which counselling round produced this closing rank. NOT comparable across states — round depth varies"
+  exam_year:           "2025 (the observed cycle). The matrix projects these to 2026"
+  source:              "which of the 19 counselling extracts this row came from"
+notes: |
+  SEAT TYPE IS NOT COLLEGE TYPE — the single most important thing about this table.
+  A government-quota SEAT can sit inside a PRIVATE college: 283 such rows across 15
+  private colleges in Karnataka, 55 across 13 in Punjab. Measured across the whole
+  dataset, seat_type='Government' sits in a private college on 62% of its rows.
+  A real Karnataka medical student reported this as a bug in the predictor.
+  Use college_type for "is this a government college"; seat_type for "which pool".
+
+  college_type COVERAGE AND WHY IT IS PARTIAL (64%)
+    Filled only where defensible, from the NMC/DCI 2025-26 rosters and their official
+    `mgmt` column. Three rungs, strictest first:
+      R1-exact-roster   2,173  normalised name == roster name
+      R2-govt-by-name   4,256  govt by definition (AIIMS/JIPMER/Government/GMC/ESIC...)
+      R3-token+state    2,373  distinctive tokens agree AND the state agrees
+      NULL              4,898  not resolvable without guessing
+    Measured 96% against rows whose source already carried a College Type. Of the 185
+    disagreements, 153 are cases where the SOURCE was wrong — it derived College Type
+    from the SEAT type, so one government college read Govt on its state-quota row and
+    Private on its management-quota row (NMC confirms GMC Alwar and GMC Banswara are
+    Govt.). Only 3 distinct colleges genuinely disagree, and this classifier is right on
+    all three — one is DENTAL COLLEGE, AZAMGARH, the private college that once made UP's
+    BDS floor read 232 marks.  => true accuracy ~99.6%.
+
+    ★ NULL IS DELIBERATE. A wrong "Govt" makes a college look ~250 marks easier than it
+      is and nothing about the row looks broken. Fuzzy name matching was measured at
+      87.5% with EVERY error in that dangerous direction, so it is not used. Treat NULL
+      as "unknown", never as "not government".
+
+  CATEGORY MAPPING
+    321 raw codes -> 5 canonical, with everything else preserved in sub_pool. 100%
+    classified: 12,904 rows to a canonical category, 796 correctly identified as
+    non-caste pools. Every per-state mapping is lifted from the state builder that
+    already made the decision (futures-v2/neet/matrix_2026/builders/). Karnataka is the
+    exception: KEA folds caste x language x region x rural into one token (2AKH = 2A x
+    Kannada-medium x Hyderabad-Karnataka), so the suffix grammar was derived from the
+    data and verified to decompose 50 of its 76 codes.
+
+    Maharashtra note: the matrix uses MH's literal 'OBC' bucket only, but SEBC / NT-B /
+    NT-C / NT-D / VJA are genuinely OBC-family castes. Here they are category='OBC' with
+    the caste kept in sub_pool, so filtering sub_pool='' still reproduces the matrix.
+
+  ROUND DEPTH IS NOT COMPARABLE ACROSS STATES. A Round-1 state looks harsher than a
+  mop-up state at identical underlying reality. Scope on round when comparing.
+
+  RELATION TO THE MATRIX. neet_dim_marks_matrix_2026 remains hand-built and VERIFIED;
+  it is NOT currently generated from this table. Reproducing it in SQL needs a govt flag
+  at much higher coverage than 64% — with today's coverage a naive floor query returns
+  looser numbers than the matrix, because unclassified private colleges leak in. Use the
+  matrix for the bar; use this table to see the colleges behind it.
+
+  SOURCES
+    per-college cutoffs : college-predictor public/data/NEETUG/NEETUG.json (19 extracts)
+    government roster   : gs://avantifellows-external-data/neet_matrix/raw/nmc-dci-roster-2025-26/
+                          mbbs_all_colleges_2025-26.csv (819 colleges)
+                          bds_all_colleges_2025-26.csv  (330 colleges)
+    method / provenance : futures-v2/neet/matrix_2026/docs/NEET_2026_HOW_WE_BUILT_IT.md
