@@ -1,0 +1,129 @@
+# state_medical_fact_closing_ranks
+#
+# Source parquet: gs://avantifellows-external-data/state_medical/clean/state_medical_fact_closing_ranks.parquet
+# BQ table:       avantifellows.external_data_sources.state_medical_fact_closing_ranks
+
+description: |
+  State-quota MBBS/BDS admission cutoffs — the closing rank for state-counselled
+  government medical seats, harmonized across 32 states/UTs into one fact.
+
+  WHAT THIS IS. Indian medical admission splits a government college's seats in
+  two: ~15% go to the national All India Quota (counselled by MCC → `mcc_*`),
+  and ~85% are the STATE QUOTA, counselled by each state's own authority on its
+  own merit list and reservation rules. This table is the harmonized union of
+  those ~30 state counsellings for the 2025-26 cycle. It is the state-quota
+  counterpart to `mcc_fact_closing_ranks`.
+
+  THE HARD PART — RANK SPACES ARE NOT UNIFORM. Each state publishes cutoffs in
+  its OWN rank space. Some report a NEET All-India Rank (AIR) directly; others
+  report a state-specific merit rank or score on a scale unique to that state.
+  `rank_space` tells you which:
+    - 'NEET AIR'      → closing_rank is a national NEET AIR (comparable to
+                        `mcc_*` and to other 'NEET AIR' states). ~75% of rows.
+    - 'state-native'  → closing_rank is on that STATE's own scale. NOT
+                        comparable across states. `conversion_method` names the
+                        exact native scale (e.g. 'TN→AIR via score ladder' means
+                        the native value was a TN score the upstream pipeline can
+                        convert, but the converted AIR is NOT in this table).
+  NEVER compare 'state-native' closing ranks across states, and never compare a
+  'state-native' value against a 'NEET AIR' value. Filter `rank_space = 'NEET AIR'`
+  for cross-state / cross-source analysis.
+
+  WHAT WAS DELIBERATELY LEFT OUT. The upstream College DB pipeline ALSO
+  produces an estimated unified-AIR per row (so every state becomes comparable),
+  plus salary tier, a round-projection multiplier, and an estimated-R3 closing
+  rank. Those are Avanti MODELING outputs, not published facts, so they are NOT
+  in this table — they stay in College DB. If you need a single comparable AIR
+  for the 'state-native' states, that estimate lives there, not here.
+
+  PROVENANCE / QUALITY. `source_quality` = 'official' (from the state authority's
+  own release) or 'third-party' (from an aggregator when the official portal was
+  unavailable). `is_estimated` = TRUE when even the closing_rank itself was
+  projected upstream (a small tail). Filter both for a strict official-only view.
+
+  CATEGORY. `category` is the upstream-harmonized canonical label (UR =
+  unreserved, plus SC/ST/EWS/OBC; may be NULL where a state's seat matrix
+  doesn't break category out cleanly). `category_raw` keeps the state's original
+  label. Note the canonical label here is 'UR', distinct from `mcc_*` ('Open')
+  and `state_cet_*` ('GEN') — cross-source category alignment is a downstream concern.
+
+rows: ~2860
+grain: (state, college, program, category, round)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: |
+      2-letter state/UT code (MH, TN, KL, UP, …). See codemaps/state_code.csv
+      for the full-name mapping. 32 states/UTs covered.
+
+  - name: college
+    type: STRING
+    mode: REQUIRED
+    description: Medical/dental college name as published by the state authority. Varies — keyword-match.
+
+  - name: program
+    type: STRING
+    mode: REQUIRED
+    description: Degree — MBBS or BDS.
+
+  - name: category
+    type: STRING
+    mode: NULLABLE
+    description: |
+      Upstream-harmonized reservation category: UR (unreserved), SC, ST, EWS,
+      OBC. NULL where the state's data doesn't cleanly break category out. The
+      state's own label is in category_raw.
+
+  - name: category_raw
+    type: STRING
+    mode: NULLABLE
+    description: The state authority's original category label, before harmonization.
+
+  - name: round
+    type: STRING
+    mode: NULLABLE
+    description: |
+      Which counselling round(s) the closing rank reflects, as published —
+      free text, e.g. 'R1+R2+R3', 'MopUp', 'R3', 'Phase-3', 'R1+R2 (2024 data)'.
+      States describe their cumulative final differently; do not cast to INT.
+
+  - name: closing_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: |
+      The cutoff — worst rank that got a seat in this bucket. Its SCALE depends
+      on rank_space (NEET AIR vs state-native). Read rank_space + conversion_method
+      before interpreting. NULL if not published.
+
+  - name: rank_space
+    type: STRING
+    mode: REQUIRED
+    description: |
+      'NEET AIR' = closing_rank is a national NEET All-India Rank (comparable
+      across states/sources). 'state-native' = closing_rank is on the state's
+      own scale (NOT comparable). The single most important column for correct use.
+
+  - name: conversion_method
+    type: STRING
+    mode: NULLABLE
+    description: |
+      Provenance of the native value: 'native AIR' (already an AIR), or a label
+      like 'TN→AIR via score ladder' / 'KL→AIR via merit list' describing the
+      state scale (the conversion itself is applied only in College DB, not here).
+
+  - name: is_estimated
+    type: BOOLEAN
+    mode: REQUIRED
+    description: TRUE when closing_rank itself was projected upstream (small tail). Filter out for strict actuals.
+
+  - name: source_quality
+    type: STRING
+    mode: REQUIRED
+    description: "'official' (state authority release) or 'third-party' (aggregator fallback when official was unavailable)."
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: Counselling cycle year. Currently 2025 (the 2025-26 cycle).
