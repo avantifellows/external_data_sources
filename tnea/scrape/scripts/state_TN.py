@@ -167,6 +167,13 @@ CONSTITUENT_COLLEGE_CODES = {
     4023,  # University College of Engineering, Nagercoil
     4024,  # University V.O.C. College of Engineering, Thoothukudi
     5010,  # Anna University Regional Campus - Madurai
+    # Two constituent UCEs absent from the 2021-vintage DOTE PDF the sets were
+    # transcribed from, present in the 2025 portal data (verified against the
+    # scraped college list: both are Anna University constituent colleges).
+    # Caught by a false-negative sweep: unclassified names matching
+    # "university college of engineering".
+    5017,  # University College of Engineering, Ramanathapuram
+    5022,  # University College of Engineering, Dindigul
 }
 
 GOVT_CODES = (
