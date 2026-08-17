@@ -220,11 +220,15 @@ GOVT_KEYWORDS = re.compile(
 GOVT_ABBR = re.compile(r"\b(gmc|gdc|ggmc|bjmc|gsmc|igmc|iggmc|ltmmc|tnmc|jjh|srtr|rcsm|"
                        r"vnmc|vmmc|esic|esi)\b", re.I)
 
-# Kerala writes a short college CODE, a hyphen, then the real name ("GMC- Sree Gokulam
-# Medical College"). That code is not an abbreviation of "Government Medical College", so
-# the govt-by-name test must not fire on it. ESI/ESIC is exempt — those really are the
-# central-government ESIC institutions, code or not.
-KERALA_CODE_PREFIX = re.compile(r"^(?!ESI)[A-Z]{2,4}-\s", re.I)
+# Kerala writes a short college CODE, a hyphen, then the real name:
+#   "WYM- Govt. Medical College, Wayanad"      <- genuinely government
+#   "GMC- Sree Gokulam Medical College"        <- PRIVATE; its code merely reads GMC
+# So the code itself proves nothing either way. Strip it and judge the REST of the name.
+# (An earlier version skipped the govt test whenever a code was present, which threw away
+# every real Kerala government college — caught because the Kerala drill-down went empty.)
+# The trailing \s+ is load-bearing: Kerala's codes are followed by a space ("WYM- Govt..."),
+# whereas "ESI-MC&PGIMS&R" is one hyphenated name and must not be truncated to "MC&PGIMS&R".
+CODE_PREFIX = re.compile(r"^[A-Z][A-Z0-9&.]{1,5}-\s+")
 
 
 def _norm(s) -> str:
@@ -271,13 +275,12 @@ def college_type(institute: str, prog: str, state: str) -> tuple[str | None, str
     # "AIIMS-Bhopal" and "Govt Medical College, Palakkad" Private (a 1-2 token name is a
     # subset of many roster rows).
     #
-    # ...but NOT when the marker is only a leading college CODE. Kerala prefixes a short
-    # code then the real name, and "GMC- Sree Gokulam Medical College" is a PRIVATE college
-    # whose code happens to read GMC. Caught by spot-checking the Kerala OBC floor; it was
-    # the one false "Govt" in 4,605 rows, and false Govt is the dangerous direction.
-    if not KERALA_CODE_PREFIX.match(str(institute).strip()):
-        if GOVT_KEYWORDS.search(str(institute)) or GOVT_ABBR.search(str(institute)):
-            return "Govt", "R2-govt-by-name"
+    # ...judged on the name WITHOUT its leading college code, so "GMC- Sree Gokulam"
+    # (private, code merely reads GMC) is not mistaken for a Government Medical College,
+    # while "WYM- Govt. Medical College, Wayanad" still resolves correctly.
+    bare = CODE_PREFIX.sub("", str(institute).strip())
+    if GOVT_KEYWORDS.search(bare) or GOVT_ABBR.search(bare):
+        return "Govt", "R2-govt-by-name"
 
     mine = _toks(institute)
     if len(mine) < 2:
