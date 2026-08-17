@@ -1,0 +1,51 @@
+table: neet_dim_marks_matrix_2026
+grain: (snapshot, state, category) — one row per state/UT x category
+rows: 370
+description: >
+  Minimum NEET marks for a GOVERNMENT MBBS (B1a) / BDS (B1b) seat, per state/UT and
+  category, for admission year 2026. 37 tracks x 10 categories: all 36 states/UTs plus
+  "All India" (the 15% All-India-Quota track). 32 tracks carry numbers; 5 are blank with
+  the reason in data_status.
+
+  READ state AS A TRACK LABEL, NOT A PLACE. "All India" is the 15% AIQ door (national,
+  no domicile); every other row is that state's 85% domicile-restricted door. A student
+  competes in both, and the two are NOT comparable within a category.
+
+  2026 figures are ESTIMATES: 2025 actuals carried forward by a measured easier-paper
+  shift of +0.085*(720 - marks). 2025 columns are observed.
+columns:
+  snapshot:                   "admission year the matrix projects to ('2026')"
+  state:                      "state/UT name, or 'All India' for the AIQ track"
+  category:                   "Gen | Gen-EWS | OBC | SC | ST | PwD-Gen | PwD-EWS | PwD-OBC | PwD-SC | PwD-ST"
+  B2b_qualifying_marks_2026:  "national NTA qualifying floor — the same for every state; only B1a/B1b are state-specific"
+  B1a_MBBS_marks_2025:        "observed 2025 minimum marks for a govt MBBS seat (NULL = no number)"
+  B1a_MBBS_AIR_2025:          "the closing All India Rank behind that mark"
+  B1a_MBBS_marks_2026est:     "2026 estimate"
+  B1a_MBBS_AIR_2026est:       "2026 estimated closing AIR (includes assumed seat growth)"
+  B1b_BDS_marks_2025:         "same, for govt BDS. Computed independently of MBBS — no ratio applied"
+  B1b_BDS_AIR_2025:           ""
+  B1b_BDS_marks_2026est:      ""
+  B1b_BDS_AIR_2026est:        ""
+  source_round:               "which counselling round the 2025 cutoff came from. LOAD-BEARING: round depth is not comparable across states — a Round-1 state looks harsher than a mop-up state at identical reality"
+  data_status:                "VERIFIED | INDICATIVE | INDICATIVE_PARTIAL | N_A_NO_QUOTA | NO_DATA | BLANKED_THIN_POOL"
+  data_status_note:           "the full prose justification, verbatim — why this row is what it is"
+notes: |
+  data_status values:
+    VERIFIED            official source, parser audited
+    INDICATIVE          official source but thin/OCR-derived (mostly NE states, small UTs)
+    INDICATIVE_PARTIAL  as above AND known-incomplete, so the floor OVER-states the real bar
+    N_A_NO_QUOTA        the state does not operate this category at all — NOT a cutoff.
+                        Punjab/Haryana have no ST quota; Odisha state quota has no OBC;
+                        Tamil Nadu has no EWS (it runs its own communal reservation).
+                        These were previously showing the qualifying floor, which read as a
+                        real cutoff — hence blank plus an explicit status.
+    NO_DATA             no usable source (Goa, Sikkim, A&N, DNH&DD, Lakshadweep)
+    BLANKED_THIN_POOL   a pool too thin to publish (Uttarakhand ST was ONE seat closing past
+                        AIR 1,091,883 — below the national qualifying gate; n=1 is not a floor)
+
+  A blank marks/AIR value is NULL, never 0 — "we have no number" is not "zero marks".
+
+  Method, validation and per-state provenance:
+    futures-v2/neet/matrix_2026/docs/NEET_2026_HOW_WE_BUILT_IT.md
+  Source documents and parser output are staged at
+    gs://avantifellows-external-data/neet_matrix/{raw,extracted}/
