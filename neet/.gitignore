@@ -1,0 +1,10 @@
+# Data lives in GCS (gs://avantifellows-external-data/neet/), never git.
+# Applies across every subfolder: our scrape, state_medical, mcc, matrix.
+raw/
+extracted/
+clean/
+source/
+extracted_data/
+neet_matrix_out/
+__pycache__/
+*.pyc

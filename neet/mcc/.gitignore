@@ -1,0 +1,22 @@
+# mcc-specific ignores. Paths relative to mcc/.
+
+# Raw AIQ allotment CSV — landed locally before GCS upload.
+# Produced upstream by the College DB medical-national-ranks pipeline (parses
+# the MCC R1 allotment PDF). Authoritative copy lives at
+# gs://avantifellows-external-data/mcc/raw/.
+raw/
+
+# Clean parquet — the bytes BQ loads. Rebuilt by scripts/build_clean.py.
+# Authoritative copy lives at gs://avantifellows-external-data/mcc/clean/.
+clean/
+
+# Local Python env
+.venv/
+__pycache__/
+
+# Upstream scraper (copied from College DB). The scraper SCRIPTS under
+# scrape/scripts/ are committed (code); the raw source PDFs/HTML under
+# scrape/source/ are large raw bytes — gitignored, ride in the handoff bundle
+# and belong in GCS, never git.
+scrape/source/
+scrape/**/__pycache__/
