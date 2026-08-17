@@ -24,6 +24,7 @@ BigQuery for analysis. One folder per upstream source.
 | KCET (Karnataka) | [`kcet/`](kcet/) | Active | Karnataka CET engineering cutoffs — closing ranks for every (college, course, category) seat bucket. Two KEA PDFs → parse → GCS → BQ → 1 `kcet_fact_cutoffs` table. 13,604 rows, 2025 Round 3. |
 | MHT-CET (Maharashtra) | [`mhtcet/`](mhtcet/) | Active | Maharashtra CAP state-quota cutoffs — closing ranks per (college, branch, domicile pool, category) across 4 streams (engineering, pharmacy, architecture, B.Design). CET Cell CAP PDFs → parse → GCS → BQ → 1 `mhtcet_fact_cutoffs` table. 59,380 rows, 943 colleges, 2025-26. |
 | GUJCET / ACPC (Gujarat) | [`gujcet/`](gujcet/) | Active | Gujarat ACPC admission cutoffs — last admitted rank **and** percentile-equivalent composite score per (institute, course, category), for engineering (2025-26) and pharmacy (2024-25). ACPC closure PDFs → parse → GCS → BQ → 1 `gujcet_fact_cutoffs` table. 2,487 rows, 133 + 118 institutes. |
+| TG-EAPCET (Telangana) | [`tgeapcet/`](tgeapcet/) | Active | Telangana EAPCET engineering cutoffs — last admitted state rank per (institute, branch, category, **gender**) seat bucket. Convener last-rank PDFs (3 phases) → parse → GCS → BQ → 1 `tgeapcet_fact_cutoffs` table. 20,449 rows, 162 institutes, 2025-26. |
 
 All sources write into a single BigQuery dataset
 `avantifellows.external_data_sources` (region `asia-south1`), with tables

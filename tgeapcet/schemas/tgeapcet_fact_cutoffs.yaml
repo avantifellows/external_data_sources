@@ -1,0 +1,211 @@
+# tgeapcet_fact_cutoffs
+#
+# Source parquet: gs://avantifellows-external-data/tgeapcet/clean/tgeapcet_fact_cutoffs.parquet
+# BQ table:       avantifellows.external_data_sources.tgeapcet_fact_cutoffs
+
+description: |
+  TG-EAPCET (Telangana) engineering admission cutoffs — the last admitted state
+  rank for every (institute, branch, category, gender) seat bucket, 2025-26.
+  20,449 rows across 162 institutes. Source: the Convener's own Last Rank
+  Statement PDFs (First / Second / Final Phase).
+
+  WHAT THIS IS. TGCHE + Convener TG-EAPCET (JNTU Hyderabad) run Telangana's
+  centralised admission for degree engineering. This table is the state-quota
+  (Telangana domicile) closing rank, aggregated as MAX across all three
+  published phases — i.e. the loosest (most accessible) rank at which a seat
+  actually went in that bucket.
+
+  GOTCHAS (read before writing SQL):
+
+  1. GENDER IS PART OF THE GRAIN, NOT A FILTER YOU CAN IGNORE. Telangana
+     publishes a SEPARATE closing rank per gender for every category — the
+     33% women's reservation is baked into the seat pools, not applied
+     afterwards. category_raw is literally 'OC_BOYS' / 'OC_GIRLS'. A query that
+     groups by category without gender silently mixes two different seat pools.
+
+  2. SC IS SPLIT THREE WAYS. The 2024 SC Rationalization GO divides SC into
+     SC_I / SC_II / SC_III, and the 2025 PDFs publish all three separately.
+     category rolls them up to 'SC'; category_raw keeps the real sub-group.
+     Anyone answering "what rank does an SC student need" must decide which —
+     the three differ materially. The 2024 source had a single SC column, so
+     year-on-year SC comparisons are not like-for-like.
+
+  3. NO EWS_OU CAVEAT ANY MORE. The 2024 PDF scoped EWS to the Osmania local
+     area (EWS_GEN_OU / EWS_GIRLS_OU); the 2025 PDF publishes plain EWS_BOYS /
+     EWS_GIRLS. Do not carry the old OU caveat into 2025 analysis.
+
+  4. LOCAL AREA (OU / KU / TGUR) IS NOT IN THIS TABLE. Telangana allots against
+     local-area sub-pools, but the 2025 Last Rank Statement does not expose
+     them as columns — the published rank is the headline all-local-area
+     figure. A student's actual local area can make their real cutoff easier
+     than what is shown here. Say so rather than implying precision.
+
+  5. LOWER RANK = HARDER. closing_rank is a TG-EAPCET state rank, so smaller
+     numbers are the more competitive seats. opening_rank is the best (lowest)
+     rank seen across phases for the same bucket; closing_rank the worst.
+
+  6. GOVT SCOPE IS A QUERY, NOT A PRE-FILTER. All institute types ship.
+     college_type IN ('Govt','State-Univ-Dept') gives 1,936 rows across 20
+     colleges; the other ~18,500 rows are private/self-financed.
+
+  7. 'SF' IS NOT GOVT. institute_type_raw 'SF' is a self-finance stream inside
+     a state university (e.g. JNTUH Manthani self-finance) — it fills at
+     private-level ranks and maps to 'Private/SF'. 'UNIV' (a regular state
+     university department) maps to 'State-Univ-Dept' and IS govt scope.
+     ESUT vs ESUTSF are the same university's regular and self-finance
+     streams under two different codes.
+
+  8. college_code IS THE JOIN KEY, NOT college_name. Two distinct codes
+     legitimately share a name (TCEK / TCTK are two Trinity campuses). The
+     source PDFs also garble some names by overlapping text runs; the upstream
+     parser repairs this, but the code is what the source guarantees.
+
+  9. AN ABSENT CATEGORY MEANS NO ADMISSION, NOT MISSING DATA. Rows exist only
+     where a candidate was actually allotted in that bucket.
+
+  RELATED TABLES. kcet_fact_cutoffs (Karnataka), mhtcet_fact_cutoffs
+  (Maharashtra) and gujcet_fact_cutoffs (Gujarat) are the sibling state-CET
+  tables; josaa_fact_cutoffs is the national pool. Rank spaces are
+  state-specific — never compare a Telangana state rank against another
+  state's, or against an AIR.
+
+rows: 20449
+grain: (college_code, branch_code, category_raw, year)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State. Always 'TELANGANA' in this table.
+
+  - name: cet_name
+    type: STRING
+    mode: REQUIRED
+    description: Always 'TG-EAPCET'.
+
+  - name: stream
+    type: STRING
+    mode: REQUIRED
+    description: Always 'engineering'. TG-EAPCET also covers agriculture/pharmacy streams; those are not in this table.
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Admission cycle start year. 2025 = the 2025-26 cycle. Note the 2024
+      source had a single SC column and OU-scoped EWS, so cross-year
+      comparisons on those categories are not like-for-like — see GOTCHA #2/#3.
+
+  - name: round
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'P1+P2+PFinal cumulative (last-rank PDFs)'. closing_rank is MAX across
+      all three published phases, so it is the loosest rank of the cycle.
+      Stray vacancy rounds are excluded.
+
+  - name: college_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Official TG-EAPCET institute code (e.g. 'JNTH', 'OUCE'). The stable join
+      key — see GOTCHA #8.
+
+  - name: college_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Institute name, line-wraps flattened and overlapping-text-run garbling
+      repaired upstream. Display only; join on college_code.
+
+  - name: place
+    type: STRING
+    mode: REQUIRED
+    description: Town/locality as printed (e.g. 'KOTHAGUDEM').
+
+  - name: district
+    type: STRING
+    mode: REQUIRED
+    description: District code as printed (e.g. 'HYD', 'KGM'), not the full district name.
+
+  - name: college_type
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Normalised funding class: 'Govt', 'State-Univ-Dept', 'Private/SF'.
+      Derived from the PDF's own College Type column. Govt scope = the first
+      two — see GOTCHA #6/#7.
+
+  - name: institute_type_raw
+    type: STRING
+    mode: REQUIRED
+    description: "The PDF's own code: GOV / UNIV / SF / PVT. Kept for auditability — see GOTCHA #7."
+
+  - name: coed
+    type: STRING
+    mode: REQUIRED
+    description: "'COED' or 'GIRLS' — whether the institute itself is co-educational or women-only. Distinct from the gender column, which is about the SEAT pool."
+
+  - name: branch_code
+    type: STRING
+    mode: REQUIRED
+    description: Branch code as printed (e.g. 'CSE', 'CSM', 'ECE').
+
+  - name: branch_name
+    type: STRING
+    mode: REQUIRED
+    description: Branch name as printed, line-wraps flattened. Use LIKE for matching.
+
+  - name: affiliated_to
+    type: STRING
+    mode: REQUIRED
+    description: Affiliating university code (e.g. 'JNTUH', 'OU', 'ESUNIVTG').
+
+  - name: quota
+    type: STRING
+    mode: REQUIRED
+    description: Always 'State (TG domicile)'. Local-area sub-pools are not exposed — see GOTCHA #4.
+
+  - name: category_raw
+    type: STRING
+    mode: REQUIRED
+    description: >
+      The PDF's own column label — part of the grain, and gender-bearing:
+      OC_BOYS, OC_GIRLS, BC_A_BOYS ... BC_E_GIRLS, SC_I_BOYS, SC_II_BOYS,
+      SC_III_BOYS (+ GIRLS), ST_BOYS, ST_GIRLS, EWS_BOYS, EWS_GIRLS.
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Canonical rollup: 'GEN' (from OC), 'OBC-NCL' (BC_A..BC_E), 'SC'
+      (SC_I..SC_III), 'ST', 'EWS'. Lossy — see GOTCHA #2. Telangana's BC
+      sub-lists are an approximate match to the national OBC-NCL bucket.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: "'Boys' or 'Girls' — which seat pool this rank is for. Part of the grain, not an optional filter (GOTCHA #1)."
+
+  - name: opening_rank
+    type: INTEGER
+    mode: REQUIRED
+    description: Best (lowest) last-admitted rank seen for this bucket across the three phases.
+
+  - name: closing_rank
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Worst (highest) last-admitted rank across the three phases — the
+      effective cutoff. LOWER = harder. INTEGER, not float: TG publishes whole
+      state ranks with no tie suffix (unlike KEA/ACPC, which print .5 ties).
+
+  - name: rank_basis
+    type: STRING
+    mode: REQUIRED
+    description: "'TG-EAPCET State Rank' — spelled out so it is never confused with an AIR or another state's rank."
+
+  - name: source_url
+    type: STRING
+    mode: REQUIRED
+    description: https://tgeapcetd.nic.in/ — the three phase PDFs are mirrored to gs://avantifellows-external-data/tgeapcet/raw/pdfs/.
