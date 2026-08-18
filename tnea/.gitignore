@@ -5,3 +5,8 @@ source/
 extracted_data/
 __pycache__/
 *.pyc
+raw/
+extracted/
+clean/
+__pycache__/
+*.pyc

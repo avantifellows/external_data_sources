@@ -1,15 +1,31 @@
 # tnea/
 
-TNEA (Tamil Nadu Engineering Admissions) cutoffs — the seed of this source's pipeline.
+TNEA (Tamil Nadu Engineering Admissions) cutoffs — end to end.
 
-**Status: scraper only.** `scrape/scripts/state_TN.py` (with `tn_console_extract.js`, a
-browser-console extractor for the TNEA portal) parses the official data and carries a
-code-based government-college classification. The rest of the house shape — `schemas/`,
-`scripts/` (clean → GCS → BQ), and a `tnea_fact_cutoffs` table — lands when this source
-ships end to end, following the same one-source-at-a-time pattern as `kcet/`, `mhtcet/`,
-`gujcet/` and `tgeapcet/`.
+| table | rows | grain |
+|---|---|---|
+| `tnea_fact_cutoffs` | 14,910 | college × branch × community, 2025 final round |
 
-Imported from futures-v2 PR #12 (sakshi1755) as part of the ongoing migration of the
-counselling pipelines into this repo (see PR #23 for the running list). Raw data goes to
-`gs://avantifellows-external-data/tnea/{raw,extracted}/` — pending the org's GCP billing
-restoration, like everything else this week.
+Two metrics per row, opposite directions: `cutoff_mark` (TNEA composite /200, higher =
+harder) and `closing_rank` (TN state merit rank, lower = harder). Both come straight from
+the official portal, pulled with `scrape/scripts/tn_console_extract.js`.
+
+## Pipeline
+
+```
+portal pulls (raw/, via the console extractor)
+   │  scripts/build_clean.py     joins marks+ranks, melts 7 communities, classifies
+   ▼                             college_type by the official DOTE code list
+clean/tnea_fact_cutoffs.parquet
+   │  scripts/upload_to_gcs.py → gs://avantifellows-external-data/tnea/{raw,clean}/
+   │  scripts/load_bq.py       → external_data_sources.tnea_fact_cutoffs
+```
+
+Government classification is **code-based, never name-based** — the code sets live in
+`scrape/scripts/state_TN.py` (imported from futures-v2 #12, sakshi1755; +2 constituent
+UCEs found in review) and `build_clean.py` lifts them from there so exactly one copy
+exists. TN's 7 communities (OC/BC/BCM/MBC/SC/SCA/ST — no EWS) are kept verbatim in
+`category_raw` with a canonical rollup in `category`.
+
+`(SS)` branches are Self-Supporting sections — costlier self-financed streams *inside*
+government/aided colleges. Flagged, never silently mixed: the seat-vs-college lesson again.
