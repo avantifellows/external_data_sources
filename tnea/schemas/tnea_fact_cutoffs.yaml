@@ -1,0 +1,26 @@
+table: tnea_fact_cutoffs
+grain: (exam_year, code, branch, category_raw) — one row per seat bucket that admitted someone
+rows: 14910
+description: >
+  TNEA (Tamil Nadu Engineering Admissions) final-round cutoffs, 2025 cycle: the last
+  admitted candidate's composite mark (/200) AND state merit rank, per college x branch x
+  community. 420 colleges, 105 branches, 7 communities. An em-dash cell in the portal
+  means no admission in that bucket and produces NO row — absence is a fact.
+columns:
+  exam_year:        "2025 — the admission cycle"
+  code:             "official TNEA college code (DOTE). Stable across years; names drift"
+  college:          "college name as the portal prints it (address-laden, whitespace-normalised)"
+  district:         "derived from the college string (98% coverage; NULL includes The Nilgiris colleges)"
+  branch:           "branch name verbatim, e.g. 'COMPUTER SCIENCE AND ENGINEERING (SS)'"
+  self_supporting:  "TRUE when the branch is an (SS) Self-Supporting section — a costlier self-financed stream inside a govt/aided college. Observed 2025: SS buckets sit at elite govt colleges (avg OC mark 192 vs 140)"
+  category:         "canonical rollup: GEN | OBC | SC | ST (BC/BCM/MBC -> OBC; SCA -> SC). TN has NO EWS"
+  category_raw:     "TN's own community: OC | BC | BCM | MBC | SC | SCA | ST — part of the grain"
+  cutoff_mark:      "TNEA composite mark out of 200 (12th PCM normalised). HIGHER = harder. NOT a JEE/NEET score"
+  closing_rank:     "TN state merit rank of the last admitted candidate. LOWER = harder. corr(mark, rank) = -0.99"
+  college_type:     "Govt (35) | Govt-Aided (3: PSG, CIT, Thiagarajar) | Private/SF (382). From the official DOTE code list, never from names"
+notes: |
+  Two metrics per row, opposite directions — never mix them in one ORDER BY.
+  Provenance: portal pulls via scrape/scripts/tn_console_extract.js (sakshi1755);
+  govt classification code sets live in scrape/scripts/state_TN.py and are lifted
+  from there at build time (single copy). Raw + clean staged at
+  gs://avantifellows-external-data/tnea/{raw,clean}/.
