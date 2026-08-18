@@ -14,8 +14,8 @@ on all 370 rows.
 WHERE INPUTS COME FROM, in resolution order per file:
   1. gs://avantifellows-external-data/neet/          (the canonical home)
   2. gs://avantifellows-external-data/neet_matrix/   (legacy prefix, pre-consolidation)
-  3. a local college-predictor clone                 (flagged PENDING-UPLOAD: these are
-     files whose GCS staging is blocked on the org's GCP billing being restored)
+  3. a local college-predictor clone                 (flagged PENDING-UPLOAD — a fallback
+     that should stay unused: every input is staged in GCS as of 2026-08-18)
 Two artifacts are pinned to the college-predictor repo rather than GCS, because they are
 committed and versioned there: public/data/NEETUG/NEETUG.json and score_rank_model.json.
 Without a local clone they are fetched from raw.githubusercontent.com.
@@ -114,9 +114,9 @@ def fetch(bucket, tier: str, name: str, dest: Path) -> str | None:
     """Try each prefix for <prefix>/<tier>/<name>. Returns the URI used, or None.
 
     Degrades to the LOCAL mirror of the same tier (neet/raw, neet/extracted on disk)
-    when GCS is unreachable — as of 2026-08-18 the org's GCP billing account is
-    delinquent and even reads 403. Local hits are flagged so the run's verdict says
-    which resolution paths still await verification against the bucket."""
+    when GCS is unreachable — added during the Aug-2026 billing outage, kept because a
+    reproducibility tool should still function offline. Local hits are flagged loudly
+    so a degraded run can never silently pass for a durable-sources one."""
     if bucket is not None:
         for pre in PREFIXES:
             try:
