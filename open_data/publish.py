@@ -127,11 +127,11 @@ EXCLUDE_EXTRACTED = {"neet_2026_matrix_all.csv"}    # a derived projection, not 
 
 # ── other exams: (src_path, title, kind, year) — raw docs verbatim, extracted tables scrubbed
 EXAM_DATASETS = [
-    {"id": "josaa", "title": "JoSAA engineering admissions (2016-2025)",
+    {"id": "josaa", "category": "admissions", "title": "JoSAA engineering admissions (2016-2025)",
      "source": {"label": "josaa.admissions.nic.in", "url": "https://josaa.admissions.nic.in/"},
      "blurb": "IIT/NIT/IIIT/GFTI opening and closing ranks for every seat bucket and round, consolidated from the official JoSAA portal.",
      "special": "josaa"},
-    {"id": "kcet", "title": "KCET 2025 engineering admissions (Karnataka)",
+    {"id": "kcet", "category": "admissions", "title": "KCET 2025 engineering admissions (Karnataka)",
      "source": {"label": "KEA, cetonline.karnataka.gov.in", "url": "https://cetonline.karnataka.gov.in/keawebentry456/ugcet2025/"},
      "blurb": "KEA engineering cutoffs: the official Round-3 documents and the tables extracted from them.",
      "files": [
@@ -141,7 +141,7 @@ EXAM_DATASETS = [
         ("kcet/raw/KA_engg_2025_all_cutoffs_R3.csv", "Karnataka — All cutoffs by college and category (Round 3)", "extracted", 2025),
         ("kcet/raw/KA_engg_closing_ranks_govt_2024.csv", "Karnataka — Closing ranks, government colleges only", "extracted", 2024),
      ]},
-    {"id": "mhtcet", "title": "MHT-CET 2025 admissions (Maharashtra)",
+    {"id": "mhtcet", "category": "admissions", "title": "MHT-CET 2025 admissions (Maharashtra)",
      "source": {"label": "State CET Cell CAP portals, mahacet.org", "url": "https://fe2025.mahacet.org/"},
      "blurb": "State-quota closing ranks across engineering, pharmacy, architecture and B.Design, with the per-institute cutoff documents zipped by stream.",
      "files": [
@@ -156,7 +156,7 @@ EXAM_DATASETS = [
         ("mhtcet/raw/pdfs/architecture/", "mhtcet/raw/MH_architecture_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, architecture (zipped)"),
         ("mhtcet/raw/pdfs/bdesign/", "mhtcet/raw/MH_bdesign_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, B.Design (zipped)"),
      ]},
-    {"id": "tgeapcet", "title": "TG-EAPCET 2025 engineering admissions (Telangana)",
+    {"id": "tgeapcet", "category": "admissions", "title": "TG-EAPCET 2025 engineering admissions (Telangana)",
      "source": {"label": "tgeapcetd.nic.in", "url": "https://tgeapcetd.nic.in/"},
      "blurb": "The Convener's last-rank statements for all three phases, and the tables extracted from them.",
      "files": [
@@ -167,7 +167,7 @@ EXAM_DATASETS = [
         ("tgeapcet/raw/TG_engg_closing_ranks_govt_2025.csv", "Telangana — Closing ranks, government colleges only", "extracted", 2025),
         ("tgeapcet/raw/TG_engg_consolidated_5cat_govt_2025.csv", "Telangana — Consolidated closings, 5-category (government colleges)", "extracted", 2025),
      ]},
-    {"id": "gujcet", "title": "GUJCET / ACPC admissions (Gujarat)",
+    {"id": "gujcet", "category": "admissions", "title": "GUJCET / ACPC admissions (Gujarat)",
      "blurb": "ACPC closure documents for engineering (2025) and pharmacy (2024), and the tables extracted from them.",
      "files": [
         ("gujcet/raw/pdfs/GJ_ACPC_2025_Final_RankAndMarks.pdf", "Gujarat — ACPC final ranks and marks, engineering", "raw", 2025),
@@ -177,7 +177,7 @@ EXAM_DATASETS = [
         ("gujcet/raw/GJ_pharm_all_cutoffs_2024.csv", "Gujarat — All cutoffs, pharmacy", "extracted", 2024),
         ("gujcet/raw/GJ_pharm_closing_ranks_govt_2024.csv", "Gujarat — Closing ranks, government colleges only (pharmacy)", "extracted", 2024),
      ]},
-    {"id": "tnea", "title": "TNEA 2025 engineering admissions (Tamil Nadu)",
+    {"id": "tnea", "category": "admissions", "title": "TNEA 2025 engineering admissions (Tamil Nadu)",
      "source": {"label": "cutoff.tneaonline.org", "url": "https://cutoff.tneaonline.org/"},
      "blurb": "Final-round cutoff marks and state merit ranks for every college and branch, pulled from the official TNEA portal.",
      "files": [
@@ -189,6 +189,95 @@ EXAM_DATASETS = [
      "parquet_as_extracted": ("tnea/clean/tnea_fact_cutoffs.parquet",
         "tnea/extracted/tnea_cutoffs_2025.csv",
         "Tamil Nadu — Cutoff marks and merit ranks, by college, branch and community", 2025)},
+]
+
+
+
+# ── institutions & education statistics (all public government sources) ──────
+AISHE_REPORT_YEARS = ["2012-13","2013-14","2014-15","2015-16","2016-17","2017-18",
+                      "2018-19","2019-20","2020-21","2021-22","2022-23","2023-24"]
+STAT_DATASETS = [
+    {"id": "aishe", "category": "education-statistics",
+     "title": "AISHE higher-education survey",
+     "blurb": "The Ministry of Education's All India Survey on Higher Education: every annual report since 2012-13, the full institution directories, and the tables we extracted from them.",
+     "source": {"label": "aishe.gov.in", "url": "https://aishe.gov.in/"},
+     "files": (
+        [(f"aishe/raw/aishe_{y}_final_report.pdf", f"Final reports — AISHE {y}", "raw", int(y[:4])+1) for y in AISHE_REPORT_YEARS] +
+        [("aishe/raw/institution_directory/College-ALL COLLEGE.xlsx", "Institution directory — All colleges", "raw", 2024),
+         ("aishe/raw/institution_directory/University-ALL UNIVERSITIES.xlsx", "Institution directory — All universities", "raw", 2024),
+         ("aishe/raw/institution_directory/Standalone-ALL_STANDALONE_with_URLs.xlsx", "Institution directory — Standalone institutions", "raw", 2024),
+         ("aishe/raw/institution_directory/R & D Institutes.xlsx", "Institution directory — Research institutions", "raw", 2024)]),
+     "parquet_as_extracted": [
+        ("aishe/clean/aishe_dim_colleges.parquet", "aishe/extracted/aishe_colleges.csv", "Extracted tables — Colleges", 2024),
+        ("aishe/clean/aishe_dim_universities.parquet", "aishe/extracted/aishe_universities.csv", "Extracted tables — Universities", 2024),
+        ("aishe/clean/aishe_dim_standalone_institutions.parquet", "aishe/extracted/aishe_standalone.csv", "Extracted tables — Standalone institutions", 2024),
+        ("aishe/clean/aishe_dim_research_institutions.parquet", "aishe/extracted/aishe_research.csv", "Extracted tables — Research institutions", 2024),
+        ("aishe/clean/higher_ed.parquet", "aishe/extracted/aishe_higher_ed_timeseries.csv", "Extracted tables — Enrolment time series", "2012-2022"),
+     ]},
+    {"id": "nirf", "category": "education-statistics",
+     "title": "NIRF rankings and institute metrics",
+     "blurb": "National Institutional Ranking Framework: ranks and scores by category and year, plus the placement, salary and student-strength metrics institutes submit.",
+     "source": {"label": "nirfindia.org", "url": "https://www.nirfindia.org/"},
+     "parquet_as_extracted": [
+        ("nirf/clean/nirf_rankings.parquet", "nirf/extracted/nirf_rankings.csv", "NIRF — Rankings by category and year", "2016-2025"),
+        ("nirf/clean/nirf_aggregate.parquet", "nirf/extracted/nirf_aggregate.csv", "NIRF — Placement and admission outcomes by programme", "2016-2025"),
+        ("nirf/clean/nirf_master.parquet", "nirf/extracted/nirf_master.csv", "NIRF — All submitted metrics, long format", "2019-2025"),
+        ("nirf/clean/nirf_strength.parquet", "nirf/extracted/nirf_strength.csv", "NIRF — Student strength and diversity", "2016-2025"),
+     ]},
+    {"id": "naac", "category": "education-statistics",
+     "title": "NAAC accreditation",
+     "blurb": "Accredited institutions with grades, CGPA and cycle, as published by NAAC.",
+     "source": {"label": "naac.gov.in", "url": "http://naac.gov.in/"},
+     "files": [
+        ("naac/raw/Institutions_accredited_by_NAAC_having_valid_accreditation-as_on_14082025_1.xlsx",
+         "NAAC — Accredited institutions (as on 14 Aug 2025)", "raw", 2025)],
+     "parquet_as_extracted": [
+        ("naac/clean/naac_dim_colleges.parquet", "naac/extracted/naac_colleges.csv", "NAAC — Colleges with grade and CGPA", 2025),
+        ("naac/clean/naac_dim_universities.parquet", "naac/extracted/naac_universities.csv", "NAAC — Universities with grade and CGPA", 2025),
+     ]},
+    {"id": "aicte", "category": "education-statistics",
+     "title": "AICTE approved-institution intake",
+     "blurb": "Sanctioned intake across AICTE-approved institutions, as national, state and institution-type panels.",
+     "source": {"label": "aicte-india.org", "url": "https://www.aicte-india.org/"},
+     "files": [
+        ("aicte/raw/panel_national.csv", "AICTE — National intake panel", "raw", 2025),
+        ("aicte/raw/panel_state.csv", "AICTE — State intake panel", "raw", 2025),
+        ("aicte/raw/panel_inst_type.csv", "AICTE — Institution-type intake panel", "raw", 2025)]},
+    {"id": "nmc", "category": "education-statistics",
+     "title": "NMC medical seat matrix",
+     "blurb": "The National Medical Commission's MBBS seat matrix: every medical college with intake and management type.",
+     "source": {"label": "nmc.org.in", "url": "https://www.nmc.org.in/"},
+     "files": [
+        ("nmc/raw/nmc_mbbs_seat_matrix_2024-25.pdf", "NMC — MBBS seat matrix 2024-25", "raw", 2024)],
+     "parquet_as_extracted": [
+        ("nmc/clean/mbbs_seats.parquet", "nmc/extracted/nmc_mbbs_seats.csv", "NMC — MBBS seats by college", 2024)]},
+    {"id": "udise", "category": "education-statistics",
+     "title": "UDISE+ school enrolment",
+     "blurb": "School enrolment from the Ministry of Education's UDISE+ system.",
+     "source": {"label": "udiseplus.gov.in", "url": "https://udiseplus.gov.in/"},
+     "files": [
+        ("udise/raw/udise_2024-25_enrolment.xlsx", "UDISE+ — Enrolment 2024-25", "raw", 2025)],
+     "parquet_as_extracted": [
+        ("udise/clean/enrolment.parquet", "udise/extracted/udise_enrolment.csv", "UDISE+ — Enrolment, extracted", 2025)]},
+    {"id": "moe", "category": "education-statistics",
+     "title": "Board examination results (MoE)",
+     "blurb": "Class X and XII results across all Indian boards, from the Ministry of Education's annual publications.",
+     "source": {"label": "education.gov.in", "url": "https://www.education.gov.in/"},
+     "files": [
+        ("moe/raw/moe_results_secondary_hs_2020.pdf", "MoE reports — Results of secondary and higher-secondary examinations, 2020", "raw", 2020),
+        ("moe/raw/moe_results_secondary_hs_2021.pdf", "MoE reports — Results of secondary and higher-secondary examinations, 2021", "raw", 2021),
+        ("moe/raw/moe_results_secondary_hs_2022.pdf", "MoE reports — Results of secondary and higher-secondary examinations, 2022", "raw", 2022),
+        ("moe/raw/moe_results_secondary_hs_2024.pdf", "MoE reports — Results of secondary and higher-secondary examinations, 2024", "raw", 2024)],
+     "parquet_as_extracted": [
+        ("moe/clean/moe_fact_board_exam_results.parquet", "moe/extracted/moe_board_results.csv", "MoE reports — Board results, extracted (no 2023)", "2020-2024")]},
+    {"id": "nas", "category": "education-statistics",
+     "title": "National Achievement Survey 2021",
+     "blurb": "NCERT's NAS 2021 learning-outcome survey, with our extracted state-level proficiency table.",
+     "source": {"label": "nas.gov.in", "url": "https://nas.gov.in/"},
+     "zips": [
+        ("nas/raw/", "nas/raw/NAS_2021_all_data.zip", "NAS 2021 — All published data files (zipped)")],
+     "parquet_as_extracted": [
+        ("nas/clean/state_proficiency.parquet", "nas/extracted/nas_state_proficiency.csv", "NAS 2021 — State proficiency, extracted", 2021)]},
 ]
 
 
@@ -261,15 +350,19 @@ def main():
 
     files.sort(key=lambda f: (f["kind"], f["title"]))
     datasets = [{
-        "id": "neet",
+        "id": "neet", "category": "admissions",
         "title": "NEET-UG 2025 admissions",
+        "category": "admissions",
+        # each group here is one state whose document and table sit together, so an
+        # extracted-only group genuinely means the source was never archived
+        "note_missing_source": True,
         "source": {"label": "MCC (mcc.nic.in) and the state counselling authorities",
                    "url": "https://mcc.nic.in/"},
         "blurb": "Medical/dental counselling cutoffs: the official documents and the tables we extracted from them, across the All India Quota and 26 state quotas.",
         "files": files,
     }]
 
-    for spec in EXAM_DATASETS:
+    for spec in EXAM_DATASETS + STAT_DATASETS:
         entries2 = []
 
         def add2(dest, data, title, kind, year, fmt, removed=None):
@@ -299,14 +392,15 @@ def main():
             fmt = src_path.rsplit(".", 1)[-1].lower()
             add2(src_path, data, title, kind, year, fmt, removed)
 
-        if spec.get("parquet_as_extracted"):
+        pae = spec.get("parquet_as_extracted")
+        if pae:
             import pandas as pd, tempfile, os
-            src_pq, dest_csv, title, year = spec["parquet_as_extracted"]
-            tmp = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False).name
-            src.blob(src_pq).download_to_filename(tmp)
-            data = pd.read_parquet(tmp).to_csv(index=False).encode()
-            os.unlink(tmp)
-            add2(dest_csv, data, title, "extracted", year, "csv")
+            for src_pq, dest_csv, title, year in ([pae] if isinstance(pae, tuple) else pae):
+                tmp = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False).name
+                src.blob(src_pq).download_to_filename(tmp)
+                data = pd.read_parquet(tmp).to_csv(index=False).encode()
+                os.unlink(tmp)
+                add2(dest_csv, data, title, "extracted", year, "csv")
 
         if spec.get("special") == "josaa":
             # the consolidated table IS the extraction: opening/closing ranks verbatim
@@ -321,8 +415,8 @@ def main():
                  "extracted", "2016-2025", "csv")
 
         entries2.sort(key=lambda f: (f["kind"], f["title"]))
-        ds_entry = {"id": spec["id"], "title": spec["title"],
-                    "blurb": spec["blurb"], "files": entries2}
+        ds_entry = {"id": spec["id"], "category": spec.get("category", "admissions"),
+                    "title": spec["title"], "blurb": spec["blurb"], "files": entries2}
         if spec.get("source"):
             ds_entry["source"] = spec["source"]
         datasets.append(ds_entry)
