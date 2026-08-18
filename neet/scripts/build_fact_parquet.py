@@ -333,6 +333,13 @@ def build() -> pd.DataFrame:
         prog = r["Academic Program Name"]
         state = r["State"]
         source = r["Source"]
+        # HP: our own parse is too thin (34 rows, General-only) and the matrix
+        # rejected it for the full dropbox extract ("SOURCE = THEIRS"). The fact
+        # table follows the same per-track source choice — the fuller HP rows come
+        # from fact_extension_tracks.himachal(); keeping both would double-count
+        # the same college x category buckets under two sources.
+        if source == "himachal_2025_r3_cutoffs":
+            continue
         canon, sub = map_category(state, source, r["Category"])
         ct, rung = college_type(r["Institute"], prog, state)
         # `track` is the competition (matches neet_dim_marks_matrix_2026.state);
@@ -340,8 +347,20 @@ def build() -> pd.DataFrame:
         # national track spanning 34 states. Keeping both means "AIQ seats in Karnataka"
         # is answerable, which collapsing to a single label would have destroyed.
         college_state = CANON_STATE.get(state.strip(), state.strip())
+        # Two quotas ride in the MCC file but are NOT the 15% AIQ competition: Delhi
+        # University Quota (Delhi's own domicile door, 3 colleges + MAIDS) and JIPMER's
+        # Puducherry-internal quota. The matrix has always tracked them separately;
+        # leaving them under 'All India' made "AIQ colleges" queries silently include
+        # seats no out-of-state student can get.
+        seat = str(r.get("Seat Type") or "")
+        if seat == "Delhi University Quota":
+            track = "Delhi"
+        elif seat == "Internal -Puducherry UT Domicile":
+            track = "Puducherry"
+        else:
+            track = "All India" if source.startswith("aiq") else college_state
         out.append({
-            "track": "All India" if source.startswith("aiq") else college_state,
+            "track": track,
             "college_state": college_state,
             "institute": r["Institute"].strip(),
             "address": (r.get("Address") or "").strip(),
@@ -360,6 +379,11 @@ def build() -> pd.DataFrame:
             "exam_year": 2025,
             "source": source,
         })
+    # the nine tracks beyond NEETUG.json's coverage — built from the same staged
+    # extracts the matrix used; see fact_extension_tracks.py for per-track rules
+    from fact_extension_tracks import all_extension_rows
+    out.extend(all_extension_rows())
+
     df = pd.DataFrame(out)
     df["closing_rank"] = df["closing_rank"].astype("Int64")
     df["exam_year"] = df["exam_year"].astype("Int64")

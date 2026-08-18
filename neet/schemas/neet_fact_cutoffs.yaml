@@ -1,9 +1,9 @@
 table: neet_fact_cutoffs
 grain: (track, institute, program, category_raw, round) — one row per college x category x round, as published
-rows: 13700
+rows: 13882
 description: >
   Per-college NEET closing ranks — the evidence underneath neet_dim_marks_matrix_2026.
-  13,700 rows, 1,308 institutes, 19 counselling tracks (18 states + the 15% All-India
+  13,882 rows, 1,335 institutes, 27 counselling tracks (18 states + the 15% All-India
   Quota), admission year 2025. Programs: MBBS 11,173, BDS 2,462, BSc Nursing 65.
 
   This answers "which colleges could I get?"; the matrix answers "what is the bar?".
