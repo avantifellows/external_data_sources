@@ -61,14 +61,18 @@ DISTS = ["Ariyalur","Chengalpattu","Chennai","Coimbatore","Cuddalore","Dharmapur
          "Madurai","Mayiladuthurai","Namakkal","Perambalur","Pudukkottai",
          "Ramanathapuram","Salem","Sivaganga","Thanjavur","Theni","Thiruvallur",
          "Thiruvarur","Thoothukkudi","Tiruchirappalli","Tirunelveli","Tiruppur",
-         "Tiruvannamalai","Vellore","Viluppuram","Virudhunagar"]
+         "Tiruvannamalai","Vellore","Viluppuram","Virudhunagar","The Nilgiris"]
 VAR = {"villupuram":"Viluppuram","villuppuram":"Viluppuram","tuticorin":"Thoothukkudi",
        "thoothukudi":"Thoothukkudi","kanyakumari":"Kanniyakumari","trichy":"Tiruchirappalli",
        "tiruchirapalli":"Tiruchirappalli","kanchipuram":"Kancheepuram","tirupur":"Tiruppur",
        "tiruvallur":"Thiruvallur","thiruvarur":"Thiruvarur","nagapattinam":"Mayiladuthurai",
        "nagappattinam":"Mayiladuthurai","sivagangai":"Sivaganga","pudukottai":"Pudukkottai",
        "tenkasi":"Tirunelveli","ranipet":"Vellore","tirupattur":"Vellore",
-       "kallakurichi":"Viluppuram","tanjore":"Thanjavur"}
+       "kallakurichi":"Viluppuram","tanjore":"Thanjavur",
+       # portal-typo variants, from the 8 previously unresolved colleges
+       "thiruvannamalai":"Tiruvannamalai","tiruvanamalai":"Tiruvannamalai",
+       "tirunelvei":"Tirunelveli","kanyakumarai":"Kanniyakumari",
+       "sivaganagi":"Sivaganga","nilgiris":"The Nilgiris"}
 TOWN = {"karaikudi":"Sivaganga","sriperumbudur":"Kancheepuram","avadi":"Thiruvallur",
         "hosur":"Krishnagiri","poonamallee":"Thiruvallur","gummidipoondi":"Thiruvallur",
         "kavaraipettai":"Thiruvallur","arni":"Tiruvannamalai","guindy":"Chennai",
@@ -76,7 +80,7 @@ TOWN = {"karaikudi":"Sivaganga","sriperumbudur":"Kancheepuram","avadi":"Thiruval
         "kelambakkam":"Chengalpattu","vandalur":"Chengalpattu","oragadam":"Kancheepuram",
         "maduravoyal":"Chennai","mamallapuram":"Chengalpattu","pallavaram":"Chengalpattu",
         "perundurai":"Erode","sathyamangalam":"Erode","pollachi":"Coimbatore",
-        "sholinganallur":"Chennai"}
+        "sholinganallur":"Chennai","nagercoil":"Kanniyakumari","ketti":"The Nilgiris"}
 
 def district(name: str) -> str | None:
     n = " " + name.lower().replace(",", " ").replace("-", " ") + " "

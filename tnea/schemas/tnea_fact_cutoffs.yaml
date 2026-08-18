@@ -10,7 +10,7 @@ columns:
   exam_year:        "2025 — the admission cycle"
   code:             "official TNEA college code (DOTE). Stable across years; names drift"
   college:          "college name as the portal prints it (address-laden, whitespace-normalised)"
-  district:         "derived from the college string (98% coverage; NULL includes The Nilgiris colleges)"
+  district:         "derived from the college string — 100% of admitting colleges; 33 districts incl. The Nilgiris"
   branch:           "branch name verbatim, e.g. 'COMPUTER SCIENCE AND ENGINEERING (SS)'"
   self_supporting:  "TRUE when the branch is an (SS) Self-Supporting section — a costlier self-financed stream inside a govt/aided college. Observed 2025: SS buckets sit at elite govt colleges (avg OC mark 192 vs 140)"
   category:         "canonical rollup: GEN | OBC | SC | ST (BC/BCM/MBC -> OBC; SCA -> SC). TN has NO EWS"
