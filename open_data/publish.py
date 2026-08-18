@@ -203,8 +203,11 @@ def main():
             "files": files,
         }],
     }
-    dst.blob("manifest.json").upload_from_string(
-        json.dumps(manifest, indent=1), content_type="application/json")
+    mb = dst.blob("manifest.json")
+    # the manifest is the mutable pointer — never let caches hold an old shape;
+    # the files it points to are immutable-ish and can cache normally
+    mb.cache_control = "no-cache"
+    mb.upload_from_string(json.dumps(manifest, indent=1), content_type="application/json")
     print(f"\n{len(files)} files -> https://storage.googleapis.com/{DST_BUCKET}/manifest.json")
 
 
