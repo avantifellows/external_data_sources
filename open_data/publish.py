@@ -128,9 +128,11 @@ EXCLUDE_EXTRACTED = {"neet_2026_matrix_all.csv"}    # a derived projection, not 
 # ── other exams: (src_path, title, kind, year) — raw docs verbatim, extracted tables scrubbed
 EXAM_DATASETS = [
     {"id": "josaa", "title": "JoSAA engineering admissions (2016-2025)",
+     "source": {"label": "josaa.admissions.nic.in", "url": "https://josaa.admissions.nic.in/"},
      "blurb": "IIT/NIT/IIIT/GFTI opening and closing ranks for every seat bucket and round, consolidated from the official JoSAA portal.",
      "special": "josaa"},
     {"id": "kcet", "title": "KCET 2025 engineering admissions (Karnataka)",
+     "source": {"label": "KEA, cetonline.karnataka.gov.in", "url": "https://cetonline.karnataka.gov.in/keawebentry456/ugcet2025/"},
      "blurb": "KEA engineering cutoffs: the official Round-3 documents and the tables extracted from them.",
      "files": [
         ("kcet/raw/KA_engg_2025_GEN_R3.pdf", "Karnataka — Round-3 cutoffs, General pool", "raw", 2025),
@@ -140,6 +142,7 @@ EXAM_DATASETS = [
         ("kcet/raw/KA_engg_closing_ranks_govt_2024.csv", "Karnataka — Closing ranks, government colleges only", "extracted", 2024),
      ]},
     {"id": "mhtcet", "title": "MHT-CET 2025 admissions (Maharashtra)",
+     "source": {"label": "State CET Cell CAP portals, mahacet.org", "url": "https://fe2025.mahacet.org/"},
      "blurb": "State-quota closing ranks across engineering, pharmacy, architecture and B.Design, with the per-institute cutoff documents zipped by stream.",
      "files": [
         ("mhtcet/raw/MH_engg_state_quota_closing_ranks_2025.csv", "Maharashtra — State-quota closing ranks, engineering", "extracted", 2025),
@@ -154,6 +157,7 @@ EXAM_DATASETS = [
         ("mhtcet/raw/pdfs/bdesign/", "mhtcet/raw/MH_bdesign_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, B.Design (zipped)"),
      ]},
     {"id": "tgeapcet", "title": "TG-EAPCET 2025 engineering admissions (Telangana)",
+     "source": {"label": "tgeapcetd.nic.in", "url": "https://tgeapcetd.nic.in/"},
      "blurb": "The Convener's last-rank statements for all three phases, and the tables extracted from them.",
      "files": [
         ("tgeapcet/raw/pdfs/TGEAPCET_2025_LASTRANKS_FirstPhase.pdf", "Telangana — Last ranks, Phase 1", "raw", 2025),
@@ -174,6 +178,7 @@ EXAM_DATASETS = [
         ("gujcet/raw/GJ_pharm_closing_ranks_govt_2024.csv", "Gujarat — Closing ranks, government colleges only (pharmacy)", "extracted", 2024),
      ]},
     {"id": "tnea", "title": "TNEA 2025 engineering admissions (Tamil Nadu)",
+     "source": {"label": "cutoff.tneaonline.org", "url": "https://cutoff.tneaonline.org/"},
      "blurb": "Final-round cutoff marks and state merit ranks for every college and branch, pulled from the official TNEA portal.",
      "files": [
         ("tnea/raw/TN_TNEA_2025_cutoff_marks.csv", "Tamil Nadu — Cutoff marks by college and branch (TNEA portal)", "raw", 2025),
@@ -258,6 +263,8 @@ def main():
     datasets = [{
         "id": "neet",
         "title": "NEET-UG 2025 admissions",
+        "source": {"label": "MCC (mcc.nic.in) and the state counselling authorities",
+                   "url": "https://mcc.nic.in/"},
         "blurb": "Medical/dental counselling cutoffs: the official documents and the tables we extracted from them, across the All India Quota and 26 state quotas.",
         "files": files,
     }]
@@ -314,8 +321,11 @@ def main():
                  "extracted", "2016-2025", "csv")
 
         entries2.sort(key=lambda f: (f["kind"], f["title"]))
-        datasets.append({"id": spec["id"], "title": spec["title"],
-                         "blurb": spec["blurb"], "files": entries2})
+        ds_entry = {"id": spec["id"], "title": spec["title"],
+                    "blurb": spec["blurb"], "files": entries2}
+        if spec.get("source"):
+            ds_entry["source"] = spec["source"]
+        datasets.append(ds_entry)
 
     manifest = {
         "generated": str(date.today()),
