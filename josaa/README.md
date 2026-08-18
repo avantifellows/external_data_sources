@@ -31,8 +31,8 @@ Single source of truth for bucket, prefix, BQ destination, column renames:
 ## Upstream — where the raw CSVs come from
 
 The raw per-`(year, round)` CSVs are scraped from the JoSAA portal's public
-OpRank pages. Two scraper scripts live in the `avantifellows/futures-v2` repo
-under `josaa/scrape/scripts/`:
+OpRank pages by the scripts in **`scrape/scripts/` right here** (imported from
+futures-v2 — this repo is now the whole pipeline):
 
 - `01_scrape_archive.py` — JoSAA portal archive endpoint, 2016–2024
 - `02_scrape_current.py` — current-cycle endpoint (2025 onwards)
