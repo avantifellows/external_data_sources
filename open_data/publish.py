@@ -125,6 +125,68 @@ EXTRACTED_TITLES = {
 EXCLUDE_EXTRACTED = {"neet_2026_matrix_all.csv"}    # a derived projection, not shared
 
 
+# ── other exams: (src_path, title, kind, year) — raw docs verbatim, extracted tables scrubbed
+EXAM_DATASETS = [
+    {"id": "josaa", "title": "JoSAA engineering admissions (2016-2025)",
+     "blurb": "IIT/NIT/IIIT/GFTI opening and closing ranks for every seat bucket and round, consolidated from the official JoSAA portal.",
+     "special": "josaa"},
+    {"id": "kcet", "title": "KCET 2025 engineering admissions (Karnataka)",
+     "blurb": "KEA engineering cutoffs: the official Round-3 documents and the tables extracted from them.",
+     "files": [
+        ("kcet/raw/KA_engg_2025_GEN_R3.pdf", "Karnataka — Round-3 cutoffs, General pool", "raw", 2025),
+        ("kcet/raw/KA_engg_2025_HK_R3.pdf", "Karnataka — Round-3 cutoffs, Hyderabad-Karnataka pool", "raw", 2025),
+        ("kcet/raw/KA_engg_2025_draft_seat_matrix.pdf", "Karnataka — Draft seat matrix", "raw", 2025),
+        ("kcet/raw/KA_engg_2025_all_cutoffs_R3.csv", "Karnataka — All cutoffs by college and category (Round 3)", "extracted", 2025),
+        ("kcet/raw/KA_engg_closing_ranks_govt_2024.csv", "Karnataka — Closing ranks, government colleges only", "extracted", 2024),
+     ]},
+    {"id": "mhtcet", "title": "MHT-CET 2025 admissions (Maharashtra)",
+     "blurb": "State-quota closing ranks across engineering, pharmacy, architecture and B.Design, with the per-institute cutoff documents zipped by stream.",
+     "files": [
+        ("mhtcet/raw/MH_engg_state_quota_closing_ranks_2025.csv", "Maharashtra — State-quota closing ranks, engineering", "extracted", 2025),
+        ("mhtcet/raw/MH_pharm_state_quota_closing_ranks_2025.csv", "Maharashtra — State-quota closing ranks, pharmacy", "extracted", 2025),
+        ("mhtcet/raw/MH_arch_state_quota_closing_ranks_2025.csv", "Maharashtra — State-quota closing ranks, architecture", "extracted", 2025),
+        ("mhtcet/raw/MH_bdesign_state_quota_closing_ranks_2025.csv", "Maharashtra — State-quota closing ranks, B.Design", "extracted", 2025),
+     ],
+     "zips": [
+        ("mhtcet/raw/pdfs/engineering/", "mhtcet/raw/MH_engineering_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, engineering (zipped)"),
+        ("mhtcet/raw/pdfs/pharmacy/", "mhtcet/raw/MH_pharmacy_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, pharmacy (zipped)"),
+        ("mhtcet/raw/pdfs/architecture/", "mhtcet/raw/MH_architecture_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, architecture (zipped)"),
+        ("mhtcet/raw/pdfs/bdesign/", "mhtcet/raw/MH_bdesign_institute_pdfs.zip", "Maharashtra — Institute cutoff documents, B.Design (zipped)"),
+     ]},
+    {"id": "tgeapcet", "title": "TG-EAPCET 2025 engineering admissions (Telangana)",
+     "blurb": "The Convener's last-rank statements for all three phases, and the tables extracted from them.",
+     "files": [
+        ("tgeapcet/raw/pdfs/TGEAPCET_2025_LASTRANKS_FirstPhase.pdf", "Telangana — Last ranks, Phase 1", "raw", 2025),
+        ("tgeapcet/raw/pdfs/TGEAPCET_2025_LASTRANKS_SecondPhase.pdf", "Telangana — Last ranks, Phase 2", "raw", 2025),
+        ("tgeapcet/raw/pdfs/TGEAPCET_2025_FINALPHASE_LASTRANKS.pdf", "Telangana — Last ranks, Final phase", "raw", 2025),
+        ("tgeapcet/raw/TG_engg_all_cutoffs_2025.csv", "Telangana — All cutoffs by college, branch and category", "extracted", 2025),
+        ("tgeapcet/raw/TG_engg_closing_ranks_govt_2025.csv", "Telangana — Closing ranks, government colleges only", "extracted", 2025),
+        ("tgeapcet/raw/TG_engg_consolidated_5cat_govt_2025.csv", "Telangana — Consolidated closings, 5-category (government colleges)", "extracted", 2025),
+     ]},
+    {"id": "gujcet", "title": "GUJCET / ACPC admissions (Gujarat)",
+     "blurb": "ACPC closure documents for engineering (2025) and pharmacy (2024), and the tables extracted from them.",
+     "files": [
+        ("gujcet/raw/pdfs/GJ_ACPC_2025_Final_RankAndMarks.pdf", "Gujarat — ACPC final ranks and marks, engineering", "raw", 2025),
+        ("gujcet/raw/pdfs/GJ_ACPC_2024_Pharmacy_Closure.pdf", "Gujarat — ACPC pharmacy closure", "raw", 2024),
+        ("gujcet/raw/GJ_engg_all_cutoffs_2025.csv", "Gujarat — All cutoffs, engineering", "extracted", 2025),
+        ("gujcet/raw/GJ_engg_closing_ranks_govt_2025.csv", "Gujarat — Closing ranks, government colleges only (engineering)", "extracted", 2025),
+        ("gujcet/raw/GJ_pharm_all_cutoffs_2024.csv", "Gujarat — All cutoffs, pharmacy", "extracted", 2024),
+        ("gujcet/raw/GJ_pharm_closing_ranks_govt_2024.csv", "Gujarat — Closing ranks, government colleges only (pharmacy)", "extracted", 2024),
+     ]},
+    {"id": "tnea", "title": "TNEA 2025 engineering admissions (Tamil Nadu)",
+     "blurb": "Final-round cutoff marks and state merit ranks for every college and branch, pulled from the official TNEA portal.",
+     "files": [
+        ("tnea/raw/TN_TNEA_2025_cutoff_marks.csv", "Tamil Nadu — Cutoff marks by college and branch (TNEA portal)", "raw", 2025),
+        ("tnea/raw/TN_TNEA_2025_state_merit_ranks.csv", "Tamil Nadu — State merit ranks by college and branch (TNEA portal)", "raw", 2025),
+     ],
+     # the pipeline's final table IS the extraction here (marks and ranks joined,
+     # the seven communities unpacked, college types from the official DOTE codes)
+     "parquet_as_extracted": ("tnea/clean/tnea_fact_cutoffs.parquet",
+        "tnea/extracted/tnea_cutoffs_2025.csv",
+        "Tamil Nadu — Cutoff marks and merit ranks, by college, branch and community", 2025)},
+]
+
+
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -193,22 +255,80 @@ def main():
             "extracted", 2025, "csv", removed)
 
     files.sort(key=lambda f: (f["kind"], f["title"]))
+    datasets = [{
+        "id": "neet",
+        "title": "NEET-UG 2025 admissions",
+        "blurb": "Medical/dental counselling cutoffs: the official documents and the tables we extracted from them, across the All India Quota and 26 state quotas.",
+        "files": files,
+    }]
+
+    for spec in EXAM_DATASETS:
+        entries2 = []
+
+        def add2(dest, data, title, kind, year, fmt, removed=None):
+            blob = dst.blob(dest)
+            ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip"}.get(fmt, "application/octet-stream")
+            blob.upload_from_string(data, content_type=ctype)
+            e = {"title": title, "path": dest, "kind": kind, "year": year,
+                 "format": fmt.upper(), "bytes": len(data), "sha256": sha(data),
+                 "url": f"https://storage.googleapis.com/{DST_BUCKET}/{dest}"}
+            if removed:
+                e["columns_removed"] = removed
+            entries2.append(e)
+            print(f"  {kind:9} {title}")
+
+        for prefix, dest, title in spec.get("zips", []):
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for b in src.list_blobs(prefix=prefix):
+                    z.writestr(b.name.split("/")[-1], b.download_as_bytes())
+            add2(dest.replace("raw/", "raw/", 1), buf.getvalue(), title, "raw", 2025, "zip")
+
+        for src_path, title, kind, year in spec.get("files", []):
+            data = src.blob(src_path).download_as_bytes()
+            removed = []
+            if src_path.endswith(".csv") and kind != "raw":
+                data, removed = scrub_csv(data)
+            fmt = src_path.rsplit(".", 1)[-1].lower()
+            add2(src_path, data, title, kind, year, fmt, removed)
+
+        if spec.get("parquet_as_extracted"):
+            import pandas as pd, tempfile, os
+            src_pq, dest_csv, title, year = spec["parquet_as_extracted"]
+            tmp = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False).name
+            src.blob(src_pq).download_to_filename(tmp)
+            data = pd.read_parquet(tmp).to_csv(index=False).encode()
+            os.unlink(tmp)
+            add2(dest_csv, data, title, "extracted", year, "csv")
+
+        if spec.get("special") == "josaa":
+            # the consolidated table IS the extraction: opening/closing ranks verbatim
+            # from the portal across every year and round -- no modelling, no editing
+            import pandas as pd, tempfile, os
+            tmp = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False).name
+            src.blob("josaa/clean/josaa_fact_cutoffs.parquet").download_to_filename(tmp)
+            data = pd.read_parquet(tmp).to_csv(index=False).encode()
+            os.unlink(tmp)
+            add2("josaa/extracted/josaa_all_rounds_2016_2025.csv", data,
+                 "JoSAA — Opening and closing ranks, every seat bucket and round",
+                 "extracted", "2016-2025", "csv")
+
+        entries2.sort(key=lambda f: (f["kind"], f["title"]))
+        datasets.append({"id": spec["id"], "title": spec["title"],
+                         "blurb": spec["blurb"], "files": entries2})
+
     manifest = {
         "generated": str(date.today()),
         "license": "CC BY 4.0 (our compilations); raw documents are mirrored government publications",
-        "datasets": [{
-            "id": "neet",
-            "title": "NEET-UG 2025 admissions",
-            "blurb": "Medical/dental counselling cutoffs: the official documents and the tables we extracted from them, across the All India Quota and 26 state quotas.",
-            "files": files,
-        }],
+        "datasets": datasets,
     }
     mb = dst.blob("manifest.json")
     # the manifest is the mutable pointer — never let caches hold an old shape;
     # the files it points to are immutable-ish and can cache normally
     mb.cache_control = "no-cache"
     mb.upload_from_string(json.dumps(manifest, indent=1), content_type="application/json")
-    print(f"\n{len(files)} files -> https://storage.googleapis.com/{DST_BUCKET}/manifest.json")
+    total = sum(len(d["files"]) for d in datasets)
+    print(f"\n{len(datasets)} datasets, {total} files -> https://storage.googleapis.com/{DST_BUCKET}/manifest.json")
 
 
 if __name__ == "__main__":
