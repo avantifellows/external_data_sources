@@ -1,0 +1,29 @@
+table: wbjee_fact_cutoffs
+grain: (exam_year, round, institute, program, seat_type, quota, category_raw) — every published bucket, every round, verbatim
+rows: 21936
+description: >
+  WBJEE engineering counselling opening and closing ranks, 2021-2026 — six full
+  years INCLUDING the current 2026 cycle (Rounds 1-3). One row per bucket per
+  round as WBJEEB publishes it; no aggregation. Ranks are WBJEE General Merit
+  Ranks (state rank space) — never comparable to JEE/NEET/other-state ranks.
+columns:
+  exam_year:     "2021-2026. 2026 is the live current cycle"
+  round:         "'Round 1'..'Round 3' as published. Later rounds close deeper; scope on it"
+  institute:     "verbatim (incl. WBJEEB's own recurring 'Goverment' typo). Not a stable join key"
+  program:       "verbatim. 2021 is UPPERCASE with '&' and embeds TFW suffixes — vocab drifts by year"
+  stream:        "B.E/B.Tech etc."
+  seat_type:     "'WBJEE Seats' | 'JEE(Main) Seats' | NULL for 2021 (the split began 2022)"
+  quota:         "'Home State' | 'All India'"
+  category_raw:  "the year's own vocabulary, verbatim. 2026 MERGED OBC-A/OBC-B into plain 'OBC' — a policy change, not a parse bug"
+  category:      "canonical: GEN | EWS | OBC-NCL | SC | ST | OTHER"
+  sub_pool:      "OBC-A/OBC-B split (pre-2026), PwD, TFW"
+  tfw:           "TRUE for Tuition Fee Waiver buckets — encoded in Category (2022+) or the program string (2021); this flag covers both"
+  opening_rank:  "best admitted GMR. One source typo (Jadavpur ECE 2021 R3 '66.1') rounded"
+  closing_rank:  "last admitted GMR. LOWER = harder"
+  college_type:  "Govt | Govt-Aided | State-Univ-Dept | Private/SF | Private/Deemed — whitelist classifier ported from the audited futures-v2 parser. Govt scope = first three"
+notes: |
+  EWS exists only from 2025. category_raw is the truth per year; the canonical
+  rollup makes cross-year queries possible. Raw OR-CR HTML (as served, one file
+  per year, plus pharmacy 2026 unparsed) at
+  gs://avantifellows-external-data/wbjee/raw/. Fetch quirk recorded in
+  scripts/sources.py: the enc token's '+' must be passed literally.
