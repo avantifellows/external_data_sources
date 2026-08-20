@@ -52,7 +52,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import (AGGREGATE_JOIN_KEYS, AGGREGATE_PIVOT_INDEX, AGGREGATE_RENAMES,
-                     CLEAN, RAW, TABLES, Table)
+                     CLEAN, FIRST_PARTY_CATEGORIES, RANKINGS_OFFICIAL_CSV, RAW,
+                     TABLES, Table)
 
 # Tables whose conflicting-value rows may be summed (pure-count measures only).
 SUMMABLE = {"nirf_fact_strength"}
@@ -111,6 +112,93 @@ def _dedupe(df: pd.DataFrame, table: Table) -> pd.DataFrame:
     return df
 
 
+# ─── First-party rankings splice ─────────────────────────────────────────────
+
+def _splice_official_rankings(dataful: pd.DataFrame) -> pd.DataFrame:
+    """Replace the Dataful rows for FIRST_PARTY_CATEGORIES with rows parsed
+    from nirfindia.org's own ranking pages (parse_dcs.py), and keep Dataful
+    for every other category. Adds three columns to the table:
+
+      rank_raw      — the rank as NIRF prints it. 2018 has '21A'/'26A'
+                      (institutes inserted after data corrections); Dataful
+                      silently renumbered everything below them.
+      rank_band     — '101-150' etc. for rank-band institutes. NIRF publishes
+                      NO id, score or rank for these, so institute_id and
+                      overall_score are NULL on band rows — the grain there
+                      is (year, category, institute_name, city).
+      record_source — 'nirfindia.org' or 'dataful', per row.
+    """
+    if not RANKINGS_OFFICIAL_CSV.exists():
+        raise SystemExit(
+            f"missing {RANKINGS_OFFICIAL_CSV}\n"
+            f"Build it first:  python3 scripts/fetch_dcs.py --pages-only && "
+            f"python3 scripts/parse_dcs.py pages"
+        )
+    of = pd.read_csv(RANKINGS_OFFICIAL_CSV)
+    official = pd.DataFrame({
+        "ranking_year": of["ranking_year"],
+        "ranking_category": of["discipline"],
+        "institute_id": of["institute_id"],
+        "institute_name": of["institute_name"],
+        "state": of["state"],
+        "city": of["city"],
+        "overall_score": of["score"],
+        "nirf_rank": of["rank"].astype(str).str.extract(r"(\d+)")[0].astype("Int64"),
+        "rank_raw": of["rank"],
+        "rank_band": of["rank_band"],
+        "record_source": "nirfindia.org",
+    })
+    ranked = official[official.nirf_rank.notna()]
+    assert not ranked.duplicated(
+        ["ranking_year", "ranking_category", "institute_id"]).any(), \
+        "official ranked rows repeat on (year, category, institute_id)"
+
+    kept = dataful[~dataful.ranking_category.isin(FIRST_PARTY_CATEGORIES)].copy()
+    kept["rank_raw"] = None
+    kept["rank_band"] = None
+    kept["record_source"] = "dataful"
+    replaced = len(dataful) - len(kept)
+    print(f"    spliced first-party rankings: {len(official):,} official rows "
+          f"({official.rank_band.notna().sum():,} band) replace {replaced:,} "
+          f"Dataful rows for {list(FIRST_PARTY_CATEGORIES)}")
+    return pd.concat([official, kept[official.columns]], ignore_index=True)
+
+
+# ─── First-party DCS tables ──────────────────────────────────────────────────
+
+def _build_dcs(table: Table) -> pd.DataFrame:
+    """extracted/ CSV → clean frame: byte-dedupe, enforce the grain, and mark
+    superseded rows (every edition restates the 3 trailing academic years;
+    the newest edition reporting a key wins, older restatements get
+    superseded=True so a naive time-series query has one row per key)."""
+    if not table.extracted_path.exists():
+        raise SystemExit(
+            f"missing {table.extracted_path}\n"
+            f"Build it first:  python3 scripts/fetch_dcs.py && "
+            f"python3 scripts/parse_dcs.py"
+        )
+    df = pd.read_csv(table.extracted_path)
+    start = len(df)
+    df = df.drop_duplicates()
+    grain = list(table.grain)
+    conflicts = df[df.duplicated(grain, keep=False)]
+    if len(conflicts):
+        raise SystemExit(
+            f"{table.bq_name}: {len(conflicts):,} rows share a grain key with "
+            f"different values — the PDF parse mis-assigned a table. Inspect:\n"
+            f"{conflicts.sort_values(grain).head(20).to_string()}"
+        )
+    if table.supersede_on:
+        key = list(table.supersede_on)
+        latest = df.groupby(key, dropna=False)["edition_year"].transform("max")
+        df["superseded"] = df["edition_year"] < latest
+        print(f"    {len(df):,} rows ({int((~df.superseded).sum()):,} current, "
+              f"{int(df.superseded.sum()):,} superseded restatements)")
+    if start - len(df):
+        print(f"    dropped {start - len(df):,} byte-identical rows")
+    return df
+
+
 # ─── Derived table: nirf_fact_aggregate ──────────────────────────────────────
 
 def _build_aggregate(master: pd.DataFrame, rankings: pd.DataFrame) -> pd.DataFrame:
@@ -139,13 +227,16 @@ def _build_aggregate(master: pd.DataFrame, rankings: pd.DataFrame) -> pd.DataFra
     if ADMITTED in pivot.columns and INTAKE in pivot.columns:
         pivot["Admission Rate (%)"] = (pivot[ADMITTED] / pivot[INTAKE] * 100).round(2)
 
-    agg = rankings.merge(pivot, on=AGGREGATE_JOIN_KEYS, how="left")
+    ranked = rankings[rankings["nirf_rank"].notna()]
+    agg = ranked.merge(pivot, on=AGGREGATE_JOIN_KEYS, how="left")
     return agg.rename(columns=AGGREGATE_RENAMES)
 
 
 # ─── Build ───────────────────────────────────────────────────────────────────
 
 def build(table: Table, cache: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    if table.extracted_csv:
+        return _build_dcs(table)
     if table.derived:
         # aggregate needs the CLEAN master + rankings, so build those first
         for dep in ("nirf_fact_master", "nirf_fact_rankings"):
@@ -165,6 +256,8 @@ def build(table: Table, cache: dict[str, pd.DataFrame]) -> pd.DataFrame:
     df = _dedupe(df, table)
     if table.column_renames:
         df = df.rename(columns=table.column_renames)
+    if table.bq_name == "nirf_fact_rankings":
+        df = _splice_official_rankings(df)
     return df
 
 

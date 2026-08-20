@@ -5,6 +5,14 @@
 # Don't commit binaries; the GCS bucket is the source of truth.
 raw/*.parquet
 
+# First-party DCS haul: ranking-page HTML, per-institute DCS PDFs, and the
+# zips staged for GCS. gs://avantifellows-external-data/nirf/raw/dcs/ is the
+# source of truth; rebuild locally with scripts/fetch_dcs.py.
+raw/dcs/
+
+# Extracted CSVs built by scripts/parse_dcs.py — regenerate with that script.
+extracted/
+
 # Local Python env
 .venv/
 

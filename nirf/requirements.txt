@@ -1,4 +1,7 @@
+beautifulsoup4
 google-cloud-bigquery
 google-cloud-storage
+lxml
 pandas
+pdfplumber
 pyarrow

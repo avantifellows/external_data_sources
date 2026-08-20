@@ -36,9 +36,30 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT  = Path(__file__).resolve().parent.parent
-RAW   = ROOT / "raw"
-CLEAN = ROOT / "clean"
+ROOT      = Path(__file__).resolve().parent.parent
+RAW       = ROOT / "raw"
+CLEAN     = ROOT / "clean"
+EXTRACTED = ROOT / "extracted"
+
+# First-party haul (fetch_dcs.py): ranking/band/participant pages and the
+# per-institute DCS PDFs, archived verbatim under raw/dcs/ and staged to
+# gs://avantifellows-external-data/nirf/raw/dcs/ as per-year zips by
+# upload_to_gcs.py --dcs-raw. parse_dcs.py turns them into extracted/ CSVs.
+DCS_RAW = RAW / "dcs"
+
+# Seed lists used by fetch_dcs.py CDN probing, with their provenance:
+#   *_bq_ranked_ids.txt      — every AISHE-style code that ever appeared in
+#                              nirf_fact_rankings (the Dataful vintage)
+#   *_amogh_aishe_list.txt   — Amogh's AISHE-matched 2024 Engineering
+#                              participant list (NIRF Extractor project)
+# Both are unioned with ids harvested from the saved ranking pages; the CDN
+# probe is what decides membership, the seeds only widen the candidate pool.
+DCS_SEEDS = DCS_RAW / "seeds"
+
+# ranking_category values that are FIRST-PARTY in nirf_fact_rankings: rows for
+# these come from nirfindia.org pages (extracted/nirf_rankings_official.csv);
+# every other category still carries the Dataful vintage. See build_clean.py.
+FIRST_PARTY_CATEGORIES = ("Engineering", "Medical")
 
 # ─── GCS ────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"
@@ -58,6 +79,12 @@ class Table:
     grain: tuple[str, ...]                    # documented grain; build_clean dedups on it
     column_renames: dict[str, str]            # source col → BQ col (only cols that need it)
     derived: bool = False                     # True = built by build_clean, no raw/ input
+    extracted_csv: str | None = None          # first-party input in extracted/ (DCS tables)
+    supersede_on: tuple[str, ...] | None = None  # key that later editions supersede
+
+    @property
+    def extracted_path(self) -> Path:
+        return EXTRACTED / self.extracted_csv if self.extracted_csv else None
 
     @property
     def gcs_uri(self) -> str:
@@ -133,4 +160,63 @@ TABLES: list[Table] = [
         column_renames=AGGREGATE_RENAMES,
         derived=True,          # rebuilt from master + rankings, no raw/ input
     ),
+
+    # ── First-party DCS tables ──────────────────────────────────────────────
+    # Parsed from the per-institute "Data Submitted by Institution" PDFs on
+    # nirfindia.org (2019-2025 editions, Engineering + Medical). Each edition
+    # restates the 3 trailing academic years and NIRF revises figures between
+    # editions, so overlapping keys get a `superseded` flag (TRUE unless the
+    # row comes from the newest edition reporting that key). extracted/ CSVs
+    # are the parse_dcs.py output; raw PDFs live in raw/dcs/ and on GCS.
+    Table(
+        bq_name="nirf_fact_dcs_placements",
+        parquet="nirf_dcs_placements.parquet",
+        grain=("edition_year", "discipline", "institute_id", "program_level",
+               "graduating_academic_year"),
+        column_renames={},
+        derived=True,
+        extracted_csv="dcs_placements.csv",
+        supersede_on=("discipline", "institute_id", "program_level",
+                      "graduating_academic_year"),
+    ),
+    Table(
+        bq_name="nirf_fact_dcs_intake",
+        parquet="nirf_dcs_intake.parquet",
+        grain=("edition_year", "discipline", "institute_id", "program_level",
+               "academic_year"),
+        column_renames={},
+        derived=True,
+        extracted_csv="dcs_intake.csv",
+        supersede_on=("discipline", "institute_id", "program_level",
+                      "academic_year"),
+    ),
+    Table(
+        bq_name="nirf_fact_dcs_strength",
+        parquet="nirf_dcs_strength.parquet",
+        grain=("edition_year", "discipline", "institute_id", "program_level"),
+        column_renames={},
+        derived=True,
+        extracted_csv="dcs_strength.csv",
+    ),
+    Table(
+        bq_name="nirf_fact_dcs_institution",
+        parquet="nirf_dcs_institution.parquet",
+        grain=("edition_year", "discipline", "institute_id"),
+        column_renames={},
+        derived=True,
+        extracted_csv="dcs_institution.csv",
+    ),
+    Table(
+        bq_name="nirf_dim_participants",
+        parquet="nirf_participants.parquet",
+        grain=("ranking_year", "discipline", "institute_name", "city"),
+        column_renames={},
+        derived=True,
+        extracted_csv="nirf_participants.csv",
+    ),
 ]
+
+# extracted/nirf_rankings_official.csv is not its own table — build_clean.py
+# splices it INTO nirf_fact_rankings, replacing the Dataful rows for
+# FIRST_PARTY_CATEGORIES and adding rank_band / rank_raw / record_source.
+RANKINGS_OFFICIAL_CSV = EXTRACTED / "nirf_rankings_official.csv"

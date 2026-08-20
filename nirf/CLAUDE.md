@@ -12,12 +12,31 @@ data — rankings + admissions/placements/strength metrics for ~7,500 institutes
 across 9 disciplines, 2016 → 2025. Upstream publishes annually at
 [nirfindia.org](https://www.nirfindia.org/).
 
-**⚠️ What lands in `raw/` is not raw NIRF data.** It is Dataful.in's scrape of
-NIRF's PDFs, further transformed by a `build_data.py` that no longer exists.
-Read **[README.md → Data provenance](README.md#data-provenance)** and
-**[Known limitations](README.md#known-limitations)** before answering any
-analytical question with these tables — several limits (PG coverage,
-`institute_id` instability) are invisible in the data itself.
+Two provenances coexist here (see README → Data provenance):
+
+- **First-party (Engineering + Medical)**: `fetch_dcs.py` downloads NIRF's own
+  ranking/band pages and per-institute DCS PDFs (2019–2025 editions);
+  `parse_dcs.py` turns them into `extracted/*.csv`. These feed the five
+  `nirf_*dcs*`/`nirf_dim_participants` tables AND replace the Dataful rows
+  inside `nirf_fact_rankings` for those two categories
+  (`record_source = 'nirfindia.org'`).
+- **Dataful vintage (everything else)**: `raw/*.parquet` is Dataful.in's
+  scrape of NIRF's PDFs, further transformed by a `build_data.py` that no
+  longer exists. Read **[README.md → Data provenance](README.md#data-provenance)**
+  and **[Known limitations](README.md#known-limitations)** before answering
+  any analytical question with those tables — several limits (PG coverage,
+  `institute_id` instability) are invisible in the data itself.
+
+DCS-table gotchas that bite queries:
+
+- Filter `NOT superseded` on `nirf_fact_dcs_placements`/`_intake` unless you
+  specifically want every edition's restatement of the same academic year.
+- Medical MBBS rows legitimately have `students_placed = 0` and
+  `median_salary = 0` — graduates proceed to internship, not "placement".
+- Band institutes exist in `nirf_fact_rankings` with NULL `institute_id`,
+  NULL score, and `rank_band` like `'101-150'` — grain there is (name, city).
+- 2016 Engineering `institute_id`s are the official `IR17-*` codes, which do
+  NOT match Dataful-era 2016 ids (`NIRF-ENGG-*`) other tables may carry.
 
 ```
 nirf/raw/*.parquet            (local landing zone, gitignored)
@@ -32,11 +51,15 @@ gs://avantifellows-external-data/nirf/clean/*.parquet
        │
        │  scripts/load_bq.py          (load_table_from_uri, PARQUET)
        ▼
-avantifellows.external_data_sources.nirf_fact_*    (4 tables, asia-south1)
+avantifellows.external_data_sources.nirf_*    (9 tables, asia-south1)
 ```
 
+First-party inputs run `fetch_dcs.py` → `raw/dcs/` → `parse_dcs.py` →
+`extracted/*.csv` before `build_clean.py`; the raw haul is staged to GCS as
+zips via `upload_to_gcs.py --dcs-raw` (and `--extracted` for the CSVs).
+
 **Single source of truth: [`scripts/sources.py`](scripts/sources.py).** It
-declares the bucket, prefix, BQ destination, and the four-row `TABLES`
+declares the bucket, prefix, BQ destination, and the nine-row `TABLES`
 registry mapping each parquet → BQ table → **grain** → column renames.
 Everything downstream reads from there; `build_clean.py` deduplicates on the
 declared grain, so fixing a wrong grain there fixes the dedup too.

@@ -3,25 +3,34 @@
 NIRF (National Institutional Ranking Framework) data ingestion → BigQuery.
 
 Rankings, admissions/placements, and student-strength data for ~7,500
-institutes across 9 disciplines, 2016–2025.
+institutes across 9 disciplines, 2016–2025 — plus a **first-party pipeline**
+(Aug 2026) that fetches NIRF's own ranking pages and per-institute
+"Data Submitted by Institution" (DCS) PDFs for **Engineering and Medical**,
+2019–2025 editions. For those two disciplines the rankings rows and the
+`nirf_fact_dcs_*` tables come straight from nirfindia.org; everything else
+still carries the Dataful vintage.
 
-**⚠️ Read [Data provenance](#data-provenance) before using these tables for
-analysis.** What we ingest is not raw NIRF data, and it has known coverage
-limits that are not visible in the tables themselves.
+**⚠️ Read [Data provenance](#data-provenance) before using the Dataful-derived
+tables for analysis.** What that half ingests is not raw NIRF data, and it has
+known coverage limits that are not visible in the tables themselves.
 
 ## Pipeline at a glance
 
 ```
-nirf/raw/*.parquet            (local; gitignored)
-       │ scripts/build_clean.py     ← dedup + rebuild aggregate
-       ▼
+Dataful vintage                          First-party (Engineering + Medical)
+nirf/raw/*.parquet                       nirfindia.org ranking pages + DCS PDFs
+(local; gitignored)                             │ scripts/fetch_dcs.py   → raw/dcs/
+       │                                        │ scripts/parse_dcs.py   → extracted/*.csv
+       └──────────────┬─────────────────────────┘
+                      │ scripts/build_clean.py   ← dedup, splice official
+                      ▼                            rankings, supersede flags
 nirf/clean/*.parquet          (local; gitignored)
-       │ scripts/upload_to_gcs.py
+       │ scripts/upload_to_gcs.py    (+ --dcs-raw, --extracted for the haul)
        ▼
-gs://avantifellows-external-data/nirf/clean/*.parquet
+gs://avantifellows-external-data/nirf/{raw,raw/dcs,extracted,clean}/
        │ scripts/load_bq.py
        ▼
-avantifellows.external_data_sources.nirf_fact_*    (asia-south1, 4 tables)
+avantifellows.external_data_sources.nirf_*    (asia-south1, 9 tables)
 ```
 
 The single source of truth for filenames, GCS URIs, BQ destinations, table
@@ -33,10 +42,15 @@ objects and the BQ tables are byte-identical.
 
 | Table | Rows | Grain | Built from |
 |---|---:|---|---|
-| `nirf_fact_rankings`  | 7,504   | (institute, year, category) | `raw/nirf_rankings.parquet` |
+| `nirf_fact_rankings`  | 8,606   | (institute, year, category); band rows key on (name, city) | Dataful for most categories; **first-party pages for Engineering + Medical** (adds `rank_raw`, `rank_band`, `record_source`) |
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
-| `nirf_fact_aggregate` | 31,718  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + rankings |
+| `nirf_fact_aggregate` | 31,718  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
+| `nirf_fact_dcs_placements`  | 10,246 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
+| `nirf_fact_dcs_intake`      | 12,680 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
+| `nirf_fact_dcs_strength`    | 3,745  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
+| `nirf_fact_dcs_institution` | 1,702  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
+| `nirf_dim_participants`     | 12,888 | (year, discipline, name, city) | "ALL participants" pages — names only, NIRF publishes no ids for them |
 
 Every table's grain is unique — `build_clean.py` enforces it and fails if not.
 Schemas: [`schemas/*.yaml`](schemas/).
@@ -91,24 +105,35 @@ and identity, not correctness.
 Duplicate rows — which inflated every measure in `nirf_fact_aggregate` — **are
 fixed** by `build_clean.py`; see below.
 
-### The escape hatch
+### The escape hatch — BUILT for Engineering + Medical (Aug 2026)
 
-NIRF's own scorecards are fetchable and parseable, and would fix every item
-above by construction. Verified Aug 2026:
+`fetch_dcs.py` + `parse_dcs.py` implement the first-party pipeline for the two
+disciplines the org actually serves. What the build established:
 
-- Ranking lists: `Rankings/<year>/<Category>Ranking.html` — **2016–2025 all 200**.
-- Scorecards: `nirfpdfcdn/<year>/pdf/<Category>/<institute_id>.pdf` — **2018–2025
-  all 200** (2016–2017 predate the CDN; `master`/`strength` have no rows before
-  2019 anyway, so nothing is lost).
-- `pdfplumber` parses 2019/2022/2025 cleanly. **2018 is a different legacy
-  schema** and needs a second extractor. Some categories omit sections (a 2025
-  College scorecard has no PhD block), so sections must be optional.
-- ~6,700 PDFs for 2018–2025, ~10 KB each ≈ 70 MB. No `robots.txt`.
-- NIRF 2026 is **not yet published** — submission closed Mar 2026, the site's
-  ranking nav stops at 2025 — so building this before it lands is cheap timing.
-
-`nmc/` (single PDF) and `moe/` (multi-PDF, two extractors) are the reference
-implementations. Not built; tracked separately from the deduplication fix.
+- **Rankings**: `Rankings/<year>/<Category>Ranking.html` parsed for Engineering
+  2016–2025 and Medical 2018–2025, plus the rank-band pages (101–150/151–200
+  from 2020, 201–300 from 2024; Medical 51–100). Scores agree with Dataful on
+  1,645/1,645 joined rows; the only rank diffs are 2018's official `21A`/`26A`
+  insertions, which Dataful silently renumbered (we keep NIRF's notation in
+  `rank_raw`).
+- **DCS PDFs**: the CDN pattern `nirfpdfcdn/<year>/pdf/<disc>/<IR-id>.pdf`
+  serves 2019–2025 and hosts PDFs for MORE institutes than any page links —
+  rank-band and formerly-ranked institutes have live-but-unlinked PDFs (PEC,
+  NIT Uttarakhand, NIT Sikkim 404 on every page yet serve 2025 PDFs). Discovery
+  is probe-by-candidate-id: 4-byte range GETs (the CDN 404s on HEAD).
+  1,382 Engineering + 320 Medical PDFs, all parsed with zero warnings.
+- **The CDN rate-limits**: hammer it and every URL starts 404ing for a few
+  minutes — indistinguishable from "not on CDN". `fetch_dcs.py` probes a
+  known-good canary URL before each year's sweep and sleeps until it passes.
+- **Editions overlap**: each PDF restates the 3 trailing academic years and
+  NIRF revises figures between editions. All rows are kept;
+  `superseded = edition_year < max(edition reporting that key)` — filter
+  `NOT superseded` for the canonical series. Stitching editions yields e.g. a
+  9-year unbroken placement series for PEC (2015-16 → 2023-24).
+- **Unranked participants are out of scope**: the ~1,585-name "ALL" page
+  carries no ids and no PDF links, and their CDN URLs 404. Reaching them means
+  crawling institute websites (~27% yield in the NIRF Extractor prototype this
+  work replaced).
 
 ## What `build_clean.py` fixes
 
@@ -206,10 +231,19 @@ to preview without side effects.
 leave half-loaded tables, and the old data is recoverable for 7 days via BQ
 time travel.
 
-Because `build_data.py` and the Dataful CSVs are both gone (see
-[Data provenance](#data-provenance)), there is **no supported path to refresh
-`raw/` from upstream**. For NIRF 2026 the realistic options are to build the
-scorecard fetcher + parser described in [The escape hatch](#the-escape-hatch),
-or to re-acquire the CSVs from Dataful (paid, and the old dataset slug is dead).
-Either way it is a decision, not a re-run — don't assume step 1 above can be
-repeated for a new year.
+For **Engineering and Medical** there is now a supported refresh: when NIRF
+2026 lands, extend `page_years`/`cdn_years` in `fetch_dcs.py`, then
+
+```bash
+.venv/bin/python scripts/fetch_dcs.py          # pages + probe + download 2026
+.venv/bin/python scripts/parse_dcs.py          # → extracted/*.csv
+.venv/bin/python scripts/build_clean.py
+.venv/bin/python scripts/upload_to_gcs.py && .venv/bin/python scripts/upload_to_gcs.py --dcs-raw && .venv/bin/python scripts/upload_to_gcs.py --extracted
+.venv/bin/python scripts/load_bq.py
+```
+
+For every OTHER category the Dataful dead end still applies: `build_data.py`
+and the Dataful CSVs are both gone (see [Data provenance](#data-provenance)),
+so there is no path to refresh those rows — extending `fetch_dcs.py` to more
+categories is the realistic option (the page and CDN patterns are identical;
+add an entry to `DISCIPLINES`).
