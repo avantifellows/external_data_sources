@@ -189,6 +189,24 @@ EXAM_DATASETS = [
      "parquet_as_extracted": ("tnea/clean/tnea_fact_cutoffs.parquet",
         "tnea/extracted/tnea_cutoffs_2025.csv",
         "Tamil Nadu — Cutoff marks and merit ranks, by college, branch and community", 2025)},
+    {"id": "wbjee", "category": "admissions", "title": "WBJEE engineering admissions, 2021-2026 (West Bengal)",
+     "source": {"label": "wbjeeb.nic.in/ewbjee", "url": "https://wbjeeb.nic.in/ewbjee/"},
+     "blurb": "Six years of WBJEEB's opening and closing ranks - including the live 2026 counselling - as the official ORCR pages and as one extracted table.",
+     "files": [
+        ("wbjee/raw/WBJEE_2021_ORCR.html", "West Bengal — 2021 ORCR page, engineering", "raw", 2021),
+        ("wbjee/raw/WBJEE_2022_ORCR.html", "West Bengal — 2022 ORCR page, engineering", "raw", 2022),
+        ("wbjee/raw/WBJEE_2023_ORCR.html", "West Bengal — 2023 ORCR page, engineering", "raw", 2023),
+        ("wbjee/raw/WBJEE_2024_ORCR.html", "West Bengal — 2024 ORCR page, engineering", "raw", 2024),
+        ("wbjee/raw/WBJEE_2025_ORCR.html", "West Bengal — 2025 ORCR page, engineering", "raw", 2025),
+        ("wbjee/raw/WBJEE_2026_ORCR.html", "West Bengal — 2026 ORCR page, engineering (live cycle)", "raw", 2026),
+        ("wbjee/raw/WBJEE_pharmacy_2026_ORCR.html", "West Bengal — 2026 ORCR page, pharmacy (live cycle)", "raw", 2026),
+     ],
+     # one table across all six years: every round x institute x program x
+     # seat-type x quota x category bucket, categories kept in each year's own
+     # vocabulary plus a canonical column
+     "parquet_as_extracted": ("wbjee/clean/wbjee_fact_cutoffs.parquet",
+        "wbjee/extracted/wbjee_cutoffs_2021_2026.csv",
+        "West Bengal — Opening and closing ranks, all rounds and categories (2021-2026)", 2026)},
 ]
 
 
