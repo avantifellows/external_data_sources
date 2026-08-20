@@ -64,7 +64,12 @@ lessons name them.
 - [ ] **Validate against live BQ before committing:** documented columns == actual
       schema (none missing, none extra), every example query executed. Numbers in
       prose are query results, not recollection.
-- [ ] **Registry row in CLAUDE.md**, alphabetical position.
+- [ ] **Registry row in CLAUDE.md — NEVER by hand.** The table is auto-generated
+  from the YAMLs: run `scripts/regen_claude_md.py` and commit its output.
+  A hand-written row fails the "CLAUDE.md is in sync" CI check even when it
+  looks right (WBJEE: paraphrased summary + mis-sorted row, caught on main).
+- [ ] **Watch the push go green.** data-assistant runs CI on main pushes too;
+  a direct-to-main commit is not done until both checks pass.
 
 ## Phase 5 — Product surface (college-predictor)
 
