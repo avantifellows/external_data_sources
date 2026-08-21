@@ -1,0 +1,100 @@
+tables:
+  avantifellows.external_data_sources.ojee_fact_cutoffs:
+    claude_md_summary: "OJEE (Odisha) B.Tech counselling opening/closing ranks, 2025 — 1,543 rows, one per institute × programme × category × seat-type × quota (× TFW), verbatim. THE B.TECH RANKS ARE JEE (MAIN) RANKS — Odisha admits first-year B.Tech on JEE Main, closings run into the lakhs. rank_family separates the document's three scales (btech-jeemain / barch-bplan / film); seat_type is Gender Neutral vs Female Only; quota HS/OS/OL/AI."
+    description: |
+      OJEE's official "OPENING & CLOSING RANKS - BTECH 2025" — the 2025
+      cycle, published openly by OJEE in May 2026 (it was candidate-login
+      gated during its own cycle, which is why the old pipeline ran on a
+      2024 proxy). 1,543 rows, every bucket verbatim.
+
+      GOTCHAS (read before writing SQL):
+
+      1. THE RANKS ARE JEE (MAIN) RANKS for the B.Tech rows — Odisha
+         counsels first-year B.Tech on JEE Main through OJEE. Closing ranks
+         run into the LAKHS and are not comparable to any state-rank table
+         (or to percentiles). ALWAYS scope rank queries with
+         rank_family = 'btech-jeemain'.
+
+      2. THREE RANK SCALES SHARE THIS DOCUMENT. rank_family tags them:
+         'btech-jeemain' (1,518 rows), 'barch-bplan' (19 rows, own scale,
+         closings ~1e4), 'film' (6 film-institute diploma rows, own merit
+         list, closings ~1e2). Never mix.
+
+      3. GENDER IS THE SEAT AXIS: seat_type is 'Gender Neutral' vs
+         'Female Only' (the 33% women's reservation), not a Boys column —
+         unlike AP. Never sum across seat types.
+
+      4. quota: HS (Odisha domicile — 1,189 rows, the main table), AI
+         (All India), OS (Outside State), OL (4 rows, leftover/other-list
+         pool with very deep closings). Separate competitions.
+
+      5. TFW IS A FLAG derived from the SPL CAT column; the programme
+         string may also carry a "- TFW" suffix. Filter NOT tfw for merit
+         cutoffs.
+
+      6. category_raw is Odisha's published set: General / SC / ST / EW.
+         No OBC/SEBC column exists in this document.
+
+      7. ONE BUCKET IS PRINTED TWICE BY THE SOURCE: BPUT Rourkela's 5-year
+         integrated CSE (General/Gender Neutral/HS) has two rows with
+         adjacent rank windows — kept verbatim, disambiguated by dup_seq
+         (0/1). Aggregate with MAX(closing_rank) if you need one number.
+
+      8. PARSE PROVENANCE: the source PDF physically overprints six
+         institutes' overflowing names onto programme text; recovery is
+         deterministic and asserted (see ojee/README.md in
+         external_data_sources). institute/programme strings are the
+         recovered verbatim forms.
+
+      RELATED. Odisha medical is under the NEET tables. The state-CET
+      siblings (kcet/keam/wbjee/...) are different rank spaces entirely.
+      Raw PDF: gs://avantifellows-external-data/ojee/raw/.
+
+    coverage:
+      years: [2025]
+      notes: |
+        Read from BigQuery on 2026-08-21. One cycle: 2025 (the OR-CR table
+        reflects final closing positions after the main rounds, per OJEE
+        convention). 94 institutes, 173 programmes. The 2026 cycle was
+        mid-flight at capture (B.Tech Round 2 allotted 16-07-2026); the
+        refresh drill in ojee/scripts/sources.py watches
+        ojee.nic.in/opening-closing-rank/ for the 2026 document.
+
+    core_columns:
+      exam_year:    {type: INTEGER, description: "2025."}
+      institute:    {type: STRING, description: "Verbatim (de-fused where the source overprinted; see GOTCHA #8)."}
+      programme:    {type: STRING, description: "Verbatim programme name; may carry a '- TFW' suffix."}
+      category_raw: {type: STRING, description: "General | SC | ST | EW — Odisha's published set."}
+      category:     {type: STRING, description: "Canonical: GEN | SC | ST | EWS."}
+      seat_type:    {type: STRING, description: "'Gender Neutral' | 'Female Only' — GOTCHA #3."}
+      quota:        {type: STRING, description: "HS | AI | OS | OL — GOTCHA #4."}
+      tfw:          {type: BOOLEAN, description: "Tuition Fee Waiver bucket — GOTCHA #5."}
+      opening_rank: {type: INTEGER, description: "Best admitted rank in the bucket (scale per rank_family)."}
+      closing_rank: {type: INTEGER, description: "Last admitted rank. LOWER = harder. JEE Main scale for B.Tech — GOTCHA #1."}
+      rank_family:  {type: STRING, description: "'btech-jeemain' | 'barch-bplan' | 'film' — GOTCHA #2. Scope every rank query."}
+      dup_seq:      {type: INTEGER, description: "0, except 1 on the second copy of the one source-printed duplicate — GOTCHA #7."}
+
+    example_queries:
+      - name: "Government-college B.Tech cutoffs, General/Gender Neutral/HS (the default query)"
+        sql: |
+          SELECT institute, programme, closing_rank
+          FROM `avantifellows.external_data_sources.ojee_fact_cutoffs`
+          WHERE rank_family = 'btech-jeemain' AND category_raw = 'General'
+            AND seat_type = 'Gender Neutral' AND quota = 'HS' AND NOT tfw
+          ORDER BY closing_rank LIMIT 20
+        notes: "OUTR (ex CET Bhubaneswar) CSE leads at 62,996 — say 'JEE Main rank', never 'OJEE rank'."
+      - name: "Why rank_family matters (three scales in one document)"
+        sql: |
+          SELECT rank_family, COUNT(*) n, MIN(closing_rank) tightest, MAX(closing_rank) deepest
+          FROM `avantifellows.external_data_sources.ojee_fact_cutoffs`
+          GROUP BY 1 ORDER BY 2 DESC
+        notes: "1.5e6 vs 1e4 vs 159 — mixing them produces nonsense."
+      - name: "Female Only vs Gender Neutral at one seat"
+        sql: |
+          SELECT seat_type, opening_rank, closing_rank
+          FROM `avantifellows.external_data_sources.ojee_fact_cutoffs`
+          WHERE institute LIKE '%Technology and Research%'
+            AND programme = 'Computer Science and Engineering'
+            AND category_raw = 'General' AND quota = 'HS' AND NOT tfw
+          ORDER BY seat_type
+        notes: "The women's-reservation pool closes on its own curve."
