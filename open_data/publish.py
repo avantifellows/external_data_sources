@@ -233,6 +233,15 @@ EXAM_DATASETS = [
      "parquet_as_extracted": ("keam/clean/keam_fact_cutoffs.parquet",
         "keam/extracted/keam_engineering_last_ranks_2025_2026.csv",
         "Kerala — Engineering last ranks, all phases and categories (2025-2026)", 2026)},
+    {"id": "apeapcet", "category": "admissions", "title": "AP EAPCET 2025 engineering admissions (Andhra Pradesh)",
+     "source": {"label": "APSCHE Common Admissions Portal, cap.apcfss.in", "url": "https://cap.apcfss.in/"},
+     "blurb": "APSCHE's consolidated last-rank statement - every college, branch, category and gender pool - and the table extracted from it. Archived here because APSCHE's past-year URLs rot quickly.",
+     "files": [
+        ("apeapcet/raw/AP_EAPCET_2025_lastranks.pdf", "Andhra Pradesh — 2025 consolidated last ranks (all colleges and categories)", "raw", 2025),
+     ],
+     "parquet_as_extracted": ("apeapcet/clean/apeapcet_fact_cutoffs.parquet",
+        "apeapcet/extracted/apeapcet_last_ranks_2025.csv",
+        "Andhra Pradesh — Last ranks by college, branch, category and gender (2025)", 2025)},
 ]
 
 
