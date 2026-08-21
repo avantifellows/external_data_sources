@@ -94,7 +94,7 @@ tables:
           SELECT seat_type, opening_rank, closing_rank
           FROM `avantifellows.external_data_sources.ojee_fact_cutoffs`
           WHERE institute LIKE '%Technology and Research%'
-            AND programme = 'Computer Science and Engineering'
+            AND programme LIKE 'Computer Science%' AND programme NOT LIKE '%SSC%'
             AND category_raw = 'General' AND quota = 'HS' AND NOT tfw
           ORDER BY seat_type
-        notes: "The women's-reservation pool closes on its own curve."
+        notes: "The women's-reservation pool closes on its own curve. LIKE, because programme strings vary (&/and, (SSC) suffixes)."
