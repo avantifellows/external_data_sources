@@ -1,0 +1,54 @@
+# ojee/
+
+OJEE (Odisha) B.Tech counselling opening/closing ranks — 2025 actuals from
+the OJEE Cell's own OR-CR document, replacing the 2024 proxy futures-v2's
+state_OD.py had to use while the 2025 data sat behind candidate login.
+OJEE published it openly in May 2026 as reference for the live 2026 cycle
+(the same prior-year-on-the-new-portal pattern as AP).
+
+**THE RANKS ARE JEE (MAIN) RANKS** for the B.Tech rows — Odisha admits
+first-year B.Tech on JEE Main through OJEE counselling, so closing ranks
+run into the lakhs. `rank_family` separates the document's three scales
+(btech-jeemain / barch-bplan / film); never compare across them.
+
+## Pipeline shape
+
+```
+ojee/raw/OD_OJEE_2025_btech_orcr.pdf          36 pages, 1,543 rows
+       │  scripts/build_clean.py              hybrid parse + de-fuse
+       ▼
+ojee/clean/ojee_fact_cutoffs.parquet          1,543 rows
+       │  scripts/upload_to_gcs.py            raw + clean → GCS
+       ▼
+gs://avantifellows-external-data/ojee/{raw,clean}/
+       │  scripts/load_bq.py                  WRITE_TRUNCATE
+       ▼
+avantifellows.external_data_sources.ojee_fact_cutoffs   (asia-south1)
+```
+
+**Single source of truth: [`scripts/sources.py`](scripts/sources.py)** — with
+the refresh drill for the 2026 OR-CR (2026 was mid-cycle at capture).
+
+## The parse (this PDF fights back)
+
+The source PDF physically overprints text: six institutes' long names
+overflow their column and render ON TOP of the programme text at the same
+y — the characters x-interleave, so even word extraction returns fused
+tokens ("iAnEeReOriSnPgA…" = AEROSPACE ENGINEERING × the institute tail).
+`build_clean.py` recovers everything deterministically:
+
+- right-hand columns (category/seat/ranks/quota/TFW) via a y-locked word
+  parse anchored on the numeric rank tokens — digits survive interleaving
+  in order, and the CAT code column never fuses;
+- institute/programme via subsequence-removal of the known overflow tails
+  (interleaving preserves character order in both strings), tried in both
+  greedy directions, normalised against the document's own clean spellings,
+  with full-match asserts on every step;
+- one bucket the source itself prints twice (BPUT 5-year integrated CSE,
+  two adjacent rank windows) is kept verbatim, disambiguated by `dup_seq`,
+  and pinned in an assert so anything new fails the build.
+
+## Where this surfaces
+
+- **BigQuery**: `external_data_sources.ojee_fact_cutoffs`.
+- Predictor / open data: see the checklist run (PR #23 thread).
