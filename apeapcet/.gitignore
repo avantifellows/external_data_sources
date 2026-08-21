@@ -1,0 +1,5 @@
+raw/
+extracted/
+clean/
+__pycache__/
+*.pyc
