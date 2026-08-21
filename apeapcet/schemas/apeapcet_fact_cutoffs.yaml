@@ -1,0 +1,101 @@
+tables:
+  avantifellows.external_data_sources.apeapcet_fact_cutoffs:
+    claude_md_summary: "AP EAPCET (Andhra Pradesh) engineering counselling LAST ranks, 2025 — 29,848 rows, one per college × branch × local-area × category × gender, verbatim from APSCHE's consolidated PDF. Gender is part of the grain (Boys = open-to-all pool, Girls = 33% women's reservation); SC is sub-classified SC-I/II/III from 2025; BC-A..E are AP's own sub-lists. college_type from the source's type column (UNIV govt / SF / SS / PVT / PU); branch_code verbatim, no legend."
+    description: |
+      AP EAPCET consolidated last ranks — 2025, the newest cycle APSCHE has
+      published in full (the 2026 cycle was mid-counselling at load time).
+      29,848 rows melted from the official 60-page PDF: every college x
+      branch x local-area x category x gender cell that has a rank.
+
+      GOTCHAS (read before writing SQL):
+
+      1. LAST RANK ONLY, and ranks are AP EAPCET ranks. LOWER = harder.
+         NOT comparable to TG-EAPCET (same exam name pre-bifurcation,
+         different rank space) or anything else.
+
+      2. GENDER IS PART OF THE GRAIN, and asymmetric: the source footnote
+         says "Girls are also eligible for Boys seats" — OC_BOYS et al. are
+         in effect the open-to-all pools; the GIRLS columns are the 33%
+         women's-reservation pools. Never sum or average across gender.
+
+      3. SC IS SUB-CLASSIFIED (2025 onward): SC-I / SC-II / SC-III are
+         separate pools with separate cutoffs — there is no single SC
+         number. Same shape as BC-A..BC-E (AP's own BC sub-lists; central
+         OBC certificates are not the vocabulary here). Use category_raw /
+         sub_pool; `category` gives canonical GEN/EWS/OBC-NCL/SC/ST.
+
+      4. local_area IS PART OF THE GRAIN: private universities (PU) publish
+         separate AU and SVU rows per branch with different closing ranks.
+         For other college types local_area is the institute's own region.
+
+      5. college_type IS THE SOURCE'S OWN COLUMN, decoded empirically:
+         'Univ-Govt' (UNIV: AU/SVU/JNTU constituent colleges — the public
+         scope), 'Univ-SelfFin'/'Univ-SelfSup' (SF/SS: self-financed pools
+         INSIDE those campuses — same college, higher fees, the TNEA (SS)
+         lesson), 'Private' (PVT), 'Private-Univ' (PU).
+
+      6. A REPEATED RANK ACROSS A ROW (e.g. 151904 in every column) means
+         the seat went begging — the "last rank" printed is the overall
+         last allotted candidate, not a competitive cutoff. The Convener's
+         own disclaimer: the table is informational and "shall in no way
+         reflect the rank upto which seat can be allotted in the present
+         academic year".
+
+      7. branch_code IS VERBATIM (CSE, ECE, AID, AIM, CSD...). The source
+         ships no code→name legend; display names live in product code,
+         not here.
+
+      RELATED. tgeapcet_fact_cutoffs is the Telangana twin (same exam
+      family, disjoint rank space); wbjee/keam/kcet/mhtcet/gujcet/tnea are
+      the other state tables. Raw PDF:
+      gs://avantifellows-external-data/apeapcet/raw/.
+
+    coverage:
+      years: [2025]
+      notes: |
+        Read from BigQuery on 2026-08-21. One cycle: 2025 (Phase-consolidated
+        by APSCHE). 274 colleges, 73 branch codes. The 2026 consolidated file
+        did not exist yet at load time — the refresh drill is documented in
+        apeapcet/scripts/sources.py (probe EAPCET2026LASTRANKDETAILS.pdf on
+        cap.apcfss.in; the server soft-200s bogus paths, check content-type).
+
+    core_columns:
+      exam_year:     {type: INTEGER, description: "2025."}
+      college_code:  {type: STRING, description: "APSCHE institute code (AUCE, JNTK...)."}
+      college_name:  {type: STRING, description: "Verbatim, line-wraps flattened."}
+      type_raw:      {type: STRING, description: "'PVT' | 'PU' | 'UNIV' | 'SF' | 'SS' — the source's column."}
+      college_type:  {type: STRING, description: "Decoded: Univ-Govt | Univ-SelfFin | Univ-SelfSup | Private | Private-Univ — GOTCHA #5."}
+      inst_region:   {type: STRING, description: "Institute's university region: AU | SVU | SW."}
+      district:      {type: STRING, description: "District code (EG, VSP...)."}
+      local_area:    {type: STRING, description: "'AU' | 'SVU' — part of the grain for PU rows, GOTCHA #4."}
+      branch_code:   {type: STRING, description: "Verbatim branch code — GOTCHA #7."}
+      category_raw:  {type: STRING, description: "Full source column name, e.g. 'SCII_GIRLS' — GOTCHAS #2, #3."}
+      category_code: {type: STRING, description: "Category without gender: OC, SCI..SCIII, ST, BCA..BCE, OC_EWS."}
+      category:      {type: STRING, description: "Canonical: GEN | EWS | OBC-NCL | SC | ST."}
+      sub_pool:      {type: STRING, description: "The sub-classification (SCI/SCII/SCIII, BCA..BCE) when applicable."}
+      gender:        {type: STRING, description: "'Boys' (open-to-all pool) | 'Girls' (women's reservation) — GOTCHA #2."}
+      closing_rank:  {type: INTEGER, description: "Last allotted AP EAPCET rank. LOWER = harder. The only rank published."}
+
+    example_queries:
+      - name: "Government-university cutoffs, OC Boys (the default query)"
+        sql: |
+          SELECT college_name, branch_code, closing_rank
+          FROM `avantifellows.external_data_sources.apeapcet_fact_cutoffs`
+          WHERE category_raw = 'OC_BOYS' AND college_type = 'Univ-Govt'
+          ORDER BY closing_rank LIMIT 20
+        notes: "AUCE Visakhapatnam CSE (2937) and JNTUK Kakinada CSE (2970) lead. Say 'AP EAPCET rank'."
+      - name: "SC sub-classification at one seat (why there is no single SC cutoff)"
+        sql: |
+          SELECT category_code, gender, closing_rank
+          FROM `avantifellows.external_data_sources.apeapcet_fact_cutoffs`
+          WHERE college_code = 'AUCE' AND branch_code = 'CSE' AND category = 'SC'
+          ORDER BY category_code, gender
+        notes: "Up to six numbers (SC-I/II/III x Boys/Girls) for one seat."
+      - name: "The PU local-area split"
+        sql: |
+          SELECT college_name, branch_code, local_area, closing_rank
+          FROM `avantifellows.external_data_sources.apeapcet_fact_cutoffs`
+          WHERE type_raw = 'PU' AND category_raw = 'OC_BOYS'
+            AND branch_code = 'CSE'
+          ORDER BY college_name, local_area LIMIT 12
+        notes: "Same university, same branch, different AU vs SVU closing ranks — local_area is grain, not metadata."
