@@ -242,6 +242,15 @@ EXAM_DATASETS = [
      "parquet_as_extracted": ("apeapcet/clean/apeapcet_fact_cutoffs.parquet",
         "apeapcet/extracted/apeapcet_last_ranks_2025.csv",
         "Andhra Pradesh — Last ranks by college, branch, category and gender (2025)", 2025)},
+    {"id": "ojee", "category": "admissions", "title": "OJEE 2025 B.Tech admissions (Odisha)",
+     "source": {"label": "ojee.nic.in", "url": "https://ojee.nic.in/opening-closing-rank/"},
+     "blurb": "The OJEE Cell's opening and closing ranks for B.Tech counselling - the ranks are JEE (Main) ranks, since Odisha admits first-year B.Tech on JEE Main - plus the extracted table.",
+     "files": [
+        ("ojee/raw/OD_OJEE_2025_btech_orcr.pdf", "Odisha — 2025 B.Tech opening and closing ranks (JEE Main ranks)", "raw", 2025),
+     ],
+     "parquet_as_extracted": ("ojee/clean/ojee_fact_cutoffs.parquet",
+        "ojee/extracted/ojee_btech_last_ranks_2025.csv",
+        "Odisha — Opening and closing ranks by college, programme and category (2025)", 2025)},
 ]
 
 
