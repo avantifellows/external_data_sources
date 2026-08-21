@@ -48,13 +48,13 @@ RAW_FILES = [
     ("KEAM_2025_arch_p1.pdf", "last_rank_arch_p1_final.pdf", 2025, "architecture", "P1"),
     ("KEAM_2025_bpharm_p1.pdf", "lrank_bpharm_final.pdf", 2025, "bpharm", "P1"),
     ("KEAM_2025_bpharm_p2.pdf", "lrank_p2_bpharm_final.pdf", 2025, "bpharm", "P2"),
-    ("KEAM_2025_mbbs_p1.pdf", "mbbs_lrank_final.pdf", 2025, "mbbs", "P1"),
-    ("KEAM_2025_mbbs_p2.pdf", "mbbs_lrank_p2_final.pdf", 2025, "mbbs", "P2"),
-    ("KEAM_2025_mbbs_p3.pdf", "mbbs_lrank_p3_final2.pdf", 2025, "mbbs", "P3"),
-    ("KEAM_2025_allied_p1.pdf", "lrank_allied_p1_final.pdf", 2025, "allied", "P1"),
-    ("KEAM_2025_allied_p2.pdf", "lrank_allied_p2_final.pdf", 2025, "allied", "P2"),
-    ("KEAM_2025_allied_p3.pdf", "lrank_allied_p3_final.pdf", 2025, "allied", "P3"),
 ]
+
+# Kerala's MBBS/BDS and AYUSH/allied rounds are NEET-based counselling, not
+# KEAM-exam admissions - "state_medical is NEET". Their 2025 phase-wise
+# last-rank PDFs were captured here initially but live with the NEET source:
+# gs://avantifellows-external-data/neet/raw/kerala_cee_2025_{mbbs,allied}_p*_lastranks.pdf
+# (published on the open-data page under the NEET-UG dataset's Kerala group).
 
 # what the uploader stages: every registered PDF plus the two archived listing pages
 UPLOAD_FILES = [t[0] for t in RAW_FILES] + ["KEAM_2025_lastrank_page.html", "KEAM_2026_lastrank_page.html"]
