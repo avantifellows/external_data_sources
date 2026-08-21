@@ -1,0 +1,91 @@
+tables:
+  avantifellows.external_data_sources.keam_fact_cutoffs:
+    claude_md_summary: "KEAM (Kerala) engineering counselling LAST ranks, 2025-2026 including the live 2026 cycle — 19,610 rows, one per phase × course × college × category, verbatim. Closing rank only (KEAM publishes no opening rank); ranks are the KEAM engineering state rank. Kerala's own category vocabulary (SM + nine SEBC communities + SC/ST/EW + sub-codes); college_type from CEE's G/S column, where G collapses Govt and Govt-Aided."
+    description: |
+      KEAM engineering last-rank tables from CEE Kerala — 2025 (Phases 1-2)
+      and the CURRENT 2026 cycle (Trial + Phases 1-2 as of 21 Aug 2026).
+      19,610 rows, every published cell kept verbatim.
+
+      GOTCHAS (read before writing SQL):
+
+      1. CLOSING RANK ONLY. KEAM publishes the last admitted rank per cell;
+         there is no opening rank anywhere in the source. Ranks are the KEAM
+         engineering state rank — LOWER = harder. Never compare across exams.
+
+      2. EVERY PHASE IS A ROW, including 2026's 'Trial' — CEE's mock
+         allotment run before Phase 1, new in 2026. For "the" cutoff take
+         the latest real phase (P2 in both years so far) and expect later
+         phases to appear while the 2026 cycle runs.
+
+      3. KERALA'S CATEGORY VOCABULARY IS ITS OWN. SM = State Merit (open).
+         The nine SEBC COMMUNITY columns (EZ Ezhava, MU Muslim, BH, LA, DV,
+         VK, BX, KN, KU) are separate pools, not one OBC bucket — central
+         OBC certificates are not valid in Kerala. EW = EWS. Free-text
+         sub-codes ride along verbatim: FW (fee waiver), PD (PwD), YN
+         (Yatheem), minority-seat codes (MM etc.), SD (new in 2026).
+         category_raw is the truth; `category` gives canonical
+         GEN/EWS/OBC-NCL/SC/ST/OTHER for cross-exam queries.
+
+      4. college_type COMES FROM CEE'S OWN Type COLUMN: 'G' → 'Govt' — but
+         Kerala collapses Government AND Government-Aided into that one
+         letter, so the govt scope here is broader than TNEA's. 'S' →
+         'Private/SF' (self-financing).
+
+      5. A CELL EXISTS ONLY IF THE SEAT WAS ALLOTTED. '-' cells (no
+         allotment / no seat in that category) are absent rows, not zeros —
+         COUNT(*) per college varies by design.
+
+      RELATED. wbjee / kcet / mhtcet / gujcet / tgeapcet / tnea
+      _fact_cutoffs are the sibling state tables; rank spaces never
+      comparable. Raw PDFs (engineering + the unparsed architecture,
+      B.Pharm, MBBS and allied documents, both years):
+      gs://avantifellows-external-data/keam/raw/.
+
+    coverage:
+      years: [2025, 2026]
+      notes: |
+        Read from BigQuery on 2026-08-21. Both cycles CEE still serves
+        (keam2023/keam2024 are gone from the portal). 2026 is LIVE:
+        engineering published through Phase 2; later phases, and Kerala's
+        NEET-based medical last ranks, land on the same page. Rows: 2025
+        P1 3,934 / P2 3,358; 2026 Trial 4,171 / P1 4,316 / P2 3,831.
+        116 colleges, 49 courses in 2026.
+
+    core_columns:
+      exam_year:        {type: INTEGER, description: "2025 or 2026; 2026 is the current cycle."}
+      phase:            {type: STRING, description: "'Trial' (2026 mock), 'P1', 'P2'. Scope on it — GOTCHA #2."}
+      course:           {type: STRING, description: "Course section header, verbatim (e.g. 'Computer Science and Engineering')."}
+      college_code:     {type: STRING, description: "CEE's 3-letter code (TVE, KKE...). Stable within the source."}
+      college_name:     {type: STRING, description: "Verbatim, line-wraps flattened."}
+      college_type_raw: {type: STRING, description: "'G' | 'S' — CEE's own column."}
+      college_type:     {type: STRING, description: "'Govt' (incl. Govt-Aided — GOTCHA #4) | 'Private/SF'."}
+      category_raw:     {type: STRING, description: "Kerala's vocabulary, verbatim — GOTCHA #3."}
+      category:         {type: STRING, description: "Canonical: GEN | EWS | OBC-NCL | SC | ST | OTHER."}
+      sub_pool:         {type: STRING, description: "SEBC community / sub-code when category is OBC-NCL or OTHER."}
+      closing_rank:     {type: INTEGER, description: "Last admitted KEAM rank. LOWER = harder. The only rank published."}
+
+    example_queries:
+      - name: "2026 government cutoffs, State Merit, latest phase (the default query)"
+        sql: |
+          SELECT college_name, course, closing_rank
+          FROM `avantifellows.external_data_sources.keam_fact_cutoffs`
+          WHERE exam_year = 2026 AND phase = 'P2'
+            AND category_raw = 'SM' AND college_type = 'Govt'
+          ORDER BY closing_rank LIMIT 20
+        notes: "CET Thiruvananthapuram CSE (584) and ECE (601) lead, then GEC Thrissur. Say 'KEAM rank'."
+      - name: "How a seat moved 2025 → 2026"
+        sql: |
+          SELECT exam_year, phase, closing_rank
+          FROM `avantifellows.external_data_sources.keam_fact_cutoffs`
+          WHERE college_code = 'TVE' AND course LIKE '%Computer Science%'
+            AND category_raw = 'SM'
+          ORDER BY exam_year, phase
+        notes: "Join on college_code, not name. TVE CSE SM: 482 (2025 P2) → 584 (2026 P2)."
+      - name: "SEBC community pools at one college (why OBC is not one bucket)"
+        sql: |
+          SELECT category_raw, sub_pool, closing_rank
+          FROM `avantifellows.external_data_sources.keam_fact_cutoffs`
+          WHERE exam_year = 2026 AND phase = 'P2' AND college_code = 'TVE'
+            AND course LIKE '%Computer Science%' AND category = 'OBC-NCL'
+          ORDER BY closing_rank
+        notes: "Nine communities close at nine different ranks — a single 'OBC cutoff' does not exist in Kerala."
