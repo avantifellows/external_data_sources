@@ -52,6 +52,9 @@ DCS_RAW = RAW / "dcs"
 #                              nirf_fact_rankings (the Dataful vintage)
 #   *_amogh_aishe_list.txt   — Amogh's AISHE-matched 2024 Engineering
 #                              participant list (NIRF Extractor project)
+#   *_crosswalk_aishe_codes.txt — AISHE codes bridged by the curated JoSAA
+#                              matches in metadata/build_overall_college_mapping.py
+#                              (Aug 2026) — surfaced 6 more CDN-hosted institutes
 # Both are unioned with ids harvested from the saved ranking pages; the CDN
 # probe is what decides membership, the seeds only widen the candidate pool.
 DCS_SEEDS = DCS_RAW / "seeds"
