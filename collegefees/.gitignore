@@ -1,0 +1,3 @@
+# Data never enters git — the raw sheet and clean parquet live on GCS.
+raw/
+clean/
