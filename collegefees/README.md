@@ -8,9 +8,9 @@ own published fee structure, cleaned into one BQ table.
 raw/college_fee_hostel_details_2025-26.csv     the sheet, archived verbatim
        │ scripts/build_clean.py     ← Demo_ID re-parse, waived-total repair,
        ▼                              annualisation, conflict policy
-clean/collegefees_fees.parquet
+clean/collegefees_costs.parquet
        │ scripts/upload_to_gcs.py → gs://avantifellows-external-data/collegefees/
-       │ scripts/load_bq.py       → avantifellows.external_data_sources.collegefees_fact_fees
+       │ scripts/load_bq.py       → avantifellows.external_data_sources.collegefees_fact_costs
 ```
 
 ## Provenance and verification

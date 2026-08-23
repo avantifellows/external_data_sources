@@ -1,5 +1,5 @@
 """
-Clean the hand-collected fee sheet into collegefees_fees.parquet.
+Clean the hand-collected fee sheet into collegefees_costs.parquet.
 
 What it does, and why:
 

@@ -37,9 +37,9 @@ BQ_DATASET  = "external_data_sources"
 BQ_LOCATION = "asia-south1"
 
 RAW_CSV       = RAW / "college_fee_hostel_details_2025-26.csv"
-CLEAN_PARQUET = CLEAN / "collegefees_fees.parquet"
+CLEAN_PARQUET = CLEAN / "collegefees_costs.parquet"
 
-BQ_TABLE   = f"{BQ_PROJECT}.{BQ_DATASET}.collegefees_fact_fees"
+BQ_TABLE   = f"{BQ_PROJECT}.{BQ_DATASET}.collegefees_fact_costs"
 GCS_RAW    = f"gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/{RAW_CSV.name}"
 GCS_CLEAN  = f"gs://{GCS_BUCKET}/{GCS_PREFIX}/clean/{CLEAN_PARQUET.name}"
 
