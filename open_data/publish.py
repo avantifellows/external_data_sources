@@ -284,6 +284,7 @@ STAT_DATASETS = [
         ("nirf/raw/dcs/ranking_pages.zip", "NIRF — Ranking, band and participant pages, as published", "raw", "2016-2025"),
         ("nirf/raw/dcs/dcs_pdfs_engineering_2019-2025.zip", "NIRF — Institute data-submission PDFs, Engineering", "raw", "2019-2025"),
         ("nirf/raw/dcs/dcs_pdfs_medical_2019-2025.zip", "NIRF — Institute data-submission PDFs, Medical", "raw", "2019-2025"),
+        ("nirf/raw/dcs/dcs_pdfs_university_2019-2025.zip", "NIRF — Institute data-submission PDFs, University track", "raw", "2019-2025"),
      ],
      # NOT published: nirf_aggregate (a derived pivot of master — policy says
      # derived artifacts stay out) and the Dataful strength extract for the
@@ -293,10 +294,10 @@ STAT_DATASETS = [
         ("nirf/clean/nirf_rankings.parquet", "nirf/extracted/nirf_rankings.csv", "NIRF — Rankings and bands by category and year", "2016-2025"),
         ("nirf/clean/nirf_master.parquet", "nirf/extracted/nirf_master.csv", "NIRF — All submitted metrics, 9 categories (third-party extract)", "2019-2025"),
         ("nirf/clean/nirf_strength.parquet", "nirf/extracted/nirf_strength.csv", "NIRF — Student strength, 9 categories (third-party extract)", "2016-2025"),
-        ("nirf/clean/nirf_dcs_placements.parquet", "nirf/extracted/nirf_dcs_placements.csv", "NIRF — Placements and median salary, institute-filed (Engineering + Medical)", "2019-2025"),
-        ("nirf/clean/nirf_dcs_intake.parquet", "nirf/extracted/nirf_dcs_intake.csv", "NIRF — Sanctioned intake by program level (Engineering + Medical)", "2019-2025"),
-        ("nirf/clean/nirf_dcs_strength.parquet", "nirf/extracted/nirf_dcs_strength.csv", "NIRF — Student strength and demographics, institute-filed (Engineering + Medical)", "2019-2025"),
-        ("nirf/clean/nirf_dcs_institution.parquet", "nirf/extracted/nirf_dcs_institution.csv", "NIRF — PhD and faculty counts, institute-filed (Engineering + Medical)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_placements.parquet", "nirf/extracted/nirf_dcs_placements.csv", "NIRF — Placements and median salary, institute-filed (Engineering, Medical, University)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_intake.parquet", "nirf/extracted/nirf_dcs_intake.csv", "NIRF — Sanctioned intake by program level (Engineering, Medical, University)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_strength.parquet", "nirf/extracted/nirf_dcs_strength.csv", "NIRF — Student strength and demographics, institute-filed (all three tracks)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_institution.parquet", "nirf/extracted/nirf_dcs_institution.csv", "NIRF — PhD and faculty counts, institute-filed (all three tracks)", "2019-2025"),
         ("nirf/clean/nirf_participants.parquet", "nirf/extracted/nirf_participants.csv", "NIRF — All participating institutes (Engineering + Medical)", "2016-2025"),
      ]},
     {"id": "naac", "category": "education-statistics",
