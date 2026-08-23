@@ -182,6 +182,25 @@ def _build_dcs(table: Table) -> pd.DataFrame:
     df = df.drop_duplicates()
     grain = list(table.grain)
     conflicts = df[df.duplicated(grain, keep=False)]
+    if len(conflicts) and table.bq_name == "nirf_fact_dcs_strength":
+        # NIRF's program level is a DURATION bucket, not a program name — an
+        # institute with two different 2-year PG programs legitimately files
+        # two strength rows under "PG [2 Year Program(s)]" (Punjabi University
+        # 2020 does exactly this, in the DCS PDF just as in the Dataful
+        # vintage). Every strength measure is an additive headcount, so the
+        # bucket total is the sum — same policy as nirf_fact_strength.
+        keys = conflicts[grain].drop_duplicates()
+        print(f"    ⚠ {len(conflicts):,} strength rows across {len(keys):,} grain "
+              f"keys legitimately repeat a duration bucket — SUMMED:")
+        for _, k in keys.iterrows():
+            print("        " + " / ".join(str(k[c]) for c in grain))
+        measures = [c for c in df.columns
+                    if c not in grain and df[c].dtype.kind in "if"]
+        others = [c for c in df.columns if c not in grain and c not in measures]
+        df = (df.groupby(grain, as_index=False, dropna=False)
+                .agg({**{c: "sum" for c in measures},
+                      **{c: "first" for c in others}}))[list(df.columns)]
+        conflicts = df[df.duplicated(grain, keep=False)]
     if len(conflicts):
         raise SystemExit(
             f"{table.bq_name}: {len(conflicts):,} rows share a grain key with "

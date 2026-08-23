@@ -62,7 +62,7 @@ DCS_SEEDS = DCS_RAW / "seeds"
 # ranking_category values that are FIRST-PARTY in nirf_fact_rankings: rows for
 # these come from nirfindia.org pages (extracted/nirf_rankings_official.csv);
 # every other category still carries the Dataful vintage. See build_clean.py.
-FIRST_PARTY_CATEGORIES = ("Engineering", "Medical")
+FIRST_PARTY_CATEGORIES = ("Engineering", "Medical", "University")
 
 # ─── GCS ────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"
