@@ -100,10 +100,75 @@ NIRF_TABLES = [
     "nirf_fact_strength",
 ]
 
+# First-party DCS ids (Aug 2026): the CDN hosts "Data Submitted by Institution"
+# PDFs for rank-band and formerly-ranked institutes that never appear in the
+# ranked tables above — NIT Mizoram, NSUT, COEP etc. live only here. No state
+# column; modern U-/C- ids self-extract via S1, the rest are in the manual map.
+NIRF_DCS_TABLE = "nirf_fact_dcs_institution"
+
 KCET_TABLE = "kcet_fact_cutoffs"
 NMC_TABLE  = "nmc_fact_mbbs_seats"
 
-NIRF_METHOD_PRIORITY = {"s1_id_extract": 0, "s2_name_state_bridge": 1, "s3_name_state_direct": 2}
+NIRF_METHOD_PRIORITY = {"s0_manual": -1, "s1_id_extract": 0,
+                        "s2_name_state_bridge": 1, "s3_name_state_direct": 2}
+
+# ── Curated manual matches (s0) ───────────────────────────────────────────────
+# NIRF ids whose suffix is NOT an AISHE code (I-/N-/S- letters), so S1 cannot
+# extract, and whose names defeat the ratio matchers — each verified by hand
+# against the AISHE registry in Aug 2026. The NMIMS entry is the cautionary
+# tale: a name-ratio match scores 1.00 against the TELANGANA campus (C-75649)
+# when the NIRF id means the Mumbai deemed university.
+_NIRF_MANUAL: dict[str, str] = {
+    "IR-E-I-1033": "U-1032",   # International Institute of Information Technology Bhubaneswar
+    "IR-E-I-1074": "U-0100",   # IIT Delhi (also bridged via old ids; kept for completeness)
+    "IR-E-I-1075": "U-0517",   # IIT Kanpur (same)
+    "IR-E-I-1093": "C-46232",  # Noida Institute of Engg. and Technology, Greater Noida
+    "IR-E-I-1356": "U-0656",   # Rabindranath Tagore University, Bhopal
+    "IR-E-I-1441": "U-0475",   # Saveetha Institute of Medical and Technical Sciences
+    "IR-E-I-1480": "U-0385",   # Thapar Institute of Engineering and Technology, Patiala
+    "IR-E-N-10":   "U-0319",   # NMIMS Mumbai (NOT the Telangana campus C-75649)
+    "IR-E-N-13":   "C-46229",  # Galgotias College of Engineering and Technology, Greater Noida
+    "IR-E-S-8898": "U-0989",   # NIFTEM Kundli, Haryana
+    "IR-E-S-8931": "U-1283",   # NITIE, now IIM Mumbai
+    # IR-E-I-1015 (Vishwakarma Institute of Technology, Pune) has NO row in
+    # any AISHE dim — only its VIIT/university siblings do. Left unmapped.
+}
+
+# JoSAA institute names (2025 spellings — what the college tab joins on) that
+# every automatic strategy misses, verified by hand against AISHE. Deliberate
+# ABSENCES, do not "fix": BIT Deoghar/Patna Off-Campus and ICT Mumbai's IOC
+# Bhubaneswar campus (branch campuses — the parent institution's NIRF and
+# identity data would be wrong for them); NIELIT Gorakhpur and NIELIT Patna
+# (no AISHE row exists).
+_JOSAA_MANUAL: dict[str, str] = {
+    "CU Jharkhand": "U-0204",
+    "Gati Shakti Vishwavidyalaya, Vadodara": "U-0968",
+    "Ghani Khan Choudhary Institute of Engineering and Technology, Malda, West Bengal": "S-14559",
+    "INDIAN INSTITUTE OF INFORMATION TECHNOLOGY SENAPATI MANIPUR": "U-0770",
+    "Indian Institute of Information Technology (IIIT), Sri City, Chittoor": "U-0760",
+    "Indian Institute of Information Technology (IIIT)Kota, Rajasthan": "U-0799",
+    "Indian Institute of Information Technology Bhopal": "U-1193",
+    "Indian Institute of Information Technology Design & Manufacturing Kurnool, Andhra Pradesh": "U-0863",
+    "Indian Institute of Information Technology Tiruchirappalli": "U-0754",  # AISHE knows it as IIIT Srirangam
+    "Indian Institute of Information Technology(IIIT) Kalyani, West Bengal": "U-0796",
+    "Indian Institute of Information Technology(IIIT) Kilohrad, Sonepat, Haryana": "U-0800",
+    "Indian Institute of Information Technology(IIIT) Una, Himachal Pradesh": "U-0797",
+    "Indian Institute of Information Technology(IIIT), Vadodara, Gujrat": "U-0798",
+    "Indian institute of information technology, Raichur, Karnataka": "U-1089",
+    "Institute of Engineering and Technology, Dr. H. S. Gour University. Sagar (A Central University)": "U-0271",  # AISHE spells it "Gaur"
+    "International Institute of Information Technology, Naya Raipur": "U-0970",
+    "Islamic University of Science and Technology Kashmir": "U-0194",
+    "J.K. Institute of Applied Physics & Technology, Department of Electronics & Communication, University of Allahabad- Allahabad": "U-0548",
+    "National Institute of Electronics and Information Technology, Aurangabad (Maharashtra)": "C-34391",
+    "National Institute of Food Technology Entrepreneurship and Management, Kundli": "U-0989",
+    "North Eastern Regional Institute of Science and Technology, Nirjuli-791109 (Itanagar),Arunachal Pradesh": "U-0046",
+    "Rajiv Gandhi National Aviation University, Fursatganj, Amethi (UP)": "U-1117",
+    "Sant Longowal Institute of Engineering and Technology": "U-0384",
+    "School of Engineering, Tezpur University, Napaam, Tezpur": "U-0056",
+    "School of Studies of Engineering and Technology, Guru Ghasidas Vishwavidyalaya, Bilaspur": "U-0085",
+    "Shri G. S. Institute of Technology and Science Indore": "C-36143",
+    "Shri Mata Vaishno Devi University, Katra, Jammu & Kashmir": "U-0201",
+}
 KCET_METHOD_PRIORITY = {"s1_name_exact": 0, "s2_name_short": 1, "s3_ratio": 2}
 NMC_METHOD_PRIORITY  = {"s1_name_exact": 0, "s2_name_short": 1, "s3_ratio": 2,
                         "s4_spaceless_exact": 3, "s5_token_canon": 4}
@@ -244,8 +309,10 @@ def _read_aishe(client) -> pd.DataFrame:
 
 def _read_nirf(client) -> pd.DataFrame:
     union = "\n    UNION ALL\n    ".join(
-        f"SELECT institute_id, institute_name, state FROM `{BQ_PROJECT}.{BQ_DATASET}.{t}`"
-        for t in NIRF_TABLES
+        [f"SELECT institute_id, institute_name, state FROM `{BQ_PROJECT}.{BQ_DATASET}.{t}`"
+         for t in NIRF_TABLES]
+        + [f"SELECT institute_id, institute_name, CAST(NULL AS STRING) AS state "
+           f"FROM `{BQ_PROJECT}.{BQ_DATASET}.{NIRF_DCS_TABLE}`"]
     )
     sql = f"""
         SELECT institute_id,
@@ -270,6 +337,13 @@ def _read_nirf(client) -> pd.DataFrame:
 
 def _match_nirf(aishe: pd.DataFrame, nirf: pd.DataFrame) -> pd.DataFrame:
     """Returns per-AISHE-code nirf_institute_ids list + best match method."""
+    # S0: hand-curated ids (I-/N-/S- letters that S1 cannot extract)
+    s0 = pd.DataFrame(
+        [{"institute_id": iid, "aishe_code": code}
+         for iid, code in _NIRF_MANUAL.items()
+         if iid in set(nirf["institute_id"])]
+    ).assign(nirf_match_method="s0_manual")
+
     # S1: modern ids with extractable AISHE code
     s1 = (
         nirf[nirf["is_modern"] & nirf["s1_code"].notna()]
@@ -302,10 +376,17 @@ def _match_nirf(aishe: pd.DataFrame, nirf: pd.DataFrame) -> pd.DataFrame:
         .assign(nirf_match_method="s3_name_state_direct")
     )
 
-    matched = pd.concat([s1, s2, s3], ignore_index=True)
+    matched = pd.concat([s0, s1, s2, s3], ignore_index=True)
+    # one row per (id, code): an id may arrive via both s0 and a bridge —
+    # keep the highest-priority method so the array holds no duplicates
+    matched["_pri"] = matched["nirf_match_method"].map(NIRF_METHOD_PRIORITY)
+    matched = (matched.sort_values("_pri")
+               .drop_duplicates(subset=["institute_id", "aishe_code"], keep="first")
+               .drop(columns="_pri"))
     print(
-        f"  NIRF S1={len(s1):,}  S2={len(s2):,}  S3={len(s3):,}  "
-        f"unmatched={len(nirf) - len(matched):,}  total={len(nirf):,}"
+        f"  NIRF S0={len(s0):,}  S1={len(s1):,}  S2={len(s2):,}  S3={len(s3):,}  "
+        f"unmatched={nirf['institute_id'].nunique() - matched['institute_id'].nunique():,}  "
+        f"total={len(nirf):,}"
     )
 
     def _agg(grp: pd.DataFrame) -> pd.Series:
@@ -356,6 +437,14 @@ def _match_josaa(aishe: pd.DataFrame, josaa: pd.DataFrame) -> pd.DataFrame:
     aishe_norm_dedup  = aishe.drop_duplicates(subset="norm_name", keep="first")
     aishe_short_dedup = aishe.drop_duplicates(subset="short_norm_name", keep="first")
     aishe_short_dedup = aishe_short_dedup[aishe_short_dedup["short_norm_name"].str.len() > 5]
+
+    # S0: hand-curated names none of the automatic strategies reach
+    s0 = pd.DataFrame(
+        [{"institute": name, "aishe_code": code}
+         for name, code in _JOSAA_MANUAL.items()
+         if name in set(josaa["institute"])]
+    ).assign(josaa_match_method="s0_manual")
+    josaa = josaa[~josaa["institute"].isin(set(s0["institute"]))]
 
     # S1: exact normalised name
     s1 = (
@@ -433,17 +522,20 @@ def _match_josaa(aishe: pd.DataFrame, josaa: pd.DataFrame) -> pd.DataFrame:
         columns=["institute", "aishe_code", "josaa_match_method", "_ratio"]
     )
 
-    matched = pd.concat([s1, s2, s3a, s3b[["institute", "aishe_code", "josaa_match_method"]]], ignore_index=True)
+    # s0 first: on an aishe-code collision the hand-curated 2025 spelling must
+    # win over an automatic match on an older year's spelling, because the
+    # college tab and the predictor join on the latest year's names.
+    matched = pd.concat([s0, s1, s2, s3a, s3b[["institute", "aishe_code", "josaa_match_method"]]], ignore_index=True)
     dupes = matched[matched.duplicated(subset="aishe_code", keep=False)]
     if not dupes.empty:
         print(f"  ⚠ {dupes['aishe_code'].nunique()} aishe_code(s) claimed by multiple JoSAA institutes — keeping first:")
         for code, grp in dupes.groupby("aishe_code"):
             print(f"    {code}: {list(grp['institute'])}")
         matched = matched.drop_duplicates(subset="aishe_code", keep="first")
-    n_unmatched = len(josaa) - len(matched)
+    n_unmatched = len(josaa) + len(s0) - len(matched)
     print(
-        f"  JoSAA S1={len(s1):,}  S2={len(s2):,}  S3a={len(s3a):,}  S3b={len(s3b):,}  "
-        f"unmatched={n_unmatched:,}  total={len(josaa):,}"
+        f"  JoSAA S0={len(s0):,}  S1={len(s1):,}  S2={len(s2):,}  S3a={len(s3a):,}  S3b={len(s3b):,}  "
+        f"unmatched={n_unmatched:,}  total={len(josaa) + len(s0):,}"
     )
     if len(s3a) > 0:
         print("  S3a (paren-free) matches:")
@@ -915,7 +1007,7 @@ def main() -> None:
 
     if args.dry_run:
         print("\n[dry-run] Not writing to BQ. Sample rows with NMC match:")
-        sample = result[result["nmc_sl_no"].notna()].head(15)
+        sample = result[result["nmc_college_name"].notna()].head(15)
         for _, r in sample.iterrows():
             print(
                 f"  {r['aishe_code']:<10}  ({r['nmc_match_method']})  "
