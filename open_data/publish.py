@@ -263,7 +263,7 @@ STAT_DATASETS = [
      "title": "College fees and hostel charges (JoSAA + KCET, 2025-26)",
      "blurb": "Tuition, total institute fees and hostel/mess charges per college, course and seat category, hand-collected from each college's own published fee structure — the source link travels on every row. JoSAA colleges effectively complete; KCET partial (25 colleges); entry-year figures.",
      "parquet_as_extracted": [
-        ("collegefees/clean/collegefees_fees.parquet", "collegefees/extracted/collegefees_fees.csv", "College fees — Tuition, total and hostel by college, course and category", "2025-26"),
+        ("collegefees/clean/collegefees_costs.parquet", "collegefees/extracted/collegefees_costs.csv", "College fees — Tuition, total and hostel by college, course and category", "2025-26"),
      ]},
 
     {"id": "aishe", "category": "education-statistics",
