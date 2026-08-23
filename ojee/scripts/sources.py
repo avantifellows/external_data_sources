@@ -14,6 +14,16 @@ prior-year-on-the-new-portal pattern as AP. Archive on sight.
 REFRESH DRILL: when 2026 counselling concludes, recheck that page for
 "OPENING & CLOSING RANKS - BTECH 2026" (2026 was mid-flight at capture:
 B.Tech Round 2 allotted 16-07-2026).
+
+NON-B.TECH COURSES (B.Pharm / MCA / M.Tech / lateral entry - the courses
+OJEE's own exam decides), as of 2026-08-22: no public cutoff document
+exists. The "CUTOFF OJEE-2025" page (ojee.nic.in/or-cr/) is an EMPTY
+placeholder (title + breadcrumb, no content), and the 2024/2025
+consolidated PDFs cover only the B.Tech family. Lead for a future hunt:
+the candidate activity board links to admissions.nic.in/OJEE/ with
+per-stream boardIds - the same NIC platform that serves WBJEE's public
+ORCR reports - so per-stream OR-CR may surface there. Parked: B.Tech is
+the priority for Avanti.
 """
 from pathlib import Path
 
