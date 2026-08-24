@@ -89,7 +89,12 @@ DIRECT = {
     'person serial no.': 'srl_no',
     'relationship to head': 'rel',
     'whether a member on the date of revisit': 'whether_member',
+    # PLFS renamed this field between releases: layouts through 2022-23 and the calendar
+    # releases call it "Sex", the 2023-24 annual layout calls it "Gender" (Block 4, item 5, same
+    # byte position, same 1/2/3 codes). Without the second spelling the column canonicalised to
+    # nothing and annual_2023_24 loaded with sex 100% NULL while every other release was fine.
     'sex': 'sex',
+    'gender': 'sex',
     'age': 'age',
     'marital status': 'marst',
     'general educaion level': 'gedu_lvl',  # PLFS source typo "Educaion"

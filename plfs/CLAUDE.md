@@ -98,6 +98,22 @@ all three:
    following CY2024's naming. Don't bypass this — write/read clean CSVs by
    canonical name.
 
+   **An unmapped label FAILS SILENTLY, and has.** `canonical_name()` falls back to
+   a slug of the source label, so a field it doesn't recognise still parses — it
+   just lands in a column nobody reads, and the canonical column it should have
+   filled stays NULL for that release only. PLFS renamed "Sex" to **"Gender"** in
+   the 2023-24 annual layout (same block 4, item 5, byte 41, same 1/2/3 codes);
+   with no mapping for the new spelling, `annual_2023_24` loaded with `sex` and
+   `sex_label` 100% NULL, a stray `gender` column appeared in `plfs_fact_persons`
+   for that one release, and nothing anywhere errored. It surfaced months later as
+   a downstream sex filter returning zero rows.
+
+   So when adding a release: **diff its layout's Full Names against the previous
+   one** and check every new canonical column is populated after parsing, rather
+   than assuming a clean parse means a correct one. See also the `no_qtr` variants
+   and the "Educaion" typo in `DIRECT` — this is a recurring source behaviour, not
+   a one-off.
+
 3. **Weight rule** (this is the easy place to introduce a silent 2×–100× error):
    - `combined` — `mult / no_qtr / IF(nss = nsc, 100, 200)` — standard, most releases
    - `half_yearly` — `combined / 2` — CY2023 only (half-yearly panel design)
