@@ -66,6 +66,15 @@ DISCIPLINES = {
         "page_years": range(2018, 2026),
         "cdn_years": range(2019, 2026),
     },
+    # Added Aug 2026 for the private-university ask (MSDF): deemed/state-private
+    # universities mostly file under the University track, not Engineering.
+    "University": {
+        "page": "UniversityRanking",
+        "cdn_dir": "University",
+        "prefix": "IR-O",
+        "page_years": range(2016, 2026),
+        "cdn_years": range(2019, 2026),
+    },
 }
 # band-page suffixes to try per year; absent ones 404 and are skipped
 BAND_SUFFIXES = ["100", "150", "200", "250", "300"]
