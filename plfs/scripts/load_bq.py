@@ -537,6 +537,20 @@ def _upload(df: pd.DataFrame, table_id: str, *, append: bool, project: str | Non
             else bigquery.WriteDisposition.WRITE_TRUNCATE
         ),
         autodetect=True,
+        # RELEASES DO NOT SHARE A COLUMN SET, so an append must be allowed to widen the table.
+        # The first release creates the schema by autodetect; a later one carries a field it never
+        # had (ecoprd_pas, from the 2023-24 annual layout onward) and a plain WRITE_APPEND rejects
+        # the whole job with "Cannot add fields". That made `load_bq.py` with no --release fail
+        # partway through, leaving the table holding only the releases loaded before the failure -
+        # which is how the 255-column production table became unreproducible from this script.
+        #
+        # ALLOW_FIELD_ADDITION lets each append widen the schema, with earlier rows NULL for the new
+        # field; columns a later release LACKS are already fine, since autodetect makes everything
+        # NULLABLE. The end state is the union of every release's columns, in load order, which is
+        # what the table is supposed to be.
+        schema_update_options=(
+            [bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION] if append else None
+        ),
     )
     job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
     job.result()
@@ -593,6 +607,31 @@ def main() -> None:
     # ── Fact tables — release by release, streaming to BQ ───────────────────
     print("\n=== Fact tables ===")
     release_ids = list(_iter_releases(args.release))
+
+    # `--release` APPENDS; it does not replace. `first` is False whenever args.release is set (so a
+    # single-release load never truncates the other ten), which means running it against a release
+    # already in the table silently DOUBLES that release - 922,599 duplicate person-rows in the case
+    # that prompted this guard. There is no delete step, so refuse loudly instead of corrupting the
+    # table. A full reload (no --release) is the supported way to restate an existing release.
+    if args.release and not args.dry_run:
+        from google.cloud import bigquery as _bq
+
+        _client = _bq.Client(project=args.project)
+        for _t in ("plfs_fact_persons", "plfs_fact_households"):
+            try:
+                _n = list(_client.query(
+                    f"SELECT COUNT(*) AS n FROM `{tbl(_t)}` WHERE release_id = @r",
+                    job_config=_bq.QueryJobConfig(query_parameters=[
+                        _bq.ScalarQueryParameter("r", "STRING", args.release)]),
+                ).result())[0].n
+            except Exception:
+                _n = 0          # table absent on a first-ever load: nothing to duplicate
+            if _n:
+                sys.exit(
+                    f"REFUSING: {tbl(_t)} already holds {_n:,} rows for release "
+                    f"'{args.release}'. --release APPENDS, it does not replace, so this would "
+                    f"duplicate them. Run a full reload (no --release) to restate this release."
+                )
     for i, release_id in enumerate(release_ids):
         print(f"\n[{i+1}/{len(release_ids)}] {release_id}")
         first = (i == 0) and not args.release  # don't truncate when loading a single release
