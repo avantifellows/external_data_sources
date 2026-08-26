@@ -56,7 +56,8 @@ divide by 2 for the calendar-year estimate.
 weight = combined(row) / 2
 ```
 
-Per the CY2023 README §2-3.
+Per the CY2023 README §3: "Simple average of the estimates of the two panels will generate
+estimate for the Calendar Year 2023."
 
 ### 3. `simple` — CY2025 only
 
@@ -95,6 +96,54 @@ or wage analyses. `get_weight_fn('calendar_2021')` raises
 
 Source of truth: `clean/releases.csv` column `weight_rule`. Generated from
 `scripts/releases.py`.
+
+## Every rule verified against its own release's README, 2026-08-26
+
+Until this audit the rules had been generalised from one or two READMEs. All eleven are now read, and
+each coded rule is checked against the sentence in its own release's document.
+
+| release | its README says | coded | ✓ |
+|---|---|---|---|
+| `annual_2018_19` | `MLTS/100 if NSS=NSC = MLTS/200 otherwise`; "For annual estimate, MLTS may be divided by number of quarters" | `combined` | ✓ |
+| `annual_2019_20` | identical wording | `combined` | ✓ |
+| `annual_2020_21` | same, divisor defined as "(count of surveyed FSUs in a sector x state x stratum x substratum)" | `combined` | ✓ |
+| `annual_2021_22` | same, "(number of times a particular sector x state x stratum x substratum contributes in the year in terms of surveyed FSUs)" | `combined` | ✓ |
+| `annual_2022_23` | `MULT/100 … /200`; "MULT may be divided by NO_QTR (count of occurrences of surveyed FSUs…)" | `combined` | ✓ |
+| `annual_2023_24` | `MULT/100 … /200`; "divided by NO_QTR (count of contributing sector x state x stratum x substratum in 4 quarters)" | `combined` | ✓ |
+| `calendar_2022` | `MULT/(NO_QTR*100)` if `NSS=NSC` else `MULT/(NO_QTR*200)` — divisor inside the formula | `combined` | ✓ same arithmetic |
+| `calendar_2023` | same formula **for the Half Yearly Panel**, then §3: "Simple average of the estimates of the two panels will generate estimate for the Calendar Year 2023" | `half_yearly` (`combined`/2) | ✓ |
+| `calendar_2024` | `MULT/(NO_QTR*100)` … `*200`, for the Calendar Year | `combined` | ✓ |
+| `calendar_2025` | "Since the weight (MULT) is calculated at two places of decimal, the final weight will be: Final Weight = MULT/100" | `simple` | ✓ |
+| `calendar_2021` | `MLTS/100 … /200` **with no NO_QTR**, and "Simple average of the estimates of the two Panels will generate estimate for the Calendar Year 2021" | `limited` | n/a — see below |
+
+Three things this audit changed or found:
+
+1. **`annual_2023_24` had no documentation in this repo at all.** Its acquisition took only the Nesstar
+   bundle and the portal's download guide, so its rule had never been checked against its own README.
+   Pulled from catalog 213 and filed in `raw/docs_annual_2023_24/` — it matches `combined`. See that
+   folder's `SOURCE.md`.
+2. **`calendar_2023`'s `/2` is correct and now sourced.** It is §3 of its README ("simple average of the
+   estimates of the two panels"), not §2-3 as this file previously cited. The number was right; the
+   citation pointed at the wrong paragraph.
+3. **`calendar_2021` is a HALF-YEARLY release, not just a limited one.** Its README carries the same
+   "simple average of the two Panels" instruction and gives the formula *without* `NO_QTR`. It is
+   currently `limited` (stripped schema, `weight_annual` NULL) so nothing is wrong today — but if it is
+   ever enabled it needs `half_yearly` and its own divisor handling, **not** `combined`. Recorded here
+   because "limited" hides that.
+
+## One documented mechanism for the drift
+
+`raw/docs_annual_2023_24/Note_on_Updated_Instruction_for_PLFS_2023-24.pdf` §2.1.5 records the urban
+frame code changing: "A new frame code **2017-22 UFS-18** for urban samples has been added. The updated
+frame codes for urban areas … are: 2007-12 UFS-15, 2012-17 UFS-17, 2017-22 UFS-18."
+
+So the urban sampling frame IS refreshed between releases, which is a documented reason for the frame's
+implied population — and therefore the weighted total — to move. It does not quantify the drift, and it
+says nothing about rural, so it is a mechanism rather than the explanation.
+
+**Follow-up worth doing: the frame code is not parsed.** It is item 11 of Schedule 0.0PL, and no clean
+CSV carries it, so the hypothesis cannot be tested against our own data. Parsing it would let the urban
+drift be attributed to frame vintage directly instead of argued from a note.
 
 ## Sub-sample-wise and quarterly estimates
 
