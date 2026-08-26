@@ -162,6 +162,7 @@ we add a new year, the only change is in [`scripts/releases.py`](scripts/release
 PLFS/
 ├── README.md                     ← this file
 ├── WEIGHTS.md                    ← per-release weight rules
+├── EARNINGS.md                   ← the three earnings bases, and why not to average them
 │
 ├── raw/                          ← source files (mostly gitignored; data is gated)
 │   ├── docs_*/                   ← layout XLSX + README PDF per release
@@ -263,6 +264,13 @@ Notable maps:
 ## 10. Weights
 
 See [WEIGHTS.md](WEIGHTS.md). Four rules across releases:
+
+### Earnings
+
+See [EARNINGS.md](EARNINGS.md). PLFS records earnings on **three bases**, not one: `ern_reg` (monthly,
+regular salaried), `ern_self` (monthly, self-employment) and `ern11`-`ern27` (daily, per activity, over
+the last 7 days — this is where CASUAL workers' earnings live). They are on two different reference
+periods and must never be averaged together.
 
 - **`combined`** — `mult / no_qtr / IF(nss = nsc, 100, 200)`. Standard rule.
   Used by all annual releases + CY2022 + CY2024.
