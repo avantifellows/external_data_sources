@@ -50,10 +50,14 @@ mixed:
 4. **The item breakdowns overlap.** Only `item_group=1` (social category)
    partitions the student body. Religion is a subset, BPL and EWS and repeaters and
    disability all cut across it. Summing across item groups double-counts children.
-5. **`pseudocode` is pseudonymised.** It joins the DSP tables to each other within
-   a year and nothing else. There is no school name and no UDISE code in the
-   release, so it cannot reach Avanti's own school lists. Cross-year stability is
-   unverified.
+5. **`pseudocode` is pseudonymised, but it IS stable across editions.** It joins
+   the DSP tables to each other and reaches nothing outside the release — no school
+   name, no UDISE code, no path to Avanti's own school lists. It does, however, hold
+   across years, so a school-level longitudinal panel is valid: 7.39M school-years
+   carry only 1.58M distinct ids, overlap between editions is 92.8-99.2% and decays
+   with the gap, and on shared ids pincode agrees 96.3-97.5% against a 0.013% chance
+   baseline. See `udise_dim_school_dsp.yaml` for the full evidence. What does NOT
+   hold still is **district** — 87-90% agreement, because districts are redrawn.
 
 ### Codemaps
 
@@ -67,6 +71,7 @@ Everything in `../codemaps/` is transcribed from the committed codebook PDFs in
 | `dsp_school_category.csv` | school category → class range |
 | `dsp_management.csv` | management code → who runs the school, plus a Government/Aided/Private/Other/Unknown rollup |
 | `dsp_age_item_id.csv` | the item_group=8 age id, DERIVED from the data — the codebooks publish no key |
+| `dsp_state_name.csv` | the two state names the source spells differently between editions |
 | `dsp_school_type.csv`, `dsp_rural_urban.csv`, `dsp_resi_school.csv`, `dsp_building_status.csv`, `dsp_yes_no.csv` | the small enums |
 
 Medium of instruction and affiliation board are DCF codes whose value lists the

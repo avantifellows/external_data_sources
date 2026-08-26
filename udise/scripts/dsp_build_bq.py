@@ -270,7 +270,7 @@ def dim_year_sql(lay: dict[str, list[str]], year: str) -> str:
         "    p1.pseudocode",
         # 2020-21 publishes state and district in Title Case, every later edition in
         # UPPER. Normalising here is what makes a five-year panel joinable at all.
-        "    UPPER(TRIM(p1.state)) AS state",
+        "    COALESCE(sn.canonical_name, UPPER(TRIM(p1.state))) AS state",
         "    UPPER(TRIM(p1.district)) AS district",
         "    p1.rural_urban AS rural_urban_code",
         "    ru.label AS rural_urban",
@@ -309,6 +309,7 @@ def dim_year_sql(lay: dict[str, list[str]], year: str) -> str:
         + "\n  LEFT JOIN school_type_map st ON st.code = p1.school_type"
         + "\n  LEFT JOIN management_map mg ON mg.code = p1.managment"
         + "\n  LEFT JOIN resi_school_map rs ON rs.code = p1.resi_school"
+        + "\n  LEFT JOIN state_name_map sn ON sn.source_name = UPPER(TRIM(p1.state))"
     )
 
 
@@ -324,6 +325,10 @@ def dim_sql(lay: dict[str, list[str]], years: list[str]) -> str:
                    [[r["code"], r["label"], r["broad_group"]] for r in read_codemap("dsp_management.csv")]),
         values_cte("resi_school_map", ["code", "label"],
                    [[r["code"], r["label"]] for r in read_codemap("dsp_resi_school.csv")]),
+        # The source spells two states differently in different editions. Left
+        # unnormalised, a five-year GROUP BY state silently splits them.
+        values_cte("state_name_map", ["source_name", "canonical_name"],
+                   [[r["source_name"], r["canonical_name"]] for r in read_codemap("dsp_state_name.csv")]),
     ]
     body = "\n  UNION ALL\n".join(dim_year_sql(lay, y) for y in years)
     return (

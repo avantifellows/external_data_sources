@@ -49,18 +49,45 @@ description: >
   `year_of_establishment` is populated in 2020-21 (as year_of_establishment) and
   2025-26 (as estd_year) and is NULL in between, where the source drops it.
 
-  STATE AND DISTRICT ARE UPPER-CASED HERE. The 2020-21 edition publishes them in
-  Title Case ("Telangana") and every later edition in upper case ("GUJARAT"). Both
-  are normalised to UPPER(TRIM(...)) on the way in, which is what makes a five-year
-  panel groupable by state at all. District names are still only names — they are
+  STATE AND DISTRICT ARE UPPER-CASED HERE, AND TWO STATE NAMES ARE CANONICALISED.
+  The 2020-21 edition publishes them in Title Case ("Telangana") and every later
+  edition in upper case ("GUJARAT"); both are normalised to UPPER(TRIM(...)). On top
+  of that the source spells two states inconsistently between editions, and
+  codemaps/dsp_state_name.csv fixes both on the way in:
+    * TAMILNADU (2020-21, 2022-23, 2023-24, 2025-26) vs TAMIL NADU (2024-25 only)
+      -> TAMIL NADU. Unfixed, a five-year GROUP BY state splits Tamil Nadu in two
+      and strands the 2024-25 edition's 57,370 schools away from their own history.
+    * DAMAN & DIU AND DADRA & NAGAR HAVELI (2020-21) vs DADRA & NAGAR HAVELI AND
+      DAMAN & DIU (2022-23 onward) -> the latter. The two UTs merged in January
+      2020 and the source settled on one word order a year later.
+  Together these are what make a five-year panel groupable by state at all. District names are still only names — they are
   not LGD codes and are not guaranteed stable across years or unique across states,
   so group by (state, district), never district alone.
 
-  THE SCHOOL KEY IS PSEUDONYMISED. `pseudocode` joins this table to
-  udise_fact_enrolment_dsp and to the other DSP file groups within a year. It is NOT
-  a UDISE code, there is no school name in the release, and it CANNOT be linked to
-  Avanti's own school lists. Cross-year stability is unverified — check before
-  building any school-level longitudinal panel on it.
+  THE SCHOOL KEY IS PSEUDONYMISED, AND IT IS STABLE ACROSS EDITIONS. `pseudocode`
+  joins this table to udise_fact_enrolment_dsp, udise_fact_teacher_dsp and
+  udise_fact_facility_dsp. It is NOT a UDISE code, there is no school name in the
+  release, and it CANNOT be linked to Avanti's own school lists.
+
+  Cross-year stability was an open question and is now settled: the SAME school id
+  is reused across editions, so a school-level longitudinal panel IS valid. The
+  evidence:
+    * 7,385,291 school-years carry only 1,577,066 distinct pseudocodes — about the
+      size of ONE edition. Re-randomised ids would give roughly five times as many.
+    * Id overlap between editions runs 92.8-99.2% and decays monotonically with the
+      gap between them (adjacent editions 98.5-99.2%, the 2020-21 to 2025-26 span
+      92.8%). That decay is ordinary school opening and closing; re-randomisation
+      would give overlap independent of distance.
+    * On shared ids, PINCODE agrees 96.3-97.5% of the time against a chance
+      baseline of 0.013% — a ratio of about 7,400x. Management agrees 98.4-99.4%
+      (chance 35%) and school category 94.7-98.8% (chance 31%).
+    * State agrees 100.00% once the two spelling variants below are normalised.
+
+  DISTRICT IS THE ONE ATTRIBUTE THAT GENUINELY MOVES. District agrees on only
+  87-90% of shared ids. That is not an id problem — India creates and redraws
+  districts frequently, and the source records the district a school sits in at the
+  time of the return. Do not treat a district change as evidence the id moved; do
+  not build a district-level panel that assumes fixed boundaries.
 
   NO PII. School attributes only; no student and no staff records.
 
