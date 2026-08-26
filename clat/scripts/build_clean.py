@@ -35,6 +35,7 @@ STATE = {
     "MH": "Maharashtra", "OD": "Odisha", "PB": "Punjab", "RJ": "Rajasthan",
     "TN": "Tamil Nadu", "TR": "Tripura", "UP": "Uttar Pradesh",
     "UK": "Uttarakhand", "WB": "West Bengal", "DNH": "Dadra and Nagar Haveli",
+    "TL": "Telangana", "TG": "Telangana",
 }
 SPECIAL = {"NCC", "CAP", "ESP", "CDP", "DFF", "DSC", "TFF", "FF", "SP",
            "DOM", "XS", "WXS", "KM", "TIB"}
@@ -122,8 +123,11 @@ def main() -> None:
     o["is_women_row"]       = [d[3] for d in dec]
     o["is_pwd_row"]         = [d[4] for d in dec]
     o["special_quota"]      = [d[5] for d in dec]
+    # women/PwD overlay rows are horizontal quotas, not domicile-restricted —
+    # never state-ify them
     fallback = (o.domicile_state.isna()
                 & o.category_canonical.notna()
+                & ~o.is_women_row & ~o.is_pwd_row
                 & ~o.category_code.isin(ALL_INDIA_CODES))
     o.loc[fallback, "domicile_state"] = o.loc[fallback, "college"].map(nlu_state)
     print(f"  domicile inferred from the NLU's own state on "

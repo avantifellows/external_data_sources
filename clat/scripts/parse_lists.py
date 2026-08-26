@@ -100,7 +100,7 @@ def parse_cutoff_table(pdf, college, program):
             if m and not line.strip().startswith("Reservation"):
                 label = m.group(1).strip()
                 codes = [c for c in re.findall(r"\(([^()]+)\)", label)
-                         if re.fullmatch(r"[A-Z][A-Za-z0-9&\- ]{1,20}", c)]
+                         if re.fullmatch(r"[A-Z][A-Za-z0-9&\- ]{0,20}", c)]
                 # PDF line wrap can truncate long labels ("…freedom fighter
                 # Or"), colliding several categories onto one visible label —
                 # suffix an occurrence number so no two rows merge silently.
