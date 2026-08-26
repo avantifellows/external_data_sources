@@ -1,0 +1,17 @@
+code,label,broad_group,note
+1,Dept. of Education,Government,
+2,Tribal Welfare Department,Government,
+3,Local Body,Government,
+4,Govt. aided,Aided,
+5,Pvt. Unaided (Recognized),Private,
+6,Other Govt. Managed Schools,Government,
+8,Unrecognized,Private,
+90,Social Welfare Dept.,Government,
+91,Ministry of Labour,Government,
+92,Central School,Government,"Kendriya Vidyalaya"
+93,Jawahar Navodaya Vidhyalaya,Government,"the JNV network — see the jnv/ source in this repo"
+94,Sanik School,Government,
+95,Railway School,Government,
+96,Central Tibetan School,Government,
+97,Madarsa Recognized (by Wakf Board/Madarsa Board),Other,
+98,Madarsa Unrecognized,Other,

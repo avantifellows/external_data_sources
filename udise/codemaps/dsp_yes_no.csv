@@ -1,0 +1,5 @@
+code,label,note
+1,Yes,
+2,No,"No is 2, NOT 0 — a truthiness test on a *_yn column is wrong for every No row"
+9,Not Applicable,
+0,Not reported,"seen in the data on columns the codebook documents as Yes=1/No=2; treat as missing"

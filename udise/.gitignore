@@ -10,7 +10,10 @@ raw/*.XLSX
 raw/dsp/**/*.zip
 raw/dsp/**/*.csv
 raw/dsp/**/*.CSV
+raw/dsp/**/*.gz
+raw/dsp/**/*.pdf
 raw/dsp/**/extracted/
+raw/dsp/_staged/
 
 # Parsed output.
 clean/*.parquet
@@ -18,3 +21,8 @@ clean/*.csv
 
 # The DSP codebook PDFs in docs/ ARE committed — small, public, and the only
 # description of the column meanings.
+
+# The repo-root .gitignore excludes *.json. dsp_layouts.json is the opposite of
+# data: it is the observed CSV header of every DSP file we stage, and committing it
+# is what makes a silent upstream schema change show up as a git diff.
+!schemas/dsp_layouts.json

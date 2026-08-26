@@ -6,14 +6,14 @@ UDISE+ school data → BigQuery.
 
 | | Grain | Status |
 |---|---|---|
-| **Report 4000** (dashboard cross-tab) | state × management × category × class × gender | **ingested** → `udise_fact_enrolment`, 42,270 rows |
-| **DSP microdata** (Data Sharing Portal) | **one row per school**, 2020-21 + 2024-25 | **not ingested** — raw files held, see [`docs/DSP_INGEST_PLAN.md`](docs/DSP_INGEST_PLAN.md) |
+| **Report 4000** (dashboard cross-tab) | state × management × category × class × gender, AY 2024-25 | **ingested** → `udise_fact_enrolment`, 42,270 rows |
+| **DSP microdata** (Data Sharing Portal) | **one row per school**, 5 editions 2020-21 → 2025-26 | pipeline built → `udise_dim_school_dsp`, `udise_fact_enrolment_dsp` — see [DSP](#dsp-microdata-school-level) below |
 
 The DSP release is the one carrying **BPL and EWS enrolment per school**, which is
-the income/poverty dimension AISHE has no equivalent for. ~754 MB of zips in
+the income/poverty dimension AISHE has no equivalent for. ~1.7 GB of zips in
 `raw/dsp/` (gitignored); registered in `sources.py` as `DSP_YEARS` / `DSP_GROUPS`.
 
-The rest of this README describes Report 4000.
+The next section describes Report 4000; DSP is documented [further down](#dsp-microdata-school-level).
 
 School enrolment by state × school-management × school-category × location ×
 class × gender, AY 2024-25. The source is a wide dashboard cross-tab; this
@@ -90,3 +90,96 @@ gcloud auth application-default login            # for upload + load
    `scripts/sources.py` at it.
 2. `clean_udise.py` → `upload_to_gcs.py` → `load_bq.py`. The fact keys on
    `academic_year`, so new years append cleanly.
+
+
+---
+
+# DSP microdata (school level)
+
+The Data Sharing Portal release: **one row per school**, five academic years
+(2020-21, 2022-23, 2023-24, 2024-25, 2025-26 — 2021-22 is not held). Read
+[`schemas/README.md`](schemas/README.md) before querying it; it has the five
+gotchas that otherwise produce confident wrong numbers.
+
+**Why we have it.** It is the only school-level source we hold with a poverty and
+social-composition breakdown — **BPL** (`item_group=3, item_id=13`) and **EWS**
+(`item_group=10, item_id=32`) enrolment per school, per class, per gender, alongside
+social category, religion, disability and repeaters. AISHE has no household-income
+variable in any edition. This is what sizes the low-income student population Avanti
+serves, in numbers the government itself publishes.
+
+**What is committed vs where the data lives.** Git holds the pipeline, the schema
+YAMLs, the codemaps and the observed layouts (`schemas/dsp_layouts.json`). No data:
+the zips and every intermediate are gitignored and live in GCS and BigQuery.
+
+## Pipeline at a glance
+
+```
+UDISE+ Data Sharing Portal                  (manual download — no static URL)
+       ▼
+raw/dsp/<year>/<group>_All State_<year>.zip           (local; gitignored, ~1.7 GB)
+       │ scripts/dsp_stage.py --raw
+       ▼
+gs://…/udise/raw/dsp/<year>/<zip>                     (source of record, audit copy)
+
+raw/dsp/<year>/<group>/*.zip
+       │ scripts/dsp_stage.py        (zip member → gzip, streamed; never via pandas)
+       ▼
+gs://…/udise/staging/dsp/<year>/<group>/*.csv.gz      (regenerable; delete after load)
+       │ bq load, one table per (year, file group), columns straight from the header
+       ▼
+avantifellows.udise_dsp_staging.<group>_<year>        (transient, 14-day expiry)
+       │ scripts/dsp_build_bq.py     (harmonise 4 layouts, melt wide→long, decode codes)
+       ▼
+avantifellows.external_data_sources.udise_dim_school_dsp
+avantifellows.external_data_sources.udise_fact_enrolment_dsp
+```
+
+The clean layer is **BigQuery-native rather than a parquet in GCS**, which is the
+convention everywhere else in this repo. The melt turns ~12 GB of CSV into hundreds
+of millions of rows; that cannot round-trip through a laptop. The generated SQL is
+deterministic and printable (`--print-sql`), so the tables stay fully regenerable and
+auditable — which is the property the parquet convention exists to protect.
+
+## Four layouts, not one
+
+The five editions are not one schema. `dsp_stage.py` reads each CSV's own header, so
+no per-year config is needed, and records what it saw in `schemas/dsp_layouts.json`.
+
+| Edition | Enrolment | Profile 1 | Profile 2 | Quirks |
+|---|---|---|---|---|
+| 2020-21 | 28 col, text `item_desc` | 53 col | 63 col | key spelt `psuedocode`; each enrolment file **sharded into 6 state CSVs**; extra `NationalStreamEnrolment.csv` |
+| 2022-23 | 29 col, `item_group`+`item_id` | 38 | 17 | — |
+| 2023-24 | 29 col | 38 | 17 | — |
+| 2024-25 | 29 col | 38 | 17 | — |
+| 2025-26 | **42 col — adds `_t` (transgender) per class** | 49 | 17 | new `safety` file group |
+
+Harmonising them is what `dsp_build_bq.py` does: a column a given edition does not
+publish becomes a typed NULL, so all five UNION cleanly, and the coverage groups are
+documented in [`schemas/udise_dim_school_dsp.yaml`](schemas/udise_dim_school_dsp.yaml).
+
+## Running
+
+```bash
+gcloud auth login                                     # bq + gcloud storage
+python3 scripts/dsp_stage.py --raw                    # zips → GCS raw/ (once per edition)
+python3 scripts/dsp_stage.py                          # gz → GCS staging → BQ staging
+python3 scripts/dsp_build_bq.py --print-sql           # inspect the SQL first
+python3 scripts/dsp_build_bq.py                       # build both tables, then validate
+python3 scripts/dsp_build_bq.py --drop-staging        # once the numbers check out
+```
+
+`--gzip-only` runs the slow, credential-free half on its own; `--load-only` picks up
+from already-gzipped files. Both are re-runnable — an existing `.csv.gz` is reused
+rather than re-extracted.
+
+## Adding a new edition
+
+1. Download the file groups from the portal into `raw/dsp/<year>/`, named exactly as
+   the portal produces them (`<group>_All State_<year>.zip`).
+2. Add the year to `DSP_YEARS` in `scripts/sources.py`. If the edition predates the
+   `100_*.csv` naming or shards its files, add it to `DSP_MEMBERS_2020_21`-style
+   registry; otherwise nothing else is needed.
+3. Re-run the pipeline above. New columns stage on their own — check the
+   `schemas/dsp_layouts.json` diff, and add any genuinely new column to `DIM_FIELDS`
+   in `dsp_build_bq.py` if it belongs in the dim.

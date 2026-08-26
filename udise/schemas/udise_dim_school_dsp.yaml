@@ -1,0 +1,297 @@
+# udise_dim_school_dsp
+#
+# Built by udise/scripts/dsp_build_bq.py from the DSP profile_data_1 + profile_data_2
+# staging tables. Regenerable end to end from the portal zips in
+# gs://avantifellows-external-data/udise/raw/dsp/.
+
+description: >
+  UDISE+ Data Sharing Portal school directory: one row per school per academic year,
+  for 2020-21, 2022-23, 2023-24, 2024-25 and 2025-26. Roughly 1.5 million schools an
+  edition. This is the dimension side of the DSP microdata — join it to
+  udise_fact_enrolment_dsp on (academic_year, pseudocode) to break enrolment down by
+  state, management, category, rural/urban or any other school attribute.
+
+  WHAT THE ROWS ARE. Every school in India files a UDISE+ Data Capture Format (DCF)
+  return each year — government, aided, private, recognised and unrecognised. This
+  table is the de-identified school-attribute half of that return, as published on
+  the Data Sharing Portal.
+
+  ALMOST EVERY ATTRIBUTE IS A NUMERIC DCF CODE, NOT TEXT. `school_category`,
+  `school_type`, `management_code`, `rural_urban_code`, the four `medium_instr*`
+  codes and both `aff_board_*` codes are integers defined by the UDISE DCF, not
+  labels. Where a codemap exists in udise/codemaps/ the label is denormalized onto
+  this table next to the code (`school_category`, `school_type`, `management`,
+  `management_group`, `rural_urban`, `resi_school`). Where the codebooks do not
+  publish the full code list — medium of instruction, affiliation board — only the
+  raw code is carried, because inventing labels for them would be a guess.
+
+  TWO SENTINELS WILL WRECK AN AVERAGE IF YOU MISS THEM.
+    * 9 means "Not Applicable" throughout the DSP release, on almost any coded
+      column. A school with `cce_yn = 9` is not a school that answered "9".
+    * Yes is 1 and No is **2**, not 0. Every column ending `_yn`, plus
+      `special_school_for_cwsn`, `shift_school`, `minority_school`,
+      `approachable_road`, `pre_primary`, `smc_exists` and the entitlement columns,
+      follow this. A truthiness test on any of them is wrong for every "No" row.
+
+  COLUMN COVERAGE VARIES BY EDITION — a NULL usually means "not published that
+  year", not "unknown for this school". The three coverage groups are:
+    * 2020-21 only: assembly_constituency, parliamentary_constituency, city,
+      municipality, gram_panchayat, year_of_recognition_*, anganwadi_premises /
+      _boys / _girls / _workers, instr_days_*, avg_school_hrs_*, cce_primary /
+      _upper_primary / _secondary / _higher_secondary, textbooks_received,
+      free_transport_*, smdc_constituted, rte_private_unaided_students.
+    * 2022-23 onward: block, the five lgd_* names, anganwadi_yn, avg_instr_days,
+      cce_yn, class1_preschool_*, balavatika_located_yn, smc_smdc_meetings.
+    * 2025-26 only: cwsn_school_type_code, rte_25pc_admission_yn,
+      certified_fit_india_yn, is_nsqf, prevocational_yn,
+      special_training_centre_yn, smdc_pta_yn, smdc_pta_meetings,
+      remedial_teaching_enrolment, holistic_report_card_yn.
+  `year_of_establishment` is populated in 2020-21 (as year_of_establishment) and
+  2025-26 (as estd_year) and is NULL in between, where the source drops it.
+
+  STATE AND DISTRICT ARE UPPER-CASED HERE. The 2020-21 edition publishes them in
+  Title Case ("Telangana") and every later edition in upper case ("GUJARAT"). Both
+  are normalised to UPPER(TRIM(...)) on the way in, which is what makes a five-year
+  panel groupable by state at all. District names are still only names — they are
+  not LGD codes and are not guaranteed stable across years or unique across states,
+  so group by (state, district), never district alone.
+
+  THE SCHOOL KEY IS PSEUDONYMISED. `pseudocode` joins this table to
+  udise_fact_enrolment_dsp and to the other DSP file groups within a year. It is NOT
+  a UDISE code, there is no school name in the release, and it CANNOT be linked to
+  Avanti's own school lists. Cross-year stability is unverified — check before
+  building any school-level longitudinal panel on it.
+
+  NO PII. School attributes only; no student and no staff records.
+
+grain: (academic_year, pseudocode)
+partitioned_by: academic_year_start (integer range)
+clustered_by: [state, management_code, school_category_code, rural_urban_code]
+
+source:
+  publisher: Ministry of Education, Government of India
+  dataset: UDISE+ Data Sharing Portal — School Profile 1 and School Profile 2
+  editions: [2020-21, 2022-23, 2023-24, 2024-25, 2025-26]
+  raw: gs://avantifellows-external-data/udise/raw/dsp/<year>/profile_data_{1,2}_All State_<year>.zip
+  codebooks: udise/docs/DSP_Schema_2020-21.pdf, udise/docs/DSP_Schema_2024-25.pdf
+
+not_published:
+  - column_range: 2020-21 School Profile 2, source positions 20-45
+    reason: >
+      The CSV header names these 26 columns rte_ews_c0_b … rte_ews_c12_g, but the
+      2020-21 codebook says positions 20-37 are rte_bld_* ("RTE students who have
+      received building, equipment") and only 38-45 are rte_ews_c9 … c12. The header
+      and the codebook disagree about what 26 columns of numbers mean, so neither
+      reading is publishable. They are dropped rather than loaded under a name that
+      might be wrong. Positions 2-19 (rte_pvt_c0 … c8) are unambiguous — both
+      sources agree — and are summed into rte_private_unaided_students.
+
+columns:
+  - name: academic_year
+    type: STRING
+    mode: REQUIRED
+    description: 'Academic year of the edition, e.g. "2024-25".'
+
+  - name: academic_year_start
+    type: INTEGER
+    mode: REQUIRED
+    description: Calendar year the academic year starts in. The partitioning key — filter on it.
+
+  - name: pseudocode
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Pseudonymised school id, unique within an academic year. Joins to
+      udise_fact_enrolment_dsp on (academic_year, pseudocode).
+
+  - name: state
+    type: STRING
+    mode: NULLABLE
+    description: State / UT name, upper-cased and trimmed so 2020-21 matches later editions.
+
+  - name: district
+    type: STRING
+    mode: NULLABLE
+    description: >
+      District name, upper-cased and trimmed. A name, not an LGD code — group by
+      (state, district), never district alone.
+
+  - name: block
+    type: STRING
+    mode: NULLABLE
+    description: Block name. 2022-23 onward only; NULL for 2020-21, which does not publish it.
+
+  - name: rural_urban_code
+    type: STRING
+    mode: NULLABLE
+    description: '1 = Rural, 2 = Urban, 9 = Not Applicable. See codemaps/dsp_rural_urban.csv.'
+
+  - name: rural_urban
+    type: STRING
+    mode: NULLABLE
+    description: Decoded label for rural_urban_code.
+
+  - name: school_category_code
+    type: STRING
+    mode: NULLABLE
+    description: >
+      DCF school category — which class range the school runs. 1 = Primary (1-5),
+      2 = Primary + Upper Primary (1-8), 3 = 1-12, 4 = Upper Primary (6-8),
+      5 = 6-12, 6 = 1-10, 7 = 6-10, 8 = Secondary (9-10), 10 = 9-12,
+      11 = Higher Secondary only (11-12). See codemaps/dsp_school_category.csv.
+
+  - name: school_category
+    type: STRING
+    mode: NULLABLE
+    description: Decoded label for school_category_code, including the class range.
+
+  - name: school_type_code
+    type: STRING
+    mode: NULLABLE
+    description: '1 = Boys, 2 = Girls, 3 = Co-educational. Whether the school admits one sex or both.'
+
+  - name: school_type
+    type: STRING
+    mode: NULLABLE
+    description: Decoded label for school_type_code.
+
+  - name: management_code
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Who runs the school. 1 Dept. of Education, 2 Tribal Welfare, 3 Local Body,
+      4 Govt. aided, 5 Pvt. Unaided (Recognized), 6 Other Govt. Managed,
+      8 Unrecognized, 90 Social Welfare, 91 Ministry of Labour, 92 Kendriya
+      Vidyalaya, 93 Jawahar Navodaya Vidyalaya, 94 Sainik, 95 Railway,
+      96 Central Tibetan, 97/98 Madarsa. Source column is spelt `managment`;
+      renamed here. See codemaps/dsp_management.csv.
+
+  - name: management
+    type: STRING
+    mode: NULLABLE
+    description: Decoded label for management_code.
+
+  - name: management_group
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Government / Aided / Private / Other — the four-way rollup analysts actually
+      group by. Derived from management_code via codemaps/dsp_management.csv.
+
+  - name: lowest_class
+    type: INTEGER
+    mode: NULLABLE
+    description: Lowest class taught in the school.
+
+  - name: highest_class
+    type: INTEGER
+    mode: NULLABLE
+    description: Highest class taught in the school.
+
+  - name: resi_school_code
+    type: STRING
+    mode: NULLABLE
+    description: '1 = Completely Residential, 2 = Partially Residential, 3 = Non-Residential.'
+
+  - name: resi_school
+    type: STRING
+    mode: NULLABLE
+    description: Decoded label for resi_school_code.
+
+  - name: resi_type_code
+    type: STRING
+    mode: NULLABLE
+    description: Type of residential school, as a DCF code. No published code list — raw code only.
+
+  - name: minority_school
+    type: STRING
+    mode: NULLABLE
+    description: 'Minority-managed school. Yes = 1, No = 2, 9 = Not Applicable.'
+
+  - name: special_school_for_cwsn
+    type: STRING
+    mode: NULLABLE
+    description: 'Special school for children with special needs. Yes = 1, No = 2.'
+
+  - name: shift_school
+    type: STRING
+    mode: NULLABLE
+    description: 'Runs in shifts. Yes = 1, No = 2.'
+
+  - name: approachable_road
+    type: STRING
+    mode: NULLABLE
+    description: 'Reachable by an all-weather road. Yes = 1, No = 2.'
+
+  - name: pre_primary
+    type: STRING
+    mode: NULLABLE
+    description: 'Has a pre-primary section other than an anganwadi. Yes = 1, No = 2.'
+
+  - name: pincode
+    type: STRING
+    mode: NULLABLE
+    description: Postal PIN code. Kept as STRING so leading zeros survive.
+
+  - name: medium_instr1_code
+    type: STRING
+    mode: NULLABLE
+    description: >
+      First medium of instruction, as a DCF language code. The codebooks do not
+      publish the language list, so no label is derived. medium_instr2/3/4 are the
+      additional media, 0 where unused.
+
+  - name: aff_board_sec_code
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Affiliation board for secondary, as a DCF code (CBSE, ICSE, a state board, …).
+      No published code list, so no label. 0 where the school has no secondary section.
+
+  - name: aff_board_hsec_code
+    type: STRING
+    mode: NULLABLE
+    description: Affiliation board for higher secondary, same encoding as aff_board_sec_code.
+
+  - name: year_of_establishment
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Year the school was established. Published in 2020-21 and again in 2025-26 (as
+      `estd_year`); NULL for 2022-23 to 2024-25, which drop it.
+
+  - name: avg_instr_days
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Average instructional days in the year. 2022-23 onward. 2020-21 instead
+      publishes instr_days_primary / _upper_primary / _secondary / _higher_secondary.
+
+  - name: grants_receipt
+    type: NUMERIC
+    mode: NULLABLE
+    description: Total grants received by the school in the year, in rupees.
+
+  - name: grants_expenditure
+    type: NUMERIC
+    mode: NULLABLE
+    description: Total grants spent by the school in the year, in rupees.
+
+  - name: rte_private_unaided_students
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Students admitted under the RTE Act's 25% quota in private unaided schools,
+      summed over pre-primary to class 8 and both sexes. 2020-21 only — no later
+      edition publishes it. See the not_published note above for the 26 further
+      2020-21 RTE columns that are deliberately withheld.
+
+# Columns not listed individually above follow the same pattern as their named
+# sibling and are documented by the coverage groups in the table description:
+# the lgd_* names, city / municipality / gram_panchayat / assembly_constituency /
+# parliamentary_constituency, anganwadi_*, class1_preschool_*, instr_days_*,
+# avg_school_hrs_*, cce_*, year_of_recognition_*, the entitlement columns
+# (free_textbooks_*, free_uniform_*, free_transport_*, textbooks_received,
+# special_training, supplementary_material), the oversight counts
+# (academic_inspections, crc_coordinator_visits, block_officer_visits,
+# district_officer_visits), the SMC/SMDC columns, and the 2025-26 additions.
