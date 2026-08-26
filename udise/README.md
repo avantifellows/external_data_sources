@@ -7,7 +7,7 @@ UDISE+ school data → BigQuery.
 | | Grain | Status |
 |---|---|---|
 | **Report 4000** (dashboard cross-tab) | state × management × category × class × gender, AY 2024-25 | **ingested** → `udise_fact_enrolment`, 42,270 rows |
-| **DSP microdata** (Data Sharing Portal) | **one row per school**, 5 editions 2020-21 → 2025-26 | pipeline built → `udise_dim_school_dsp`, `udise_fact_enrolment_dsp` — see [DSP](#dsp-microdata-school-level) below |
+| **DSP microdata** (Data Sharing Portal) | **one row per school**, 5 editions 2020-21 → 2025-26 | **ingested** → 4 tables, see [DSP](#dsp-microdata-school-level) below |
 
 The DSP release is the one carrying **BPL and EWS enrolment per school**, which is
 the income/poverty dimension AISHE has no equivalent for. ~1.7 GB of zips in
@@ -133,7 +133,22 @@ avantifellows.udise_dsp_staging.<group>_<year>        (transient, 14-day expiry)
        ▼
 avantifellows.external_data_sources.udise_dim_school_dsp
 avantifellows.external_data_sources.udise_fact_enrolment_dsp
+avantifellows.external_data_sources.udise_fact_teacher_dsp
+avantifellows.external_data_sources.udise_fact_facility_dsp
 ```
+
+## Tables produced
+
+| Table | Grain | Rows |
+|---|---|---|
+| `udise_dim_school_dsp` | school × academic year | 7,385,291 |
+| `udise_fact_enrolment_dsp` | school × item × class × gender | 504,108,627 |
+| `udise_fact_teacher_dsp` | school × academic year | 7,385,291 |
+| `udise_fact_facility_dsp` | school × academic year | 7,385,291 |
+
+The three school-level facts all key on `(academic_year, pseudocode)` and join to
+the dim. `safety` (2025-26 only) is folded into the facility fact rather than given
+its own table — same grain, same subject.
 
 The clean layer is **BigQuery-native rather than a parquet in GCS**, which is the
 convention everywhere else in this repo. The melt turns ~12 GB of CSV into hundreds

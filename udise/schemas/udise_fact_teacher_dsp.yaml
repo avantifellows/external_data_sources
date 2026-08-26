@@ -1,0 +1,237 @@
+# udise_fact_teacher_dsp
+#
+# Built by udise/scripts/dsp_build_bq.py from the DSP teacher_data staging tables.
+# Regenerable end to end from the portal zips in
+# gs://avantifellows-external-data/udise/raw/dsp/.
+
+description: >
+  UDISE+ Data Sharing Portal teacher counts: one row per school per academic year,
+  for 2020-21, 2022-23, 2023-24, 2024-25 and 2025-26. Join to udise_dim_school_dsp
+  on (academic_year, pseudocode) for state, management and school category, and to
+  udise_fact_enrolment_dsp for the enrolment side of a pupil-teacher ratio.
+
+  WHAT THE NUMBERS ARE. Every school files a UDISE+ Data Capture Format return each
+  year; this is the teaching-staff half of it, as counts of teachers — not a roster.
+  There are no individual teacher records and no names anywhere in the release.
+  National totals land at 9.7-10.3 million teachers an edition, which is the figure
+  UDISE+ itself publishes.
+
+  THE TWO QUALIFICATION AXES ARE SEPARATE — DO NOT ADD THEM TOGETHER. The source
+  reports each teacher twice, once on each of two independent scales, and both
+  scales total roughly the school's whole staff:
+
+    ACADEMIC     teachers_below_graduate + teachers_graduate
+                 + teachers_post_graduate_plus              ≈ teachers_total
+    PROFESSIONAL qual_diploma_certificate + qual_bachelor_elementary_ed
+                 + qual_bed_equivalent + qual_med_equivalent
+                 + qual_diploma_special_ed + qual_pursuing_course
+                 + qual_diploma_elementary_ed + qual_early_childhood
+                 + qual_bed_nursery + qual_other + qual_none  ≈ teachers_total
+
+  Academic = the degree they hold (BA, MA). Professional = the teaching
+  qualification they hold (B.Ed., D.El.Ed., none). Summing across the two counts
+  every teacher twice. The `qual_` prefix marks the professional axis for exactly
+  this reason.
+
+  TRANSGENDER IS A REAL THIRD COUNT HERE. Unlike the enrolment file — where `_b`
+  folds transgender students into boys before 2025-26 — the teacher file has had a
+  distinct `transgender` column in every edition. teachers_male +
+  teachers_female + teachers_transgender is a genuine three-way split.
+
+  `class_taught_*` IS AN ASSIGNMENT, NOT A HEADCOUNT BY STAGE. Each teacher falls
+  in exactly one class_taught_* bucket describing which stage or combination of
+  stages they teach, so those columns also total the staff. A teacher in
+  class_taught_primary_and_upper_primary is NOT also counted in
+  class_taught_primary.
+
+  COVERAGE VARIES BY EDITION — a NULL means "not published that year", not zero:
+    * 2020-21 only: teachers_aged_above_55, teachers_received_service_training.
+    * 2022-23 onward: the social-category columns (teachers_general / _sc / _st /
+      _obc), teachers_trained_cwsn, qual_diploma_elementary_ed,
+      qual_early_childhood, qual_bed_nursery.
+  2020-21 also spells two columns differently at source (`total_teacher`,
+  `total_teacher_trained_computer`); both are mapped onto the same output columns
+  as the later editions, so no query needs to know.
+
+  THE SCHOOL KEY IS PSEUDONYMISED. `pseudocode` joins to the other DSP tables
+  within a year and reaches nothing else. Cross-year stability is unverified.
+
+  NO PII. Counts of teachers per school; no individual staff records.
+
+rows: 7385291
+grain: (academic_year, pseudocode)
+partitioned_by: academic_year_start (integer range)
+clustered_by: [pseudocode]
+validation: >
+  One row per school per year in all five editions, matching udise_dim_school_dsp
+  exactly, with zero rows orphaned from it. SUM(teachers_total) per edition:
+  2020-21 9,696,425; 2022-23 9,483,294; 2023-24 9,807,600; 2024-25 10,122,420;
+  2025-26 10,273,020 — consistent with the ~9.5-10.3M national teacher count
+  UDISE+ reports.
+
+source:
+  publisher: Ministry of Education, Government of India
+  dataset: UDISE+ Data Sharing Portal — Teachers Profile
+  editions: [2020-21, 2022-23, 2023-24, 2024-25, 2025-26]
+  raw: gs://avantifellows-external-data/udise/raw/dsp/<year>/teacher_data_All State_<year>.zip
+  codebooks: udise/docs/DSP_Schema_2020-21.pdf, udise/docs/DSP_Schema_2024-25.pdf
+  note: 2021-22 is not held; the gap is in what was downloaded from the portal.
+
+columns:
+  - name: academic_year
+    type: STRING
+    mode: REQUIRED
+    description: 'Academic year of the edition, e.g. "2024-25".'
+
+  - name: academic_year_start
+    type: INTEGER
+    mode: REQUIRED
+    description: Calendar year the academic year starts in. The partitioning key — filter on it.
+
+  - name: pseudocode
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Pseudonymised school id. Joins to udise_dim_school_dsp and
+      udise_fact_enrolment_dsp on (academic_year, pseudocode).
+
+  - name: teachers_total
+    type: INTEGER
+    mode: NULLABLE
+    description: Total teachers in the school. The denominator for a pupil-teacher ratio.
+
+  - name: teachers_male
+    type: INTEGER
+    mode: NULLABLE
+    description: Male teachers.
+
+  - name: teachers_female
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Female teachers. Unlike the enrolment fact, this is a clean count — the
+      teacher file has never folded transgender staff into another column.
+
+  - name: teachers_transgender
+    type: INTEGER
+    mode: NULLABLE
+    description: Transgender teachers. A distinct count in every edition.
+
+  - name: teachers_general
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Teachers of General social category. 2022-23 onward only — NULL for 2020-21,
+      which does not publish teacher social category. Alongside teachers_sc,
+      teachers_st and teachers_obc these partition the staff.
+
+  - name: teachers_sc
+    type: INTEGER
+    mode: NULLABLE
+    description: Scheduled Caste teachers. 2022-23 onward only.
+
+  - name: teachers_st
+    type: INTEGER
+    mode: NULLABLE
+    description: Scheduled Tribe teachers. 2022-23 onward only.
+
+  - name: teachers_obc
+    type: INTEGER
+    mode: NULLABLE
+    description: Other Backward Classes teachers. 2022-23 onward only.
+
+  - name: teachers_regular
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Teachers on regular terms. With teachers_contract and teachers_part_time this
+      is the employment-terms axis, and it too totals the staff — the contract share
+      is the usual read on staffing precarity.
+
+  - name: teachers_contract
+    type: INTEGER
+    mode: NULLABLE
+    description: Contract teachers.
+
+  - name: teachers_part_time
+    type: INTEGER
+    mode: NULLABLE
+    description: Part-time teachers.
+
+  - name: teachers_below_graduate
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      ACADEMIC axis. Highest academic qualification below graduate (includes below
+      secondary, secondary and higher secondary).
+
+  - name: teachers_graduate
+    type: INTEGER
+    mode: NULLABLE
+    description: ACADEMIC axis. Highest academic qualification is a graduate degree.
+
+  - name: teachers_post_graduate_plus
+    type: INTEGER
+    mode: NULLABLE
+    description: ACADEMIC axis. Post-graduate and above, including M.Phil, PhD and post-doctoral.
+
+  - name: qual_bed_equivalent
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      PROFESSIONAL axis. B.Ed. or equivalent — the standard secondary teaching
+      qualification, and the single most-used column on this axis. Do not add any
+      qual_* column to the teachers_below_graduate / _graduate / _post_graduate_plus
+      set; they measure the same teachers on a different scale.
+
+  - name: qual_none
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      PROFESSIONAL axis. Teachers with NO professional teaching qualification. The
+      key column for a teacher-quality read; read it as a share of teachers_total.
+
+  - name: teachers_trained_computer
+    type: INTEGER
+    mode: NULLABLE
+    description: Teachers trained in the use of computers. Called `total_teacher_trained_computer` in 2020-21.
+
+  - name: teachers_trained_cwsn
+    type: INTEGER
+    mode: NULLABLE
+    description: Teachers trained to teach children with special needs. 2022-23 onward only.
+
+  - name: teachers_aged_above_55
+    type: INTEGER
+    mode: NULLABLE
+    description: Teachers aged over 55 — a retirement-cliff signal. 2020-21 ONLY; no later edition publishes it.
+
+  - name: teachers_received_service_training
+    type: INTEGER
+    mode: NULLABLE
+    description: Teachers who received in-service training. 2020-21 ONLY.
+
+  - name: teachers_non_training_assignment
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Teachers deployed on non-teaching duties (election work, census, and similar).
+      A direct measure of instructional time lost.
+
+  - name: class_taught_primary
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Teachers assigned to primary only. One of nine mutually exclusive
+      class_taught_* buckets that together total the staff — a teacher appears in
+      exactly one. The others are _upper_primary, _primary_and_upper_primary,
+      _secondary_only, _higher_secondary_only, _upper_primary_and_secondary,
+      _secondary_and_higher_secondary, _pre_primary_only and
+      _pre_primary_and_primary.
+
+# The remaining professional-qualification columns follow qual_bed_equivalent
+# exactly and are listed in the description's PROFESSIONAL block:
+# qual_diploma_certificate, qual_bachelor_elementary_ed, qual_med_equivalent,
+# qual_diploma_special_ed, qual_pursuing_course, qual_diploma_elementary_ed,
+# qual_early_childhood, qual_bed_nursery, qual_other. The remaining eight
+# class_taught_* columns follow class_taught_primary.

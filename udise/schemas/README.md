@@ -1,19 +1,16 @@
 # udise schemas
 
-▶ **NEXT: push both branches and open the paired PRs** — `add-udise-dsp-microdata`
-here and `add-udise-dsp-schemas` in data-assistant. Both are committed locally; the
-push is gated by the ship hook. The BigQuery build is done and validated, staging is
-dropped, and the source zips are in GCS.
-
-```bash
-python3 scripts/dsp_build_bq.py --validate    # re-run the checks any time
-```
+▶ **NEXT: nothing outstanding.** All four DSP tables are built, validated and
+documented, staging is dropped, and the source zips are in GCS. Re-run the checks
+any time with `python3 scripts/dsp_build_bq.py --validate`.
 
 | Table | Grain | Schema |
 |---|---|---|
 | `udise_fact_enrolment` | state × management × category × location × class × gender, AY 2024-25 | [udise_fact_enrolment.yaml](udise_fact_enrolment.yaml) |
 | `udise_dim_school_dsp` | school × academic year, 5 editions | [udise_dim_school_dsp.yaml](udise_dim_school_dsp.yaml) |
 | `udise_fact_enrolment_dsp` | school × item × class × gender × academic year, 5 editions | [udise_fact_enrolment_dsp.yaml](udise_fact_enrolment_dsp.yaml) |
+| `udise_fact_teacher_dsp` | school × academic year, 5 editions | [udise_fact_teacher_dsp.yaml](udise_fact_teacher_dsp.yaml) |
+| `udise_fact_facility_dsp` | school × academic year, 5 editions | [udise_fact_facility_dsp.yaml](udise_fact_facility_dsp.yaml) |
 
 `dsp_layouts.json` is generated, not hand-written: `dsp_stage.py` records the
 header of every CSV it stages. It is committed so that an upstream schema change
@@ -34,8 +31,10 @@ mixed:
   dashboard. State × management × category × class × gender. One table:
   `udise_fact_enrolment`.
 - **DSP** (Data Sharing Portal) — a de-identified **school-level** extract, one row
-  per school, downloaded as zips per file group per year. Two tables so far:
-  `udise_dim_school_dsp` and `udise_fact_enrolment_dsp`.
+  per school, downloaded as zips per file group per year. Four tables:
+  `udise_dim_school_dsp` (the directory), `udise_fact_enrolment_dsp`,
+  `udise_fact_teacher_dsp` and `udise_fact_facility_dsp` — the last three all key on
+  `(academic_year, pseudocode)` and join to the dim.
 
 ### The five things that get DSP numbers wrong
 
@@ -82,9 +81,6 @@ guessed label is worse than no label.
 - **`NationalStreamEnrolment.csv`** (inside the 2020-21 enrolment_data_1 zip) — a
   class 11/12 stream × caste cut no other edition publishes. Different grain; it
   needs its own table.
-- **`teacher_data`, `facility_data`, `safety`.** Downloaded and registered in
-  `sources.py`, staged by `dsp_stage.py --groups …` on request, but not modelled
-  yet. They are not on the critical path for the BPL question.
 - **2021-22.** No such edition is held. Adding it later needs only the zips in
   `raw/dsp/2021-22/` and the year added to `DSP_YEARS`.
 
