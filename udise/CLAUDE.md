@@ -97,6 +97,12 @@ status line and the five gotchas. In short:
 - **Don't publish the 2020-21 profile_2 columns at source positions 20-45.** The
   CSV header and the codebook disagree about what those 26 columns mean. See the
   `not_published` block in `schemas/udise_dim_school_dsp.yaml`.
+- **Don't let an unmapped code sit as a silent NULL.** A code missing from a
+  codemap yields a NULL label, and a NULL drops out of a `GROUP BY` without comment
+  — 1.7M students sat in an unnamed management bucket until a query happened to
+  surface it. When the source carries a code no codebook documents, add it to the
+  codemap with an empty label and an `UNDOCUMENTED` note, and give it a rollup value
+  of `Unknown` so it stays visible. Never guess the label.
 - **Don't invent an age mapping.** From 2022-23 the age cut is `item_group=8` with
   an `item_id` the codebook describes only as "Age id (2 to 22)" — no id-to-age
   table is published. 2020-21's readable age labels are carried as-is; the two are
@@ -110,6 +116,11 @@ status line and the five gotchas. In short:
   editions exist — a stale read silently drops a whole edition. `dsp_build_bq.py`
   now cross-checks layouts against the staging dataset and refuses, but wait for
   staging to exit anyway.
-- **Don't leave the staging dataset behind.** `udise_dsp_staging` is transient
-  (14-day table expiry). Drop it with `dsp_build_bq.py --drop-staging` once the
-  finished tables validate.
+- **Don't leave the staging dataset behind — but don't drop it early either.**
+  `udise_dsp_staging` is transient (14-day table expiry), and `dsp_build_bq.py`
+  reads it for EVERY table. Drop it too soon and any later fix — a codemap
+  correction, a renamed column — needs the affected groups re-staged before the
+  table can be rebuilt. Drop it with `dsp_build_bq.py --drop-staging` only once all
+  four tables are built AND their codemaps have settled. Re-staging is cheap while
+  the local `raw/dsp/_staged/**/*.csv.gz` files survive; it is a full re-extract of
+  ~12 GB if they do not.

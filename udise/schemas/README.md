@@ -1,8 +1,8 @@
 # udise schemas
 
 ▶ **NEXT: nothing outstanding.** All four DSP tables are built, validated and
-documented, staging is dropped, and the source zips are in GCS. Re-run the checks
-any time with `python3 scripts/dsp_build_bq.py --validate`.
+documented. Re-run the checks any time with
+`python3 scripts/dsp_build_bq.py --validate`.
 
 | Table | Grain | Schema |
 |---|---|---|
@@ -66,6 +66,7 @@ Everything in `../codemaps/` is transcribed from the committed codebook PDFs in
 | `dsp_item_desc_2020_21.csv` | 2020-21's text `item_desc` labels back onto those codes, and says plainly where no mapping exists |
 | `dsp_school_category.csv` | school category → class range |
 | `dsp_management.csv` | management code → who runs the school, plus a Government/Aided/Private/Other rollup |
+| `dsp_age_item_id.csv` | the item_group=8 age id, DERIVED from the data — the codebooks publish no key |
 | `dsp_school_type.csv`, `dsp_rural_urban.csv`, `dsp_resi_school.csv`, `dsp_building_status.csv`, `dsp_yes_no.csv` | the small enums |
 
 Medium of instruction and affiliation board are DCF codes whose value lists the
@@ -86,7 +87,7 @@ guessed label is worse than no label.
 
 ## What the data turned out to say, and the codebooks did not
 
-Four things only showed up once the source was in BigQuery. All four are recorded
+Five things only showed up once the source was in BigQuery. All four are recorded
 in the codemaps and schema YAMLs; they are collected here because each one changes
 a query someone would otherwise write with confidence.
 
@@ -107,7 +108,11 @@ a query someone would otherwise write with confidence.
    per class tracks Age(id+1) at classes 1, 5 and 10 alike. The fact carries this as
    a **derived** `age_years` column with raw `item_id` beside it; the derivation and
    its evidence are in `../codemaps/dsp_age_item_id.csv`.
-4. **12% of 2020-21 schools carry an unlabelled enrolment row.** 182,426 of
+4. **Five management codes appear that no codebook lists** — 7, 89, 99, 101 and
+   102, across 7,306 school-years (0.1%). They are in the codemap with no label and
+   an `UNDOCUMENTED` note, and a `management_group` of `Unknown` so they stay
+   visible in a GROUP BY instead of silently dropping out as NULL.
+5. **12% of 2020-21 schools carry an unlabelled enrolment row.** 182,426 of
    1,509,136 schools have one extra row with an empty `item_desc`, sitting right
    after BPL. It is not a total (it never exceeds the school's General+SC+ST+OBC
    sum), not a duplicate of BPL or Aadhar, and not EWS-shaped (75% of the schools
