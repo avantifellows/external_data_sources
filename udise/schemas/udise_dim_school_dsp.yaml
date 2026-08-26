@@ -64,7 +64,12 @@ description: >
 
   NO PII. School attributes only; no student and no staff records.
 
+rows: 7385291
 grain: (academic_year, pseudocode)
+validation: >
+  One row per school per year, verified on build: COUNT(*) = COUNT(DISTINCT
+  pseudocode) in all five editions. Schools per edition: 2020-21 1,509,136;
+  2022-23 1,466,109; 2023-24 1,471,891; 2024-25 1,471,473; 2025-26 1,466,682.
 partitioned_by: academic_year_start (integer range)
 clustered_by: [state, management_code, school_category_code, rural_urban_code]
 

@@ -22,11 +22,44 @@ description: >
 
   WHY AVANTI HAS THIS. It is the only school-level source we hold that carries a
   poverty and social-composition breakdown: BPL enrolment (item_group=3,
-  item_id=13), EWS enrolment (item_group=10, item_id=32), social category, religion,
-  disability and repeaters — per school, per class, per gender. AISHE has no
-  household-income variable in any edition. This is the table that sizes the
-  low-income student population Avanti serves and grounds the EWS narrative in
-  numbers the government itself publishes.
+  item_id=13), social category, religion, disability and repeaters — per school, per
+  class, per gender. AISHE has no household-income variable in any edition. This is
+  the table that sizes the low-income student population Avanti serves.
+
+  BPL IS THE POVERTY VARIABLE HERE — NOT EWS. The codebook documents EWS as
+  item_group=10, item_id=32, and it is tempting to reach for it. Do not: it is
+  published in ONE edition only (2023-24) and covers just 25,100 schools with
+  762,929 students. BPL is present in every edition and covers 1.11-1.27 million
+  schools with 87-92 million students. Any EWS trend built off this table is a
+  trend of one year and 2% of schools. The coverage table below is the check to run
+  before using any item group.
+
+  ITEM GROUP COVERAGE BY EDITION (schools reporting, from the staged source):
+
+    group           2020-21     2022-23     2023-24     2024-25     2025-26
+    1 social cat.   text labels 1,455,815   1,458,937   1,463,480   1,461,019
+    2 religion      text labels   820,925     851,476     868,942     873,820
+    3 BPL           text labels 1,113,091   1,196,403   1,253,747   1,267,015
+    4 disability    total only    577,188     593,987     627,227     646,043
+    5 repeaters     text labels   232,507     519,923     689,038     658,908
+    10 EWS          absent        absent       25,100     absent      absent
+
+  2020-21 labels its items with text rather than codes and publishes ONE total for
+  disability where later editions break out 21 types, so its column reads
+  "text labels" rather than a count.
+
+  DO NOT READ 2020-21 AS THE START OF A BPL TREND. BPL as a share of total
+  (item_group=1) enrolment runs:
+
+    2020-21  21.8%    2022-23  36.4%    2023-24  35.2%
+    2024-25  35.1%    2025-26  34.6%
+
+  The four coded editions sit in a tight 34.6-36.4% band; 2020-21 is 13 points
+  below all of them. That is almost certainly a reporting-completeness break at the
+  2020-21/2022-23 boundary — a COVID-year census, a different collection instrument,
+  and the 182,426 schools carrying an unlabelled extra row — not a real collapse in
+  measured poverty. Treat 2020-21 as a separate regime, or start the series at
+  2022-23.
 
   THE ITEM BREAKDOWN, AND WHY IT DOES NOT ADD UP TO TOTAL ENROLMENT. The source
   does not publish a plain "students enrolled" number here. It publishes several
@@ -37,10 +70,11 @@ description: >
     item_group=2  religion         Muslim / Christian / Sikh / Buddhist / Parsi / Jain
                                    (a SUBSET — most students belong to none of these)
     item_group=3  economic         item_id=13 = BPL (Below Poverty Line)
-    item_group=4  disability       20 named CWSN disability types
+    item_group=4  disability       CWSN disability types — the codebooks name 20,
+                                   the data carries a 21st with no published label
     item_group=5  status           item_id=0 = repeater students
-    item_group=8  age              the age distribution (see the age caveat below)
-    item_group=10 economic         item_id=32 = EWS (Economically Weaker Section)
+    item_group=8  age              the age distribution (see age_years below)
+    item_group=10 economic         item_id=32 = EWS — 2023-24 ONLY, 25,100 schools
 
   Only item_group=1 partitions the student body, so SUM(students) WHERE
   item_group='1' is the closest thing to total enrolment in this table. Every other
@@ -73,7 +107,17 @@ description: >
 
   NO PII. The grain is the school, never the student.
 
+rows: 504108627
 grain: (academic_year, pseudocode, cut, item_group, item_id, class_level, gender)
+validation: >
+  SUM(students) WHERE item_group='1' AND academic_year='2024-25' = 246,932,680 —
+  exactly the all-India total udise_fact_enrolment carries from Report 4000. Two
+  different UDISE+ products, built by different pipelines from different files,
+  reconciling to the digit. Re-check this if the parser ever changes.
+  Other checks that passed on build: 13 class levels in every edition; zero fact
+  schools missing from udise_dim_school_dsp; unmapped item rows confined to
+  2020-21's 350,527 unlabelled rows; NULL age_years confined to 2020-21's
+  107,129 "Age<5" rows.
 partitioned_by: academic_year_start (integer range)
 clustered_by: [item_dimension, item_group, class_level, gender]
 
@@ -163,6 +207,21 @@ columns:
       'Total CWSN', 'Age<5'…). NULL for 2022-23 onward, which publish codes instead.
       Kept so a 2020-21 number can always be traced back to the string the source
       actually printed.
+
+  - name: age_years
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Student age in years, for cut='age' rows only; NULL on every item_breakdown
+      row. DERIVED, NOT PUBLISHED: from 2022-23 the source gives an opaque
+      "Age id (2 to 22)" with no id-to-age key, and 2020-21 gives words. The mapping
+      age = item_id + 1 is derived in codemaps/dsp_age_item_id.csv, which states the
+      evidence (max id 22 lines up with 2020-21's max label Age23; the modal id for
+      class 1 is 5 and RTE fixes class-1 entry at age 6; modal id per class tracks
+      Age(id+1) at classes 1, 5 and 10). Raw item_id is kept beside it so the
+      derivation can be checked or rejected. Two edge cases: age 23 is a "23 or
+      older" catch-all, and 2020-21's "Age<5" bucket lumps ages 3 and 4, so it lands
+      as NULL rather than being split.
 
   - name: class_level
     type: STRING

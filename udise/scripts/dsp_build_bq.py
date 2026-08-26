@@ -315,9 +315,17 @@ def item_map_rows() -> list[list]:
     return rows
 
 
+def age_map_rows() -> list[list]:
+    return [[r["item_id"], r["age_years"]] for r in read_codemap("dsp_age_item_id.csv")]
+
+
 def desc_map_rows() -> list[list]:
+    # Rows whose item_desc is bracketed (currently only "<blank>") are documentation,
+    # not mappings — they record what an unmapped source value means and why it stays
+    # unmapped. They must not reach the SQL, or they would map something.
     return [[r["item_desc"], r["item_group"], r["item_id"], r["dimension"], r["label"]]
-            for r in read_codemap("dsp_item_desc_2020_21.csv")]
+            for r in read_codemap("dsp_item_desc_2020_21.csv")
+            if not r["item_desc"].startswith("<")]
 
 
 def melt_sql(lay: dict[str, list[str]], year: str, group: str) -> str:
@@ -365,6 +373,7 @@ def fact_sql(lay: dict[str, list[str]], years: list[str]) -> str:
         values_cte("item_map", ["item_group", "item_id", "dimension", "label"], item_map_rows()),
         values_cte("desc_map", ["item_desc", "item_group", "item_id", "dimension", "label"], desc_map_rows()),
         values_cte("class_map", ["class_key", "class_level", "class_order"], class_rows),
+        values_cte("age_map", ["item_id", "age_years"], age_map_rows()),
         values_cte("gender_map", ["academic_year", "gender_key", "gender"], gender_rows),
         "melted AS (\n" + melts + "\n  )",
     ]
@@ -388,12 +397,23 @@ def fact_sql(lay: dict[str, list[str]], years: list[str]) -> str:
         "  COALESCE(d.dimension, i.dimension) AS item_dimension,\n"
         "  COALESCE(d.label, i.label) AS item_label,\n"
         "  m.item_source_label,\n"
+        # age_years is DERIVED, not published: the source gives an opaque "Age id"
+        # from 2022-23 on and words in 2020-21. codemaps/dsp_age_item_id.csv carries
+        # the derivation and its evidence; raw item_id stays alongside so anyone can
+        # re-derive it or disagree.
+        "  CASE\n"
+        "    WHEN m.cut != 'age' THEN NULL\n"
+        "    WHEN m.item_id IS NOT NULL THEN SAFE_CAST(a.age_years AS INT64)\n"
+        "    WHEN m.item_source_label = 'Age<5' THEN NULL\n"
+        "    ELSE SAFE_CAST(REGEXP_EXTRACT(m.item_source_label, r'^Age([0-9]+)$') AS INT64)\n"
+        "  END AS age_years,\n"
         "  c.class_level,\n"
         "  c.class_order,\n"
         "  g.gender,\n"
         "  m.students\n"
         "FROM melted m\n"
         "LEFT JOIN desc_map d ON d.item_desc = m.item_source_label\n"
+        "LEFT JOIN age_map a ON m.cut = 'age' AND a.item_id = m.item_id\n"
         "LEFT JOIN item_map i ON i.item_group = m.item_group\n"
         "  AND (i.item_id = m.item_id OR (i.item_id IS NULL AND i.dimension = 'age'))\n"
         "JOIN class_map c ON c.class_key = m.class_key\n"
@@ -483,7 +503,10 @@ def main() -> None:
     if do_fact:
         print(f"→ {FACT_TABLE}")
         bq_query(fact_sql(lay, years), args.print_sql, "fact_enrolment")
-    if args.validate or not args.print_sql:
+    # Validation reads BOTH finished tables, so it only makes sense after a full
+    # build or when asked for explicitly — running it after `--dim` alone just fails
+    # on a fact table that does not exist yet.
+    if args.validate or (do_dim and do_fact):
         print("→ validation")
         bq_query(VALIDATE_SQL, args.print_sql, "validate")
     print("✓ done.")

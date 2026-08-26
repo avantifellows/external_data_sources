@@ -1,16 +1,13 @@
 # udise schemas
 
-▶ **NEXT: run the GCS upload + BigQuery load.** Everything up to that point is
-built and committed — the five DSP editions are gzipped locally under
-`raw/dsp/_staged/`, `schemas/dsp_layouts.json` records every observed header, and
-`scripts/dsp_build_bq.py --print-sql` generates the finished SQL. The load needs a
-working `gcloud auth login`; it blocked on an expired token.
+▶ **NEXT: pair the two DSP tables with their data-assistant schema docs** at
+`data-assistant/docs/schemas/external/`, then open both PRs. The BigQuery build is
+done — staging, `udise_dim_school_dsp` and `udise_fact_enrolment_dsp` are all
+loaded and validated.
 
 ```bash
-python3 scripts/dsp_stage.py --raw          # source zips → GCS raw/ (audit copy)
-python3 scripts/dsp_stage.py --load-only    # local gz → GCS staging → BQ staging
-python3 scripts/dsp_build_bq.py             # staging → the two finished tables + validate
-python3 scripts/dsp_build_bq.py --drop-staging   # once the numbers check out
+python3 scripts/dsp_build_bq.py --validate        # re-run the checks any time
+python3 scripts/dsp_build_bq.py --drop-staging    # once you are happy with the numbers
 ```
 
 | Table | Grain | Schema |
@@ -88,6 +85,38 @@ guessed label is worse than no label.
   needs its own table.
 - **`teacher_data`, `facility_data`, `safety`.** Downloaded and registered in
   `sources.py`, staged by `dsp_stage.py --groups …` on request, but not modelled
-  yet. They are not on the critical path for the BPL/EWS question.
+  yet. They are not on the critical path for the BPL question.
 - **2021-22.** No such edition is held. Adding it later needs only the zips in
   `raw/dsp/2021-22/` and the year added to `DSP_YEARS`.
+
+## What the data turned out to say, and the codebooks did not
+
+Four things only showed up once the source was in BigQuery. All four are recorded
+in the codemaps and schema YAMLs; they are collected here because each one changes
+a query someone would otherwise write with confidence.
+
+1. **EWS is a one-year column.** The codebook documents `item_group=10, item_id=32`
+   as EWS enrolment, which makes it look like the poverty variable to reach for. It
+   is published in **2023-24 only** — 25,100 schools, 762,929 students. It is absent
+   from 2022-23, 2024-25 and 2025-26. **BPL (`item_group=3, item_id=13`) is the
+   poverty variable that actually spans the panel**: 1.11-1.27 million schools and
+   87-92 million students in every coded edition.
+2. **`item_group=4` has a 21st disability code.** Every codebook lists item_ids 1-20;
+   the data carries `item_id=21` in all four coded editions, with no published label.
+   Left unlabelled rather than guessed. It is still included in a SUM over the group.
+3. **The age id decodes to `age = item_id + 1`.** The codebooks describe
+   `item_group=8`'s item_id only as "Age id (2 to 22)" and publish no key, which
+   would have left the whole age cut unusable. It is derivable from the data because
+   2020-21 labels the same cut in words: max id 22 lines up with max label `Age23`,
+   the modal id for class 1 is 5 against an RTE class-1 entry age of 6, and modal id
+   per class tracks Age(id+1) at classes 1, 5 and 10 alike. The fact carries this as
+   a **derived** `age_years` column with raw `item_id` beside it; the derivation and
+   its evidence are in `../codemaps/dsp_age_item_id.csv`.
+4. **12% of 2020-21 schools carry an unlabelled enrolment row.** 182,426 of
+   1,509,136 schools have one extra row with an empty `item_desc`, sitting right
+   after BPL. It is not a total (it never exceeds the school's General+SC+ST+OBC
+   sum), not a duplicate of BPL or Aadhar, and not EWS-shaped (75% of the schools
+   carrying it are `managment=1`, Dept. of Education, where the RTE/EWS quota does
+   not apply). It is worth ~8.9% of enrolment in the schools that report it. No
+   codebook names it, so it stays unmapped — the rows are in the fact with
+   `item_dimension IS NULL`, which is how you find and exclude them.
