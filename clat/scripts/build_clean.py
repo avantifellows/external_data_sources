@@ -34,7 +34,7 @@ STATE = {
     "KA": "Karnataka", "KL": "Kerala", "MP": "Madhya Pradesh",
     "MH": "Maharashtra", "OD": "Odisha", "PB": "Punjab", "RJ": "Rajasthan",
     "TN": "Tamil Nadu", "TR": "Tripura", "UP": "Uttar Pradesh",
-    "UK": "Uttarakhand", "WB": "West Bengal", "DNH": "Dadra and Nagar Haveli",
+    "UK": "Uttarakhand", "WB": "West Bengal", "DNH": "Dadra and Nagar Haveli and Daman and Diu",
     "TL": "Telangana", "TG": "Telangana",
 }
 SPECIAL = {"NCC", "CAP", "ESP", "CDP", "DFF", "DSC", "TFF", "FF", "SP",
@@ -92,7 +92,7 @@ def decompose(code: str, label: str):
 # to the university's home state. All-India codes never take this fallback.
 NLU_STATE = [
     ("DSNLU", "Andhra Pradesh"), ("NLUJA", "Assam"), ("CNLU", "Bihar"),
-    ("HNLU", "Chhattisgarh"), ("Silvassa", "Dadra and Nagar Haveli"),
+    ("HNLU", "Chhattisgarh"), ("Silvassa", "Dadra and Nagar Haveli and Daman and Diu"),
     ("Goa", "Goa"), ("Gandhinagar", "Gujarat"), ("DBRANLU", "Haryana"),
     ("Sonepat", "Haryana"), ("HPNLU", "Himachal Pradesh"),
     ("NUSRL", "Jharkhand"), ("NLSIU", "Karnataka"), ("NUALS", "Kerala"),
