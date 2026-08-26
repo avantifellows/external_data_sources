@@ -62,10 +62,10 @@ Everything in `../codemaps/` is transcribed from the committed codebook PDFs in
 
 | File | Decodes |
 |---|---|
-| `dsp_item_group.csv` | the (item_group, item_id) enrolment breakdown — social category, religion, BPL, EWS, 20 disability types, repeaters |
+| `dsp_item_group.csv` | the (item_group, item_id) enrolment breakdown — social category, religion, BPL, EWS, repeaters, and 21 disability types (the codebooks name 20; the data carries one more) |
 | `dsp_item_desc_2020_21.csv` | 2020-21's text `item_desc` labels back onto those codes, and says plainly where no mapping exists |
 | `dsp_school_category.csv` | school category → class range |
-| `dsp_management.csv` | management code → who runs the school, plus a Government/Aided/Private/Other rollup |
+| `dsp_management.csv` | management code → who runs the school, plus a Government/Aided/Private/Other/Unknown rollup |
 | `dsp_age_item_id.csv` | the item_group=8 age id, DERIVED from the data — the codebooks publish no key |
 | `dsp_school_type.csv`, `dsp_rural_urban.csv`, `dsp_resi_school.csv`, `dsp_building_status.csv`, `dsp_yes_no.csv` | the small enums |
 
@@ -87,7 +87,7 @@ guessed label is worse than no label.
 
 ## What the data turned out to say, and the codebooks did not
 
-Five things only showed up once the source was in BigQuery. All four are recorded
+Five things only showed up once the source was in BigQuery. All five are recorded
 in the codemaps and schema YAMLs; they are collected here because each one changes
 a query someone would otherwise write with confidence.
 
