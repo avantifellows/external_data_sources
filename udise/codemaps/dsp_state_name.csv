@@ -1,0 +1,3 @@
+source_name,canonical_name,note
+TAMILNADU,TAMIL NADU,"The source spells it TAMILNADU in 2020-21, 2022-23, 2023-24 and 2025-26, and TAMIL NADU in 2024-25 only. Without this, a five-year GROUP BY state splits Tamil Nadu into two rows and the 2024-25 edition's 57,370 schools sit apart from their own history."
+DAMAN & DIU AND DADRA & NAGAR HAVELI,DADRA & NAGAR HAVELI AND DAMAN & DIU,"The two UTs merged in January 2020. The 2020-21 edition names the merged UT in one word order and every later edition in the other. Canonicalised to the order the source itself settled on from 2022-23."
