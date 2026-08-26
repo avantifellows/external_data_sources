@@ -8,7 +8,7 @@
 # Source docs:    gs://avantifellows-external-data/cmse/raw/docs/
 # Source parquet: gs://avantifellows-external-data/cmse/clean/cmse_fact_student.parquet
 # BQ table:       avantifellows.external_data_sources.cmse_fact_student
-# Built by:       nss-comprehensive-modular-survey/scripts/clean_cmse.py
+# Built by:       cmse/scripts/clean_cmse.py
 
 description: >
   CMS-E 2025 student master: one row per student, 59,417 rows, with geography, gender, age,

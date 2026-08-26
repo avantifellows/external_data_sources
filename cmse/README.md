@@ -113,7 +113,7 @@ rankings. All four are documented there with the fix.
 ## Layout
 
 ```
-nss-comprehensive-modular-survey/
+cmse/
 ├── README.md                  # this file
 ├── CLAUDE.md                  # orientation for Claude Code
 ├── requirements.txt
@@ -145,9 +145,3 @@ python3 scripts/load_bq.py                # load both tables (WRITE_TRUNCATE)
 
 Idempotent throughout. No orchestrator, no schedule — this runs on demand, and
 CMS-E is a one-off round with no successor announced.
-
-## Note on the folder name
-
-The folder is `nss-comprehensive-modular-survey/` while the tables are prefixed
-`cmse_`. Every other source in this repo matches folder to prefix; this one does
-not yet. Renaming to `cmse/` is the tidy-up, and belongs in its own commit.

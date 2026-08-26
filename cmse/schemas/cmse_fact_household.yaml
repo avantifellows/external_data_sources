@@ -7,7 +7,7 @@
 # Source docs:    gs://avantifellows-external-data/cmse/raw/docs/
 # Source parquet: gs://avantifellows-external-data/cmse/clean/cmse_fact_household.parquet
 # BQ table:       avantifellows.external_data_sources.cmse_fact_household
-# Built by:       nss-comprehensive-modular-survey/scripts/clean_cmse.py
+# Built by:       cmse/scripts/clean_cmse.py
 
 description: >
   CMS-E 2025 household master: one row per surveyed household (52,085 rows) with geography,
