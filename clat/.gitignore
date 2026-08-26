@@ -1,0 +1,4 @@
+# Data never enters git — GCS is the source of truth (clat/ prefix).
+raw/
+extracted/
+clean/
