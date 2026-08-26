@@ -118,6 +118,12 @@ RELEASES = {
         "period_end":   "2021-12",
         "catalog_id":   "209",
         "catalog_url":  f"{NADA}/209",
+        # "limited" because the schema is stripped (Blocks 1, 4, 6 only), NOT because the weight rule
+        # is unknown. Its README states one: MLTS/100 if NSS=NSC else /200 — with NO NO_QTR divisor —
+        # and "Simple average of the estimates of the two Panels will generate estimate for the
+        # Calendar Year 2021". So this is a HALF-YEARLY release. If it is ever enabled it needs
+        # `half_yearly` semantics and its own divisor handling; `combined` would be wrong twice over.
+        # Recorded here because "limited" otherwise reads as "we do not know".
         "weight_rule":  "limited",
         "input_kind":   "tsv",
         "xlsx":         ROOT / "raw" / "docs_calendar_2021" / "Data_Layout_PLFS_Calendar_2021.xlsx",

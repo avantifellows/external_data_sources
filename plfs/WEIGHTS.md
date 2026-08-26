@@ -56,7 +56,8 @@ divide by 2 for the calendar-year estimate.
 weight = combined(row) / 2
 ```
 
-Per the CY2023 README §2-3.
+Per the CY2023 README §3: "Simple average of the estimates of the two panels will generate
+estimate for the Calendar Year 2023."
 
 ### 3. `simple` — CY2025 only
 
@@ -95,6 +96,54 @@ or wage analyses. `get_weight_fn('calendar_2021')` raises
 
 Source of truth: `clean/releases.csv` column `weight_rule`. Generated from
 `scripts/releases.py`.
+
+## Every rule verified against its own release's README, 2026-08-26
+
+Until this audit the rules had been generalised from one or two READMEs. All eleven are now read, and
+each coded rule is checked against the sentence in its own release's document.
+
+| release | its README says | coded | ✓ |
+|---|---|---|---|
+| `annual_2018_19` | `MLTS/100 if NSS=NSC = MLTS/200 otherwise`; "For annual estimate, MLTS may be divided by number of quarters" | `combined` | ✓ |
+| `annual_2019_20` | identical wording | `combined` | ✓ |
+| `annual_2020_21` | same, divisor defined as "(count of surveyed FSUs in a sector x state x stratum x substratum)" | `combined` | ✓ |
+| `annual_2021_22` | same, "(number of times a particular sector x state x stratum x substratum contributes in the year in terms of surveyed FSUs)" | `combined` | ✓ |
+| `annual_2022_23` | `MULT/100 … /200`; "MULT may be divided by NO_QTR (count of occurrences of surveyed FSUs…)" | `combined` | ✓ |
+| `annual_2023_24` | `MULT/100 … /200`; "divided by NO_QTR (count of contributing sector x state x stratum x substratum in 4 quarters)" | `combined` | ✓ |
+| `calendar_2022` | `MULT/(NO_QTR*100)` if `NSS=NSC` else `MULT/(NO_QTR*200)` — divisor inside the formula | `combined` | ✓ same arithmetic |
+| `calendar_2023` | same formula **for the Half Yearly Panel**, then §3: "Simple average of the estimates of the two panels will generate estimate for the Calendar Year 2023" | `half_yearly` (`combined`/2) | ✓ |
+| `calendar_2024` | `MULT/(NO_QTR*100)` … `*200`, for the Calendar Year | `combined` | ✓ |
+| `calendar_2025` | "Since the weight (MULT) is calculated at two places of decimal, the final weight will be: Final Weight = MULT/100" | `simple` | ✓ |
+| `calendar_2021` | `MLTS/100 … /200` **with no NO_QTR**, and "Simple average of the estimates of the two Panels will generate estimate for the Calendar Year 2021" | `limited` | n/a — see below |
+
+Three things this audit changed or found:
+
+1. **`annual_2023_24` had no documentation in this repo at all.** Its acquisition took only the Nesstar
+   bundle and the portal's download guide, so its rule had never been checked against its own README.
+   Pulled from catalog 213 and filed in `raw/docs_annual_2023_24/` — it matches `combined`. See that
+   folder's `SOURCE.md`.
+2. **`calendar_2023`'s `/2` is correct and now sourced.** It is §3 of its README ("simple average of the
+   estimates of the two panels"), not §2-3 as this file previously cited. The number was right; the
+   citation pointed at the wrong paragraph.
+3. **`calendar_2021` is a HALF-YEARLY release, not just a limited one.** Its README carries the same
+   "simple average of the two Panels" instruction and gives the formula *without* `NO_QTR`. It is
+   currently `limited` (stripped schema, `weight_annual` NULL) so nothing is wrong today — but if it is
+   ever enabled it needs `half_yearly` and its own divisor handling, **not** `combined`. Recorded here
+   because "limited" hides that.
+
+## One documented mechanism for the drift
+
+`raw/docs_annual_2023_24/Note_on_Updated_Instruction_for_PLFS_2023-24.pdf` §2.1.5 records the urban
+frame code changing: "A new frame code **2017-22 UFS-18** for urban samples has been added. The updated
+frame codes for urban areas … are: 2007-12 UFS-15, 2012-17 UFS-17, 2017-22 UFS-18."
+
+So the urban sampling frame IS refreshed between releases, which is a documented reason for the frame's
+implied population — and therefore the weighted total — to move. It does not quantify the drift, and it
+says nothing about rural, so it is a mechanism rather than the explanation.
+
+**Follow-up worth doing: the frame code is not parsed.** It is item 11 of Schedule 0.0PL, and no clean
+CSV carries it, so the hypothesis cannot be tested against our own data. Parsing it would let the urban
+drift be attributed to frame vintage directly instead of argued from a note.
 
 ## Sub-sample-wise and quarterly estimates
 
@@ -143,10 +192,117 @@ Our `_combined()` in `weights.py` handles all three correctly.
 
 ## Validation
 
-`python3 scripts/weights.py` runs a self-test: it sums the calibrated weights
-across each release's `perv1`/`cperv1` table and prints the result. **All
-totals should land in ~1.08-1.22B** (India's actual population is ~1.4B;
-PLFS under-counts institutional populations / floating workers).
+## What the total actually means
+
+**Verified, and it is less than I first claimed.** Two things are established and one is not, and the
+line between them matters because this section has now carried three different wrong explanations.
+
+### Established: our arithmetic is MoSPI's arithmetic
+
+The per-release README states the rule directly. `docs_annual_2018_19/README_July18_June19.pdf`
+"Note for users" §3:
+
+> For generating combined estimate (taking both the subsamples together) ... Final weight = MLTS/100
+> if NSS=NSC, = MLTS/200 otherwise.
+
+and §4:
+
+> Generation of combined estimate for the entire Year: For annual estimate, MLTS may be divided by
+> number of quarters.
+
+That is exactly `_combined()`. The sample also matches the published counts exactly — 2018-19 has
+420,757 V1 persons in 101,579 households, the figures printed in its own README. **So the level of the
+weighted total is MoSPI's, not an artefact of this pipeline.**
+
+### Established: the frame and the PPS size measure are Census 2011
+
+`EstimationProcedure_PLFS.pdf` §1.2.7 (rural frame = "List of 2011 Population Census villages"),
+§1.2.8 (urban strata by town size "as per Population Census 2011"), §1.2.11.1 (allocation "in
+proportion to the population as per Census 2011"). The technical clarification §2-3 gives the weight as
+`Σzᵢ/zᵢ`, "an inverse of inclusion probability", where `Σzᵢ` is "the total size (Census Population in
+rural sector) of the NSS region". No calibration, post-stratification or benchmarking step appears
+anywhere in the estimation procedure.
+
+That explains a shortfall against the current population, and in the right direction.
+
+### NOT established: why the level is what it is, or why it moves
+
+The totals run **78-84% of contemporaneous population**, and the ratio drifts upward:
+
+| release | Σ weights | / Census 2011 | / contemporaneous pop |
+|---|---|---|---|
+| annual_2018_19 | 1.078B | 0.890 | 0.779 |
+| annual_2021_22 | 1.158B | 0.956 | 0.817 |
+| annual_2023_24 | 1.204B | 0.994 | 0.836 |
+| calendar_2025 | 1.193B | 0.985 | 0.822 |
+
+Sample size is near-constant across these (413k-428k V1 persons) while the mean weight per person
+rises 12.4%, from 2,562 to 2,880. **Neither ratio is flat.** If the weights were pinned to the 2011
+frame, column 3 would be constant; if they tracked current population, column 4 would be. Both drift.
+
+So "reproduces Census 2011 by construction" — which this file asserted before this revision — is
+wrong. `annual_2023_24` landing at 0.994 is where a drifting series happens to sit, not a design
+identity. Two earlier explanations were also wrong: "PLFS under-counts institutional populations /
+floating workers" (institutional population is ~1% of India, not 20%) and, in data-assistant's schema
+note, "PLFS's own *projected* population" (there is no projection).
+
+**Four guesses is enough. The honest statement is: the shortfall's direction follows from a
+Census-2011 frame, and its magnitude and drift are not explained by any document in `raw/docs/`.**
+If you need the reason, it is a question for MoSPI, not for inference.
+
+### What to do about it
+
+- **A percentage needs no correction, ever.** This is the operative point and it does not depend on
+  any of the above: the frame's vintage and any scale error cancel between a numerator and a
+  denominator. It is why PLFS publishes ratios (`EstimationProcedure` §3.6).
+- **A count needs a per-release factor, measured rather than reasoned.** Divide the target year's
+  population by that release's weighted total. Do not derive one factor and reuse it: the ratio moves
+  from 0.78 to 0.84 across the releases, so a single factor is wrong at both ends.
+
+## Validation
+
+## What the total actually means
+
+**The summed weight reproduces the CENSUS 2011 population, by construction.** It is not an estimate
+of the current population, it is not 15% wrong, and the gap is not under-coverage.
+
+Read the survey's own documents, both in `raw/docs/`:
+
+| where | what it says |
+|---|---|
+| `EstimationProcedure_PLFS.pdf` §1.2.7 | rural frame is the "List of 2011 Population Census villages"; urban is UFS blocks on 2011 census towns |
+| §1.2.8 | urban strata by size class of towns "as per Population Census 2011" |
+| §1.2.11.1 | sample allocated "in proportion to the population as per Census 2011" |
+| `Technical clarification ... 2022-23.pdf` §2-3 | `weight = 1/P(selection) = Σzᵢ/zᵢ`, "an inverse of inclusion probability", where `Σzᵢ` is "the total size (**Census Population** in rural sector) of the NSS region" |
+
+Searched the estimation procedure for *calibration*, *post-stratification*, *benchmarking* and
+*projection*: **no matches.** These are pure design weights and nothing is applied after them. So the
+PPS size measure *is* Census 2011 population, and summing the weights can only give the 2011 frame's
+population. Measured: `annual_2023_24` state sums come to 1,200.8m against Census 2011's 1,207.5m for
+the same 30 states — a ratio of **0.994**.
+
+**This is why PLFS publishes rates and not counts** (`EstimationProcedure` §3.6 defines its outputs as
+ratios `R = Ŷ/X̂`). The frame's vintage cancels between a numerator and a denominator, so:
+
+- **A percentage needs no correction at all.** Ever.
+- **A count is a 2011-frame count.** For a current-year figure, scale by population growth since 2011
+  — about **×1.21** for 2025 (1.4639bn / 1.2109bn). Say which of the two you are quoting.
+
+An earlier version of this section said totals "should land in ~1.08-1.22B (India's actual population
+is ~1.4B; PLFS under-counts institutional populations / floating workers)". The band was right and
+the explanation was invented — institutional population is ~1% of India, not 15%. That guess also
+reached `data-assistant`'s schema note in a different wrong form ("PLFS's own *projected* population"),
+and an analysis then argued from it that there was an unexplained coverage deficit. A wrong mechanism
+attached to right numbers cannot be caught by checking the numbers, which is why the primary document
+is not optional.
+
+Still unexplained, and much smaller: the four earliest releases gross up to 0.89-0.96 of the frame
+where 2022-23 onward sit at 0.97-1.01.
+
+## Validation
+
+`python3 scripts/weights.py` asserts the two properties that follow from the design above, and exits
+non-zero if either fails.
 
 Current output:
 
@@ -164,8 +320,43 @@ calendar_2024      combined                 1.21B  ✓
 calendar_2025      simple                   1.19B  ✓
 ```
 
-If a release ever drifts outside `0.95B – 1.35B`, the self-test flags it. Run
-this after adding any new release, or after touching `weights.py`.
+The self-test checks **both**:
+
+1. **Ratio to the Census 2011 frame within 0.85-1.05.** A release outside it is not grossing up to
+   the frame its design implies, so the load or the weight rule is wrong.
+2. **No single weight above `SUSPECT_WEIGHT` (1,000,000).** The national band in (1) is far too coarse
+   to catch one catastrophic weight: the Assam PPS defect below inflates its release by only 4.4%,
+   comfortably inside any sane band, while inflating Assam threefold and the national age-25-29
+   estimate by 11.2%. It has to be checked per record.
+
+It also **counts and reports rows whose weight fails to compute** instead of skipping them. The
+previous version wrapped the call in `except Exception: pass`, so a release with a changed layout would
+have read low and passed the band check as a plausible number.
+
+Run it after adding any release, or after touching `weights.py`.
+
+## The 2022-23 PPS weight defect
+
+`annual_2022_23` and `calendar_2022` each contain **nine rows with weight 5,925,062** — 17x the
+largest legitimate weight in any release. An **uninhabited** Assam village was selected by PPS: its
+Census 2011 population is zero (entered as one for selection), and `weight = Σzᵢ/zᵢ` explodes as `zᵢ`
+approaches zero. MoSPI documented it in
+`raw/docs_annual_2022_23/Technical clarification regarding high multiplier value in PLFS 2022-23.pdf`,
+confirmed it happened once in ~12,000 FSUs a year, and fixed the design from January 2025 (SRSWOR
+instead of PPS, plus a separate all-India stratum for uninhabited villages).
+
+Nine rows stand for 53.3m people:
+
+| | contaminated | expected |
+|---|---|---|
+| Assam, all ages | 94.0m | ~31m (Census 2011: 31.21m) |
+| Assam, age 25-29 | 15.6m | 3.76m (adjacent releases: 2.90m, 3.02m) |
+| National, age 25-29 | 105.7m | 93.8m — **11.2% inflated** |
+
+`load_bq.py` marks these rows with **`weight_suspect = TRUE`** on the loaded tables, so the exclusion
+is explicit and greppable rather than folklore. **Filter `WHERE NOT weight_suspect` for any estimate**
+— nothing legitimate is excluded by it. The rows are kept rather than dropped because they are
+legitimately sampled and their responses are real; it is only the weight that is unusable.
 
 ## How to apply weights in analysis code
 
