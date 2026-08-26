@@ -1,0 +1,16 @@
+enrolment_level_code,enrolment_level_name
+01,Class I
+02,Class II
+03,Class III
+04,Class IV
+05,Class V
+06,Class VI
+07,Class VII
+08,Class VIII
+09,Class IX
+10,Class X
+11,Class XI
+12,Class XII
+13,Diploma/certificate course (up to secondary)
+14,Diploma/certificate (higher secondary equivalent)
+15,Below Class I (pre-primary)

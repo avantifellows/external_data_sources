@@ -1,0 +1,10 @@
+relation_code,relation_name
+1,Self
+2,Spouse of head
+3,Married child
+4,Spouse of married child
+5,Unmarried child
+6,Grandchild
+7,Father/mother/father-in-law/mother-in-law
+8,Brother/sister/brother-in-law/sister-in-law/other relatives
+9,Servant/employees/other non-relatives

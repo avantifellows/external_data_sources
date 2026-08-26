@@ -1,0 +1,448 @@
+# cmse_fact_student
+#
+# One row per student in the MoSPI NSS Comprehensive Modular Survey: Education
+# (CMS-E), 80th Round, April–June 2025. 59,417 students in 52,085 households.
+#
+# Source CSVs:    gs://avantifellows-external-data/cmse/raw/CMSE80PER25.csv
+#                 gs://avantifellows-external-data/cmse/raw/CMSE80PERST25.csv
+# Source docs:    gs://avantifellows-external-data/cmse/raw/docs/
+# Source parquet: gs://avantifellows-external-data/cmse/clean/cmse_fact_student.parquet
+# BQ table:       avantifellows.external_data_sources.cmse_fact_student
+# Built by:       nss-comprehensive-modular-survey/scripts/clean_cmse.py
+
+description: >
+  CMS-E 2025 student master: one row per student, 59,417 rows, with geography, gender, age,
+  class of enrolment, type of school, a five-way itemisation of what the household spends on
+  schooling and (separately) on private coaching, who funds it, and the household's consumption
+  and social group denormalized alongside. CMS-E = the Comprehensive Modular Survey on Education,
+  MoSPI's nationally representative survey of what Indian households SPEND on school education.
+  Six things a first-time user must know before querying.
+  (1) SURVEY WEIGHTS ARE MANDATORY. Each row stands for many real students via `weight`
+  (= the published multiplier / 100). COUNT(*) is a sample size, never a population — use
+  SUM(weight) for students and SUM(weight * <amount>) for rupee totals.
+  (2) SCHOOL EDUCATION ONLY. Pre-primary through Class XII plus school-equivalent diplomas.
+  There is no higher education here at all, and no learning outcomes — no marks, no test scores,
+  no attendance, no school quality. Expenditure is the whole point of the survey.
+  (3) TWO CUTS, ONE GRAIN. `cut` = 'resident' (57,742 students living in the sampled household,
+  with the full itemised expenditure block) or 'away_from_home' (1,675 students who have LEFT the
+  household to study elsewhere — hostels, Kota-style residential coaching — for whom the survey
+  collects lump sums, not itemised detail). Both are students and both carry `weight`, so a
+  question about all students should span both. But NEVER compare the itemised `school_exp_*` /
+  `coaching_exp_*` columns across cuts: they are NULL on 'away_from_home' by design.
+  (4) GOVERNMENT IN-KIND SUPPORT IS VALUED AT ZERO, BY INSTRUCTION. The field manual tells
+  enumerators that when the Government provides free books, uniforms or tuition, "no imputation
+  will be made and value will be considered as zero" — but support from other households or from
+  non-government organisations IS imputed in. So the low government-school figure (Rs 2,863/yr vs
+  Rs 25,002 non-government) is out-of-pocket AFTER government support, not the cost of educating
+  the child. Comparing it to a private-school figure compares a net number to a gross one.
+  (5) PRIVATE COACHING IS UNDERCOUNTED WHERE COACHING IS INTEGRATED INTO THE SCHOOL. The survey
+  asks "did you receive private coaching/tuition" as a separate question, so a student at an
+  integrated junior college (Narayana, Sri Chaitanya, Deeksha) whose exam prep IS the school
+  correctly answers NO, and the entire fee lands in `school_exp_course_fee`. The manual never
+  mentions the integrated model. Any coaching market built from `received_private_coaching`
+  alone will materially undercount Karnataka, Telangana, Tamil Nadu and Andhra Pradesh.
+  (6) DEMOGRAPHICS ARE FOR DISAGGREGATION, NOT FOR POPULATION ESTIMATES. MoSPI's note to data
+  users is explicit: age, gender, religion and social group are here to break down education
+  spend, and the design is not weighted to produce population totals or sex ratios. Use
+  `hces_fact_household_master` for consumption levels and PLFS for population structure.
+rows: 59417
+grain: one row per student, unique on (household_id, person_serial_no, cut)
+
+columns:
+  # ── Identity ────────────────────────────────────────────────────────────────
+  - name: household_id
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Composite household id, built from the seven NSS fields that together identify a sampled
+      household (nss_region, district, stratum, sub_stratum, FSU serial, second-stage stratum,
+      sample household no). Join key to cmse_fact_household. Stable within this round only —
+      NOT comparable to HCES or PLFS household ids, which are built from different rounds.
+  - name: person_serial_no
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Person serial within the household, zero-padded ('01', '02'). Students living away from home
+      are prefixed 'E' ('E01') because block 4 numbers them in its own sequence — an 'E01' and an
+      '01' in the same household are different people.
+  - name: cut
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Which survey block the row came from, and therefore which columns are populated.
+      'resident' = student living in the sampled household (block 5; full itemised expenditure).
+      'away_from_home' = erstwhile member studying elsewhere (block 4; lump sums only, plus
+      residence type). Always filter or group by this when comparing expenditure detail.
+  - name: survey_year
+    type: INTEGER
+    mode: REQUIRED
+    description: "2025. Single-round survey — there is no earlier CMS-E to compare against."
+
+  # ── Geography ───────────────────────────────────────────────────────────────
+  - name: state_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      NSS state code, zero-padded 2-digit string ('01' = Jammu & Kashmir, '09' = Uttar Pradesh).
+      DERIVED — the raw files carry no state column; the code is the first 2 digits of nss_region.
+      36 states/UTs present; '26' is absent (Dadra & Nagar Haveli merged into '25').
+  - name: state_name
+    type: STRING
+    mode: REQUIRED
+    description: State/UT name, denormalized from state_code via codemaps/cmse_state.csv.
+  - name: nss_region
+    type: STRING
+    mode: REQUIRED
+    description: >
+      NSS region code (3-digit). An NSS region groups districts within a state for sampling.
+      First 2 digits are the state, so the region is only meaningful within its state.
+  - name: district_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      District code as published (2-digit). Numbered WITHIN each state, so '06' is a different
+      district in every state — always key on (state_code, district_code). MoSPI publishes NO
+      district-name lookup for CMS-E, so district-level results can only be reported anonymously.
+  - name: sector_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = Rural, 2 = Urban."
+  - name: sector_name
+    type: STRING
+    mode: REQUIRED
+    description: "'Rural' or 'Urban'."
+  - name: stratum
+    type: STRING
+    mode: REQUIRED
+    description: Sampling stratum (3-digit), scoped within state. Needed only for variance estimation.
+  - name: sub_stratum
+    type: STRING
+    mode: REQUIRED
+    description: Sampling sub-stratum (2-digit), scoped within stratum.
+  - name: fsu_serial_no
+    type: STRING
+    mode: REQUIRED
+    description: >
+      First Stage Unit serial (5-digit) — the sampled village or urban block. The primary sampling
+      unit; students in the same FSU are geographically clustered, which is why naive standard
+      errors understate uncertainty on small cuts.
+
+  # ── The student ─────────────────────────────────────────────────────────────
+  - name: gender_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = Male, 2 = Female, 3 = Transgender."
+  - name: gender_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'Male', 'Female' or 'Transgender'. The survey records transgender as a distinct response
+      (298 persons overall); cells are far too thin for state-level estimates but the category
+      should not be silently dropped or folded into another.
+  - name: age
+    type: INTEGER
+    mode: REQUIRED
+    description: Age in completed years. Enrolled students range 3–33.
+  - name: relation_to_head_code
+    type: INTEGER
+    mode: NULLABLE
+    description: "Relation to household head, 1–9. NULL on the 'away_from_home' cut (block 4 does not ask)."
+  - name: relation_to_head_name
+    type: STRING
+    mode: NULLABLE
+    description: >
+      'Self', 'Spouse of head', 'Unmarried child', etc. A student coded 'Self' in a one- or
+      two-person household is usually a hostel resident surveyed as their own household — see
+      is_student_hostel_household.
+
+  # ── Enrolment ───────────────────────────────────────────────────────────────
+  - name: enrolment_level_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Class of current enrolment, zero-padded 2-digit. '01'–'12' are Classes I–XII; '13' is a
+      diploma/certificate up to secondary; '14' a diploma/certificate at higher-secondary
+      equivalent; '15' is BELOW Class I, i.e. pre-primary. Note '15' is pre-primary despite being
+      the highest number — sorting on this code puts the youngest children last. Use
+      enrolment_stage for ordering that reads correctly.
+  - name: enrolment_level_name
+    type: STRING
+    mode: REQUIRED
+    description: "'Class I' … 'Class XII', 'Below Class I (pre-primary)', or the two diploma labels."
+  - name: enrolment_stage
+    type: STRING
+    mode: REQUIRED
+    description: >
+      DERIVED rollup: 'Pre-primary', 'Primary' (I–V), 'Upper primary' (VI–VIII), 'Secondary'
+      (IX–X), 'Higher secondary' (XI–XII), 'Diploma/certificate'. Pre-primary is 10.4% of all
+      students — large enough that leaving it in a "school students" total silently inflates it.
+  - name: school_type_code
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      1 = Government, 2 = Government-aided (private school aided by government), 3 = Private
+      unaided RECOGNISED, 4 = Private unaided UNRECOGNISED, 5 = Others. NULL on 'away_from_home'
+      (block 4 never asks what kind of school the student attends). Recognition here means
+      recognised by the State/Central government under RTE norms — an unrecognised school lacks
+      that certificate, and per the manual this category explicitly excludes coaching centres.
+  - name: school_type_name
+    type: STRING
+    mode: NULLABLE
+    description: Label for school_type_code.
+  - name: is_government_school
+    type: BOOLEAN
+    mode: NULLABLE
+    description: >
+      Convenience flag, TRUE where school_type_code = 1. NULL on 'away_from_home'. Government
+      schools are 55.9% of all enrolment nationally — 66.0% rural, 30.1% urban — and their share
+      FALLS as class rises (57.2% in IX, 50.9% in XII).
+
+  # ── School expenditure (itemised; 'resident' cut only) ──────────────────────
+  - name: school_exp_course_fee
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Annual course fee in rupees for the current academic year: admission fee, tuition,
+      examination fee, development fee and other compulsory payments. Excludes private coaching.
+      NULL on 'away_from_home'. THIS IS WHERE INTEGRATED COACHING HIDES — at a Narayana or Sri
+      Chaitanya junior college the exam-prep fee is the school fee, and the household reports no
+      separate coaching.
+  - name: school_exp_transport
+    type: FLOAT
+    mode: NULLABLE
+    description: Annual transport spend for school. NULL on 'away_from_home'.
+  - name: school_exp_uniform
+    type: FLOAT
+    mode: NULLABLE
+    description: Annual uniform spend. NULL on 'away_from_home'.
+  - name: school_exp_textbooks_stationery
+    type: FLOAT
+    mode: NULLABLE
+    description: Annual textbooks and stationery spend. NULL on 'away_from_home'.
+  - name: school_exp_other
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Other school expenditure — study tours, school projects, and interest paid on an education
+      loan. Excludes social gatherings and picnics. NULL on 'away_from_home'.
+  - name: school_expenditure
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Total annual school expenditure (the five items above). Populated on BOTH cuts: on
+      'away_from_home' it is the lump-sum school figure block 4 collects. A surveyed zero is
+      stored as 0; NULL means the amount was never ascertained — see school_exp_reporting_status.
+      MoSPI's own published averages treat NULL as zero, so use COALESCE(school_expenditure, 0)
+      to reproduce the headline figures.
+
+  # ── Private coaching (itemised; 'resident' cut only) ────────────────────────
+  - name: received_private_coaching
+    type: STRING
+    mode: NULLABLE
+    description: >
+      'Yes' / 'No'. The survey's definition INCLUDES coaching for competitive exams — the manual
+      names ALLEN, FIITJEE and Aakash as in-scope, and confirms a Class XI student at a NEET-prep
+      institute counts. It EXCLUDES skill development (coding, foreign languages), extracurriculars
+      (art, dance, music — unless music is a school subject) and sports. It does NOT capture
+      coaching bundled into an integrated school's fee: see the table description, point 5.
+  - name: coaching_exp_course_fee
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Annual private-coaching course fee: registration, admission, tuition, examination and other
+      compulsory payments. NULL on 'away_from_home'. The manual notes home tutors typically charge
+      a tuition fee only, while institutes like Allen and Aakash add admission and examination
+      fees — so a nonzero transport or admission component is weak evidence of institute-based
+      rather than home-based coaching.
+  - name: coaching_exp_transport
+    type: FLOAT
+    mode: NULLABLE
+    description: Annual transport spend for coaching. NULL on 'away_from_home'.
+  - name: coaching_exp_uniform
+    type: FLOAT
+    mode: NULLABLE
+    description: Annual uniform spend for coaching. NULL on 'away_from_home'.
+  - name: coaching_exp_textbooks_material
+    type: FLOAT
+    mode: NULLABLE
+    description: Annual textbooks and study-material spend for coaching. NULL on 'away_from_home'.
+  - name: coaching_exp_other
+    type: FLOAT
+    mode: NULLABLE
+    description: Other coaching expenditure. NULL on 'away_from_home'.
+  - name: coaching_expenditure
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Total annual private-coaching expenditure. Populated on BOTH cuts. Where two children of one
+      household share a tutor the manual instructs enumerators to HALVE the payment and record it
+      against each child, so this is a genuine per-student figure, not a household total divided
+      after the fact. 0 = surveyed zero; NULL = not ascertained.
+  - name: boarding_expenditure
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Annual hostel/boarding/lodging fees. On 'resident' this is asked only of single-member
+      hostel households and is 0 otherwise. On 'away_from_home' it is the block 4 boarding lump
+      sum, and a NULL there may mean "free boarding" — check boarding_exp_reporting_status.
+  - name: unallocated_expenditure
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      DERIVED, 'away_from_home' only (always 0 on 'resident'). The amount by which the reported
+      all-in lump sum exceeds school + coaching + boarding. For a residential coaching package
+      this is where the coaching fee the household could not separate out ends up — Rs 1,170 cr
+      nationally for Class XI–XII students living away. Treat it as partially-coaching, not noise.
+  - name: total_education_expenditure
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      DERIVED all-in annual education spend for this student: school + coaching + boarding +
+      unallocated, with NULL components counted as zero so the total is always usable. This is the
+      column to threshold on when you want to catch BOTH integrated schooling and residential
+      coaching, since neither shows up in coaching_expenditure. Always non-null.
+
+  # ── Funding ─────────────────────────────────────────────────────────────────
+  - name: funding_source_1_code
+    type: STRING
+    mode: NULLABLE
+    description: >
+      First major source of funding, zero-padded: '01' student's own earnings, '02' other
+      household members, '03' erstwhile household members, '04' gifts from friends/relatives,
+      '05' scholarship from school, '06' scholarship from GOVERNMENT, '07' scholarship from
+      charitable/other organisations, '08' education loan, '10' other loan, '19' others.
+      NULL on 'away_from_home' (block 4 asks a simpler question instead).
+  - name: funding_source_1_name
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Label for funding_source_1_code. 95.0% of students are funded by other household members;
+      government scholarships are the first source for just 1.2%. That 1.2% is the single most
+      quotable number in this survey for a scholarship-funding argument.
+  - name: funding_source_2_code
+    type: STRING
+    mode: NULLABLE
+    description: "Second major source, same code list, plus '99' = no second source."
+  - name: funding_source_2_name
+    type: STRING
+    mode: NULLABLE
+    description: Label for funding_source_2_code.
+  - name: household_funds_majority
+    type: STRING
+    mode: NULLABLE
+    description: >
+      'Yes' / 'No' — is the sampled household funding the majority of this student's education
+      cost? 'away_from_home' only; the block 4 equivalent of the funding-source question.
+
+  # ── Living away from home ('away_from_home' cut only) ───────────────────────
+  - name: residence_type_code
+    type: INTEGER
+    mode: NULLABLE
+    description: "1 = Students' hostel, 2 = Paying guest/mess, 3 = Others. 'away_from_home' only."
+  - name: residence_type_name
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Where the student lives now. 72% of Class XI–XII students living away are in hostels, rising
+      to 90% among those whose household spends Rs 1 lakh or more on them.
+  - name: present_place_of_residence
+    type: STRING
+    mode: NULLABLE
+    description: "'Rural' or 'Urban' — where the student now lives, not where the household is."
+  - name: school_exp_reporting_status
+    type: STRING
+    mode: NULLABLE
+    description: >
+      'Amount reported' or 'Not known'. 'away_from_home' only. Tells you whether a NULL
+      school_expenditure is genuinely unknown.
+  - name: coaching_exp_reporting_status
+    type: STRING
+    mode: NULLABLE
+    description: >
+      'Amount reported', 'Not known', 'Free tuition' or 'No tuition'. 'away_from_home' only, and
+      the most important of the three: 190 of 405 Class XI–XII students living away are coded
+      'Free tuition', which for a residential coaching package usually means the tuition was not
+      separable from the fee rather than that it was genuinely free. A NULL here is NOT a zero.
+  - name: boarding_exp_reporting_status
+    type: STRING
+    mode: NULLABLE
+    description: "'Amount reported', 'Not known' or 'Free boarding/lodging'. 'away_from_home' only."
+
+  # ── Household context (denormalized) ────────────────────────────────────────
+  - name: household_size
+    type: INTEGER
+    mode: REQUIRED
+    description: Number of members in the sampled household.
+  - name: household_type_code
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Principal source of household income. CODED ON DIFFERENT SCALES BY SECTOR — rural uses
+      1–6 + 9 (self-employed / regular wage / casual labour, each split agriculture vs
+      non-agriculture); urban uses 1–3 + 9 (self-employed / regular wage / casual labour). Code 3
+      means "regular wage in agriculture" in a rural household and "casual labour" in an urban
+      one. Never decode this without the sector; use household_type_name.
+  - name: household_type_name
+    type: STRING
+    mode: REQUIRED
+    description: Sector-correct label for household_type_code. Safe to group on directly.
+  - name: religion_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 Hinduism, 2 Islam, 3 Christianity, 4 Sikhism, 5 Jainism, 6 Buddhism, 7 Zoroastrianism, 9 Others."
+  - name: religion_name
+    type: STRING
+    mode: REQUIRED
+    description: Label for religion_code.
+  - name: social_group_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = ST, 2 = SC, 3 = OBC, 9 = Others. Note 9 (not 4) is the residual category."
+  - name: social_group_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'Scheduled Tribe (ST)', 'Scheduled Caste (SC)', 'Other Backward Class (OBC)', 'Others'.
+      Coaching participation in Classes IX–XII runs ST 20.3%, SC 38.1%, OBC 37.4%, Others 45.5% —
+      a 25-point ST-to-Others gap, and the sharpest equity cut in this dataset.
+  - name: mpce
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Household monthly consumption expenditure in rupees, MoSPI's own A+B+C+((D+E)/12) over the
+      five components in cmse_fact_household. THIS IS A SHORT-FORM MEASURE and it is NOT
+      comparable to HCES: CMS-E collects it in 5 questions where HCES uses a ~400-item schedule,
+      and it comes out roughly 29% LOWER than published HCES 2023-24 means (Rs 2,938 vs Rs 4,122
+      per capita rural; Rs 4,975 vs Rs 6,996 urban) despite being a year later. Use it to RANK
+      households (deciles, quintiles, richer-vs-poorer) — that ordering is sound. Do NOT use it
+      for consumption LEVELS, poverty headcounts, or any threshold in rupees; for those use
+      hces_fact_household_master.
+  - name: mpce_per_capita
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      mpce / household_size. Carries the same short-form caveat as mpce, plus one of its own:
+      households with a teenager are larger, so per-capita ranking mildly penalises exactly the
+      families this survey is about. When ranking Class XI–XII households, exclude
+      is_student_hostel_household rows first — otherwise single-member hostel "households"
+      dominate the top decile and invert it.
+  - name: is_student_hostel_household
+    type: BOOLEAN
+    mode: REQUIRED
+    description: >
+      DATA-QUALITY FLAG. TRUE where the sampled household is one or two people and carries the
+      hostel/mess marker — i.e. a student surveyed as their own household. 141 Class XII students
+      are in this state. Their "household consumption" is one teenager's, so mpce_per_capita ranks
+      them spuriously high while mpce ranks them spuriously low. Exclude them from any per-capita
+      distribution work; keep them for expenditure totals, where they are real students.
+
+  # ── Weight ──────────────────────────────────────────────────────────────────
+  - name: weight
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      Survey multiplier / 100, per MoSPI's README. The number of real students this row stands
+      for. MANDATORY for every population or rupee estimate: SUM(weight) for student counts,
+      SUM(weight * total_education_expenditure) for market size. All rows in the same second-stage
+      stratum within an FSU share a weight, so effective sample size is well below the row count —
+      treat any cut with fewer than ~100 sampled rows as directional only.

@@ -1,0 +1,6 @@
+school_type_code,school_type_name
+1,Government
+2,Government-aided (private school aided by government)
+3,Private unaided (recognised)
+4,Private unaided (unrecognised)
+5,Others

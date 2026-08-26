@@ -1,0 +1,12 @@
+funding_source_code,funding_source_name
+01,Earnings of the student
+02,Other members of the household
+03,Erstwhile household members
+04,Gifts from friends/relatives
+05,Scholarship from school
+06,Scholarship from government
+07,Scholarship from charitable and other organisations
+08,Educational loan
+10,Other loan
+19,Others
+99,No second source of funding

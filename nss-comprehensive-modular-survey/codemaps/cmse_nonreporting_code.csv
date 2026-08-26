@@ -1,0 +1,10 @@
+item,code,code_description
+school,1,Amount reported
+school,2,Not known
+coaching,1,Amount reported
+coaching,2,Not known
+coaching,3,Free tuition
+coaching,4,No tuition
+boarding,1,Amount reported
+boarding,2,Not known
+boarding,3,Free boarding/lodging

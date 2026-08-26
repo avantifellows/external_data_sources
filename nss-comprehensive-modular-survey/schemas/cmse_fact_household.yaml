@@ -1,0 +1,227 @@
+# cmse_fact_household
+#
+# One row per household surveyed in the MoSPI NSS Comprehensive Modular Survey:
+# Education (CMS-E), 80th Round, April–June 2025. 52,085 households.
+#
+# Source CSV:     gs://avantifellows-external-data/cmse/raw/CMSE80HH25.csv
+# Source docs:    gs://avantifellows-external-data/cmse/raw/docs/
+# Source parquet: gs://avantifellows-external-data/cmse/clean/cmse_fact_household.parquet
+# BQ table:       avantifellows.external_data_sources.cmse_fact_household
+# Built by:       nss-comprehensive-modular-survey/scripts/clean_cmse.py
+
+description: >
+  CMS-E 2025 household master: one row per surveyed household (52,085 rows) with geography,
+  social group, religion, household type, the five-component consumption block and its MPCE
+  total, and the NSS survey weight. This is the household side of the same survey as
+  cmse_fact_student — join on household_id. Four things to know before querying.
+  (1) SURVEY WEIGHTS ARE MANDATORY. `weight` (= published multiplier / 100) is how many real
+  households this row stands for; `people_weight` (weight x household_size) is how many people.
+  COUNT(*) is a sample size. The full sample represents 287.0 million households.
+  (2) MPCE HERE IS A SHORT-FORM MEASURE, NOT HCES. CMS-E collects consumption in FIVE questions
+  where HCES uses a ~400-item schedule, and it comes out about 29% lower than published HCES
+  2023-24 means (Rs 2,938 vs Rs 4,122 per capita rural; Rs 4,975 vs Rs 6,996 urban) despite being
+  a year later — a classic short-recall shortfall. Use it to RANK households; do not use it for
+  consumption levels, rupee thresholds or poverty headcounts. For those, use
+  hces_fact_household_master, which is built for exactly that purpose.
+  (3) THIS SURVEY IS NOT DESIGNED FOR HOUSEHOLD-POPULATION ESTIMATES. MoSPI's note to data users
+  states plainly that the auxiliary variables (social group, religion, household type, consumption)
+  exist to disaggregate education spend, not to produce standalone estimates. Do not publish a
+  religion or social-group distribution of Indian households from this table.
+  (4) TWO COLUMNS WERE RENAMED FROM THE SOURCE BECAUSE THE PUBLISHED NAMES SAY THE OPPOSITE OF
+  WHAT THEY MEAN. MoSPI's CSV labels block 3 items 7 and 8 as `any_member_attending_school` and
+  `num_members_attending_school`; the Data Layout is unambiguous that both are about ERSTWHILE
+  members who have LEFT the household to study. Only 1,273 households answer yes, against 34,468
+  that actually contain a student. They are `has_erstwhile_student` and `num_erstwhile_students`
+  here. Read at face value the original name undercounts by 27x.
+rows: 52085
+grain: one row per surveyed household (unique on household_id)
+
+columns:
+  # ── Identity ────────────────────────────────────────────────────────────────
+  - name: household_id
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Composite household id, built from the seven NSS fields that identify a sampled household
+      (nss_region, district, stratum, sub_stratum, FSU serial, second-stage stratum, sample
+      household no). Join key to cmse_fact_student. Stable within this round only.
+  - name: survey_year
+    type: INTEGER
+    mode: REQUIRED
+    description: "2025. Single-round survey — no earlier CMS-E exists to compare against."
+
+  # ── Geography ───────────────────────────────────────────────────────────────
+  - name: state_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      NSS state code, zero-padded 2-digit string ('01' = Jammu & Kashmir, '09' = Uttar Pradesh).
+      DERIVED — the raw file has no state column; it is the first 2 digits of nss_region.
+      36 states/UTs present; '26' is absent (Dadra & Nagar Haveli merged into '25').
+  - name: state_name
+    type: STRING
+    mode: REQUIRED
+    description: State/UT name, denormalized from state_code via codemaps/cmse_state.csv.
+  - name: nss_region
+    type: STRING
+    mode: REQUIRED
+    description: >
+      NSS region code (3-digit) — a grouping of districts within a state used for sampling.
+      First 2 digits are the state, so a region is only meaningful within its state.
+  - name: district_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      District code as published (2-digit), numbered WITHIN each state — always key on
+      (state_code, district_code). MoSPI publishes no district-name lookup for CMS-E.
+  - name: sector_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = Rural, 2 = Urban."
+  - name: sector_name
+    type: STRING
+    mode: REQUIRED
+    description: "'Rural' or 'Urban'."
+  - name: stratum
+    type: STRING
+    mode: REQUIRED
+    description: Sampling stratum (3-digit), scoped within state. Needed only for variance estimation.
+  - name: sub_stratum
+    type: STRING
+    mode: REQUIRED
+    description: Sampling sub-stratum (2-digit), scoped within stratum.
+  - name: fsu_serial_no
+    type: STRING
+    mode: REQUIRED
+    description: >
+      First Stage Unit serial (5-digit) — the sampled village or urban block, and the primary
+      sampling unit. 4,366 FSUs: 2,384 villages and 1,982 urban blocks.
+
+  # ── Household characteristics ───────────────────────────────────────────────
+  - name: household_size
+    type: INTEGER
+    mode: REQUIRED
+    description: Number of members. Mean 4.05 across the weighted sample.
+  - name: household_type_code
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Principal source of household income. CODED ON DIFFERENT SCALES BY SECTOR — rural uses
+      1–6 + 9 (self-employed / regular wage / casual labour, each split agriculture vs
+      non-agriculture); urban uses 1–3 + 9. Code 3 is "regular wage in agriculture" in a rural
+      household and "casual labour" in an urban one. Never decode without the sector.
+  - name: household_type_name
+    type: STRING
+    mode: REQUIRED
+    description: Sector-correct label for household_type_code. Safe to group on directly.
+  - name: religion_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 Hinduism, 2 Islam, 3 Christianity, 4 Sikhism, 5 Jainism, 6 Buddhism, 7 Zoroastrianism, 9 Others."
+  - name: religion_name
+    type: STRING
+    mode: REQUIRED
+    description: Label for religion_code.
+  - name: social_group_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = ST, 2 = SC, 3 = OBC, 9 = Others. Note 9 (not 4) is the residual category."
+  - name: social_group_name
+    type: STRING
+    mode: REQUIRED
+    description: "'Scheduled Tribe (ST)', 'Scheduled Caste (SC)', 'Other Backward Class (OBC)', 'Others'."
+
+  # ── Consumption block ───────────────────────────────────────────────────────
+  - name: monthly_exp_purchased_goods
+    type: FLOAT
+    mode: NULLABLE
+    description: >
+      Component A: usual monthly consumption from purchase (including online) of goods and
+      services, EXCLUDING clothing and footwear.
+  - name: monthly_exp_homegrown
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Component B: imputed monthly value of consumption from home-grown stock — rice, cereals,
+      pulses, vegetables, milk, firewood, cow dung and the like.
+  - name: monthly_exp_in_kind_gifts
+    type: INTEGER
+    mode: REQUIRED
+    description: "Component C: imputed monthly value of consumption from wages in kind, free collection and gifts."
+  - name: annual_exp_clothing_footwear
+    type: INTEGER
+    mode: REQUIRED
+    description: "Component D: spend on clothing, footwear and similar over the last 365 days."
+  - name: annual_exp_durables
+    type: INTEGER
+    mode: REQUIRED
+    description: "Component E: spend on household durables over the last 365 days."
+  - name: mpce
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Monthly Per-household Consumption Expenditure as MoSPI computes it: A + B + C + ((D+E)/12).
+      Short-form measure — see the table description, point 2. Ranks well, does not level well.
+  - name: mpce_per_capita
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      mpce / household_size — the standard Indian welfare ranking variable. When building deciles
+      for households with school students, exclude is_student_hostel_household rows first, or
+      single-member hostel "households" will dominate the top decile and invert it.
+
+  # ── Erstwhile students ──────────────────────────────────────────────────────
+  - name: has_erstwhile_student
+    type: STRING
+    mode: NULLABLE
+    description: >
+      'Yes' / 'No' — does this household have a member aged 3+ who has LEFT it and is currently
+      attending school education elsewhere? RENAMED from MoSPI's `any_member_attending_school`,
+      which describes the opposite of what the column holds (see table description, point 4).
+      1,273 households answer yes, and they are the households that appear on the
+      'away_from_home' cut of cmse_fact_student.
+  - name: num_erstwhile_students
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Count of such erstwhile students. RENAMED from `num_members_attending_school`. NULL where
+      has_erstwhile_student is 'No'.
+  - name: is_student_hostel_household
+    type: BOOLEAN
+    mode: REQUIRED
+    description: >
+      DATA-QUALITY FLAG. TRUE where the household is one or two people and carries the hostel/mess
+      marker — a student surveyed as their own household. Their consumption is one person's, which
+      inverts per-capita rankings. Exclude from distribution work; keep for expenditure totals.
+
+  # ── Fieldwork ───────────────────────────────────────────────────────────────
+  - name: informant_response_code
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Enumerator's assessment of the informant: 1 co-operative and capable, 2 co-operative but not
+      capable, 3 busy, 4 reluctant, 9 others. A sensitivity check on expenditure recall — codes 2
+      and 4 are where recall error concentrates.
+  - name: survey_code
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      1 = original sampled household, 2 = substitute. 1,929 households are substitutes. Substitution
+      is not random (the commonest documented reason is 'members away from home'), so a result that
+      changes materially when substitutes are dropped is worth a second look.
+
+  # ── Weights ─────────────────────────────────────────────────────────────────
+  - name: weight
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      Survey multiplier / 100, per MoSPI's README — the number of real households this row stands
+      for. SUM(weight) over the full table = 287.0 million households. MANDATORY for any
+      population estimate.
+  - name: people_weight
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      weight x household_size — the number of real PEOPLE this row stands for. Use this, not
+      weight, when computing person-level means such as per-capita consumption, which is how
+      MoSPI computes published MPCE.

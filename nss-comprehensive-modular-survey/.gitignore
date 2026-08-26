@@ -1,0 +1,17 @@
+# Raw NSS unit-level CSVs — large, staged to GCS instead
+raw/*.csv
+raw/*.txt
+raw/*.zip
+
+# Clean parquet — staged to GCS, never in git
+clean/
+
+# Local venv / caches
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# The 113-page field manual is 2.15 MB — over the repo's in-git size line.
+# It is staged to gs://avantifellows-external-data/cmse/raw/docs/ instead.
+docs/NSO Volume I & II_80 - CMSE.pdf
