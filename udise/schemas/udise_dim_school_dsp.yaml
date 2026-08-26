@@ -70,6 +70,7 @@ validation: >
   One row per school per year, verified on build: COUNT(*) = COUNT(DISTINCT
   pseudocode) in all five editions. Schools per edition: 2020-21 1,509,136;
   2022-23 1,466,109; 2023-24 1,471,891; 2024-25 1,471,473; 2025-26 1,466,682.
+  Every row resolves to a named management_group; none is NULL.
 partitioned_by: academic_year_start (integer range)
 clustered_by: [state, management_code, school_category_code, rural_urban_code]
 
@@ -180,8 +181,12 @@ columns:
     type: STRING
     mode: NULLABLE
     description: >
-      Government / Aided / Private / Other — the four-way rollup analysts actually
+      Government / Aided / Private / Other / Unknown — the rollup analysts actually
       group by. Derived from management_code via codemaps/dsp_management.csv.
+      'Unknown' is 7,306 school-years (0.1%) carrying management codes 7, 89, 99,
+      101 and 102, which no codebook documents. They keep a NULL `management` label
+      — the label is not guessed — but they are given a named rollup so they stay
+      visible in a GROUP BY instead of silently dropping out as NULL.
 
   - name: lowest_class
     type: INTEGER

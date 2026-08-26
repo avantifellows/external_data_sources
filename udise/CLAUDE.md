@@ -59,8 +59,11 @@ row above the `Location / … / Girls / Boys / Overall` sub-header; data follows
    (42,270 rows, state-level aggregate). Everything above this section refers to it.
 2. **DSP microdata** — Data Sharing Portal, **one row per school**, five editions
    (2020-21, 2022-23, 2023-24, 2024-25, 2025-26; 2021-22 is not held). Raw zips in
-   `raw/dsp/` (gitignored, ~1.7 GB). Ingested as `udise_dim_school_dsp` and
-   `udise_fact_enrolment_dsp` by `scripts/dsp_stage.py` → `scripts/dsp_build_bq.py`.
+   `raw/dsp/` (gitignored, ~1.7 GB). Ingested by `scripts/dsp_stage.py` →
+   `scripts/dsp_build_bq.py` into four tables — `udise_dim_school_dsp` (the
+   directory), `udise_fact_enrolment_dsp`, `udise_fact_teacher_dsp` and
+   `udise_fact_facility_dsp`. The last three all key on
+   `(academic_year, pseudocode)` and join to the dim.
 
 Keep the two apart in table names and schemas. A DSP table is `*_dsp`; never merge
 one into the Report 4000 fact, and never union them — they are different grains.
@@ -94,10 +97,30 @@ status line and the five gotchas. In short:
 - **Don't publish the 2020-21 profile_2 columns at source positions 20-45.** The
   CSV header and the codebook disagree about what those 26 columns mean. See the
   `not_published` block in `schemas/udise_dim_school_dsp.yaml`.
+- **Don't let an unmapped code sit as a silent NULL.** A code missing from a
+  codemap yields a NULL label, and a NULL drops out of a `GROUP BY` without comment
+  — 1.7M students sat in an unnamed management bucket until a query happened to
+  surface it. When the source carries a code no codebook documents, add it to the
+  codemap with an empty label and an `UNDOCUMENTED` note, and give it a rollup value
+  of `Unknown` so it stays visible. Never guess the label.
 - **Don't invent an age mapping.** From 2022-23 the age cut is `item_group=8` with
   an `item_id` the codebook describes only as "Age id (2 to 22)" — no id-to-age
   table is published. 2020-21's readable age labels are carried as-is; the two are
   not comparable, and the schema says so.
-- **Don't leave the staging dataset behind.** `udise_dsp_staging` is transient
-  (14-day table expiry). Drop it with `dsp_build_bq.py --drop-staging` once the
-  finished tables validate.
+- **Don't add a table per source file.** `safety` is folded into
+  `udise_fact_facility_dsp`, not given its own table: same grain, same subject, and
+  2025-26's facility file already carries safety-adjacent columns. Judge by whether
+  it answers a different question, not by how upstream packages the download.
+- **Don't build while `dsp_stage.py` is still running.** It writes
+  `schemas/dsp_layouts.json` incrementally, and the build reads it to decide which
+  editions exist — a stale read silently drops a whole edition. `dsp_build_bq.py`
+  now cross-checks layouts against the staging dataset and refuses, but wait for
+  staging to exit anyway.
+- **Don't leave the staging dataset behind — but don't drop it early either.**
+  `udise_dsp_staging` is transient (14-day table expiry), and `dsp_build_bq.py`
+  reads it for EVERY table. Drop it too soon and any later fix — a codemap
+  correction, a renamed column — needs the affected groups re-staged before the
+  table can be rebuilt. Drop it with `dsp_build_bq.py --drop-staging` only once all
+  four tables are built AND their codemaps have settled. Re-staging is cheap while
+  the local `raw/dsp/_staged/**/*.csv.gz` files survive; it is a full re-extract of
+  ~12 GB if they do not.

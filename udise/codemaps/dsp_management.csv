@@ -15,3 +15,8 @@ code,label,broad_group,note
 96,Central Tibetan School,Government,
 97,Madarsa Recognized (by Wakf Board/Madarsa Board),Other,
 98,Madarsa Unrecognized,Other,
+7,,Unknown,"UNDOCUMENTED. Not in either codebook's management list. 4,008 school-years across 4 editions. No label is given because none is published; broad_group is 'Unknown' so these schools stay visible in a GROUP BY instead of vanishing into a NULL bucket."
+89,,Unknown,"UNDOCUMENTED. 89 school-years across 4 editions."
+99,,Unknown,"UNDOCUMENTED. 2,586 school-years across 4 editions. Likely an 'other/unspecified' sentinel, but the codebooks do not say so."
+101,,Unknown,"UNDOCUMENTED. 600 school-years, present in all 5 editions."
+102,,Unknown,"UNDOCUMENTED. 23 school-years across 2 editions."

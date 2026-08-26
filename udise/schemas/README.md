@@ -1,19 +1,16 @@
 # udise schemas
 
-▶ **NEXT: push both branches and open the paired PRs** — `add-udise-dsp-microdata`
-here and `add-udise-dsp-schemas` in data-assistant. Both are committed locally; the
-push is gated by the ship hook. The BigQuery build is done and validated, staging is
-dropped, and the source zips are in GCS.
-
-```bash
-python3 scripts/dsp_build_bq.py --validate    # re-run the checks any time
-```
+▶ **NEXT: nothing outstanding.** All four DSP tables are built, validated and
+documented. Re-run the checks any time with
+`python3 scripts/dsp_build_bq.py --validate`.
 
 | Table | Grain | Schema |
 |---|---|---|
 | `udise_fact_enrolment` | state × management × category × location × class × gender, AY 2024-25 | [udise_fact_enrolment.yaml](udise_fact_enrolment.yaml) |
 | `udise_dim_school_dsp` | school × academic year, 5 editions | [udise_dim_school_dsp.yaml](udise_dim_school_dsp.yaml) |
 | `udise_fact_enrolment_dsp` | school × item × class × gender × academic year, 5 editions | [udise_fact_enrolment_dsp.yaml](udise_fact_enrolment_dsp.yaml) |
+| `udise_fact_teacher_dsp` | school × academic year, 5 editions | [udise_fact_teacher_dsp.yaml](udise_fact_teacher_dsp.yaml) |
+| `udise_fact_facility_dsp` | school × academic year, 5 editions | [udise_fact_facility_dsp.yaml](udise_fact_facility_dsp.yaml) |
 
 `dsp_layouts.json` is generated, not hand-written: `dsp_stage.py` records the
 header of every CSV it stages. It is committed so that an upstream schema change
@@ -34,8 +31,10 @@ mixed:
   dashboard. State × management × category × class × gender. One table:
   `udise_fact_enrolment`.
 - **DSP** (Data Sharing Portal) — a de-identified **school-level** extract, one row
-  per school, downloaded as zips per file group per year. Two tables so far:
-  `udise_dim_school_dsp` and `udise_fact_enrolment_dsp`.
+  per school, downloaded as zips per file group per year. Four tables:
+  `udise_dim_school_dsp` (the directory), `udise_fact_enrolment_dsp`,
+  `udise_fact_teacher_dsp` and `udise_fact_facility_dsp` — the last three all key on
+  `(academic_year, pseudocode)` and join to the dim.
 
 ### The five things that get DSP numbers wrong
 
@@ -67,6 +66,7 @@ Everything in `../codemaps/` is transcribed from the committed codebook PDFs in
 | `dsp_item_desc_2020_21.csv` | 2020-21's text `item_desc` labels back onto those codes, and says plainly where no mapping exists |
 | `dsp_school_category.csv` | school category → class range |
 | `dsp_management.csv` | management code → who runs the school, plus a Government/Aided/Private/Other rollup |
+| `dsp_age_item_id.csv` | the item_group=8 age id, DERIVED from the data — the codebooks publish no key |
 | `dsp_school_type.csv`, `dsp_rural_urban.csv`, `dsp_resi_school.csv`, `dsp_building_status.csv`, `dsp_yes_no.csv` | the small enums |
 
 Medium of instruction and affiliation board are DCF codes whose value lists the
@@ -82,15 +82,12 @@ guessed label is worse than no label.
 - **`NationalStreamEnrolment.csv`** (inside the 2020-21 enrolment_data_1 zip) — a
   class 11/12 stream × caste cut no other edition publishes. Different grain; it
   needs its own table.
-- **`teacher_data`, `facility_data`, `safety`.** Downloaded and registered in
-  `sources.py`, staged by `dsp_stage.py --groups …` on request, but not modelled
-  yet. They are not on the critical path for the BPL question.
 - **2021-22.** No such edition is held. Adding it later needs only the zips in
   `raw/dsp/2021-22/` and the year added to `DSP_YEARS`.
 
 ## What the data turned out to say, and the codebooks did not
 
-Four things only showed up once the source was in BigQuery. All four are recorded
+Five things only showed up once the source was in BigQuery. All four are recorded
 in the codemaps and schema YAMLs; they are collected here because each one changes
 a query someone would otherwise write with confidence.
 
@@ -111,7 +108,11 @@ a query someone would otherwise write with confidence.
    per class tracks Age(id+1) at classes 1, 5 and 10 alike. The fact carries this as
    a **derived** `age_years` column with raw `item_id` beside it; the derivation and
    its evidence are in `../codemaps/dsp_age_item_id.csv`.
-4. **12% of 2020-21 schools carry an unlabelled enrolment row.** 182,426 of
+4. **Five management codes appear that no codebook lists** — 7, 89, 99, 101 and
+   102, across 7,306 school-years (0.1%). They are in the codemap with no label and
+   an `UNDOCUMENTED` note, and a `management_group` of `Unknown` so they stay
+   visible in a GROUP BY instead of silently dropping out as NULL.
+5. **12% of 2020-21 schools carry an unlabelled enrolment row.** 182,426 of
    1,509,136 schools have one extra row with an empty `item_desc`, sitting right
    after BPL. It is not a total (it never exceeds the school's General+SC+ST+OBC
    sum), not a duplicate of BPL or Aadhar, and not EWS-shaped (75% of the schools

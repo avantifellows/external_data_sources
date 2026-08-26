@@ -49,6 +49,8 @@ CODEMAPS = ROOT / "codemaps"
 
 DIM_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.udise_dim_school_dsp"
 FACT_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.udise_fact_enrolment_dsp"
+TEACHER_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.udise_fact_teacher_dsp"
+FACILITY_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.udise_fact_facility_dsp"
 
 CLASS_KEYS = ["cpp"] + [f"c{n}" for n in range(1, 13)]
 CLASS_LEVEL = {"cpp": "PP", **{f"c{n}": str(n) for n in range(1, 13)}}
@@ -78,6 +80,38 @@ def layouts() -> dict[str, list[str]]:
     if not LAYOUTS_JSON.exists():
         raise SystemExit(f"missing {LAYOUTS_JSON}; run scripts/dsp_stage.py first")
     return json.loads(LAYOUTS_JSON.read_text())
+
+
+def assert_layouts_match_staging(lay: dict[str, list[str]]) -> None:
+    """Fail if BigQuery holds a staging table this layouts file does not know about.
+
+    dsp_stage.py writes dsp_layouts.json as it goes, so a build kicked off while
+    staging is still running reads a stale file — and the year-selection below then
+    drops that edition WITHOUT SAYING ANYTHING. That is exactly how a facility build
+    silently shipped four editions instead of five. Waiting on the BigQuery table
+    count is not enough; the two have to agree.
+    """
+    listing = subprocess.run(
+        ["bq", f"--project_id={BQ_PROJECT}", "ls", "--max_results=200",
+         f"{BQ_PROJECT}:{DSP_STAGING_DATASET}"],
+        capture_output=True, text=True,
+    )
+    if listing.returncode != 0:
+        return  # staging already dropped; nothing to cross-check
+    staged = set()
+    for line in listing.stdout.splitlines()[2:]:
+        name = line.split()[0] if line.split() else ""
+        if "_20" not in name:
+            continue
+        group, _, year = name.rpartition("_20")
+        staged.add(f"20{year.replace('_', '-')}/{group}")
+    unknown = sorted(staged - set(lay))
+    if unknown:
+        raise SystemExit(
+            "dsp_layouts.json is stale — these are staged in BigQuery but absent from it:\n  "
+            + "\n  ".join(unknown)
+            + "\nIs dsp_stage.py still running? Let it finish, then re-run this build."
+        )
 
 
 def cols(lay: dict[str, list[str]], year: str, group: str) -> list[str]:
@@ -421,6 +455,250 @@ def fact_sql(lay: dict[str, list[str]], years: list[str]) -> str:
     )
 
 
+# ─── teacher and facility: one wide row per school per year ──────────────────
+#
+# Both are the same shape as the dim — one row per (academic_year, pseudocode) —
+# and are built by the same generic path: pick each field if the edition publishes
+# it, emit a typed NULL if it does not, UNION the editions. They are separate
+# tables from the dim because they answer separate questions (staffing; physical
+# plant), and each is wide enough that folding them in would make the school
+# directory unreadable.
+
+# (source column, cast, output alias). Same convention as DIM_FIELDS.
+TEACHER_FIELDS: list[tuple[str, str | None, str]] = [
+    # headcount and sex. `transgender` is a real third count here, unlike the
+    # enrolment file where it is folded into the boys column before 2025-26.
+    ("total_tch", "INT64", "teachers_total"),
+    ("male", "INT64", "teachers_male"),
+    ("female", "INT64", "teachers_female"),
+    ("transgender", "INT64", "teachers_transgender"),
+    # social category of the teaching staff — 2022-23 onward only
+    ("gen_tch", "INT64", "teachers_general"),
+    ("sc_tch", "INT64", "teachers_sc"),
+    ("st_tch", "INT64", "teachers_st"),
+    ("obc_tch", "INT64", "teachers_obc"),
+    # terms of employment
+    ("regular", "INT64", "teachers_regular"),
+    ("contract", "INT64", "teachers_contract"),
+    ("part_time", "INT64", "teachers_part_time"),
+    # highest academic qualification
+    ("below_graduate", "INT64", "teachers_below_graduate"),
+    ("graduate", "INT64", "teachers_graduate"),
+    ("post_graduate_and_above", "INT64", "teachers_post_graduate_plus"),
+    # highest PROFESSIONAL (teaching) qualification — a different axis from the
+    # academic one above; the two sets each sum to roughly total_teachers.
+    ("diploma_certificate", "INT64", "qual_diploma_certificate"),
+    ("bachelor_of_ee", "INT64", "qual_bachelor_elementary_ed"),
+    ("bed_equivalent", "INT64", "qual_bed_equivalent"),
+    ("med_equivalent", "INT64", "qual_med_equivalent"),
+    ("diploma_special_edu", "INT64", "qual_diploma_special_ed"),
+    ("pursuing_rpc", "INT64", "qual_pursuing_course"),
+    ("diploma_ele_edu", "INT64", "qual_diploma_elementary_ed"),
+    ("early_childhood_tch", "INT64", "qual_early_childhood"),
+    ("bed_nursery", "INT64", "qual_bed_nursery"),
+    ("other", "INT64", "qual_other"),
+    ("none", "INT64", "qual_none"),
+    # training
+    ("trained_comp", "INT64", "teachers_trained_computer"),
+    ("trained_cwsn", "INT64", "teachers_trained_cwsn"),
+    ("teacher_received_service_training", "INT64", "teachers_received_service_training"),
+    ("teacher_involve_non_training_assignment", "INT64", "teachers_non_training_assignment"),
+    ("teachers_aged_above_55", "INT64", "teachers_aged_above_55"),
+    # which stage each teacher is assigned to teach
+    ("class_taught_pr", "INT64", "class_taught_primary"),
+    ("class_taught_upr", "INT64", "class_taught_upper_primary"),
+    ("class_taught_pr_upr", "INT64", "class_taught_primary_and_upper_primary"),
+    ("class_taught_sec_only", "INT64", "class_taught_secondary_only"),
+    ("class_taught_hsec_only", "INT64", "class_taught_higher_secondary_only"),
+    ("class_taught_upr_sec", "INT64", "class_taught_upper_primary_and_secondary"),
+    ("class_taught_sec_hsec", "INT64", "class_taught_secondary_and_higher_secondary"),
+    ("class_taugt_pre_primary_only", "INT64", "class_taught_pre_primary_only"),
+    ("class_taught_pr_and_pre_pri", "INT64", "class_taught_pre_primary_and_primary"),
+]
+
+# 2020-21 spells the headcount `total_teacher` and the computer-training count
+# `total_teacher_trained_computer`; every later edition uses `total_tch` and
+# `trained_comp`. Mapped to the same output column rather than published twice.
+TEACHER_ALIASES = {
+    "total_tch": "total_teacher",
+    "trained_comp": "total_teacher_trained_computer",
+}
+
+FACILITY_FIELDS: list[tuple[str, str | None, str]] = [
+    # building
+    ("building_status", None, "building_status_code"),
+    ("no_building_blocks", "INT64", "building_blocks"),
+    ("pucca_building_blocks", "INT64", "pucca_building_blocks"),
+    ("boundary_wall", None, "boundary_wall_code"),
+    ("total_class_rooms", "INT64", "classrooms_total"),
+    ("other_rooms", "INT64", "other_rooms"),
+    ("classrooms_in_good_condition", "INT64", "classrooms_good_condition"),
+    ("classrooms_needs_minor_repair", "INT64", "classrooms_need_minor_repair"),
+    ("classrooms_needs_major_repair", "INT64", "classrooms_need_major_repair"),
+    ("separate_room_for_hm", None, "separate_room_for_head_teacher"),
+    # toilets — the counts most used for a girls'-access read
+    ("total_boys_toilet", "INT64", "boys_toilets"),
+    ("total_boys_func_toilet", "INT64", "boys_toilets_functional"),
+    ("total_girls_toilet", "INT64", "girls_toilets"),
+    ("total_girls_func_toilet", "INT64", "girls_toilets_functional"),
+    ("total_boys_cwsn_toilet", "INT64", "boys_cwsn_toilets"),
+    ("func_boys_cwsn_friendly", "INT64", "boys_cwsn_toilets_functional"),
+    ("total_girls_cwsn_toilet", "INT64", "girls_cwsn_toilets"),
+    ("func_girls_cwsn_friendly", "INT64", "girls_cwsn_toilets_functional"),
+    ("urinal_boys", "INT64", "boys_urinals"),
+    ("urinal_girls", "INT64", "girls_urinals"),
+    ("handwash_near_toilet", None, "handwash_near_toilet"),
+    # drinking water. 2020-21 publishes one available/functional pair; 2022-23 on
+    # replaces it with a yes/no per source, so the two cannot be compared directly.
+    ("drinking_water_available", None, "drinking_water_available"),
+    ("drinking_water_functional", None, "drinking_water_functional"),
+    ("hand_pump_yn", None, "water_hand_pump_yn"),
+    ("well_prot_yn", None, "water_protected_well_yn"),
+    ("tap_yn", None, "water_tap_yn"),
+    ("othsrc_yn", None, "water_other_source_yn"),
+    ("well_unprot_yn", None, "water_unprotected_well_yn"),
+    ("pack_water_yn", None, "water_packaged_yn"),
+    ("hand_pump_fun_yn", None, "water_hand_pump_functional_yn"),
+    ("well_prot_fun_yn", None, "water_protected_well_functional_yn"),
+    ("tap_fun_yn", None, "water_tap_functional_yn"),
+    ("othsrc_fun_yn", None, "water_other_source_functional_yn"),
+    ("well_unprot_fun_yn", None, "water_unprotected_well_functional_yn"),
+    ("pack_water_fun_yn", None, "water_packaged_functional_yn"),
+    ("rain_water_harvesting", None, "rain_water_harvesting"),
+    ("handwash_facility_for_meal", None, "handwash_for_meal"),
+    # utilities and amenities
+    ("electricity_availability", None, "electricity_code"),
+    ("solar_panel", None, "solar_panel"),
+    ("library_availability", None, "library_available"),
+    ("book_bank", None, "book_bank"),
+    ("reading_corner", None, "reading_corner"),
+    ("playground_available", None, "playground_available"),
+    ("playground_alt_yn", None, "playground_alternative_yn"),
+    ("medical_checkups", None, "medical_checkups"),
+    ("availability_ramps", None, "ramps_available"),
+    ("availability_of_handrails", None, "handrails_available"),
+    ("furniture_availability", None, "furniture_code"),
+    ("spl_educator_yn", None, "special_educator_code"),
+    # laboratories — condition codes, 2022-23 onward
+    ("phy_lab_cond", None, "physics_lab_code"),
+    ("chem_lab_cond", None, "chemistry_lab_code"),
+    ("bio_lab_cond", None, "biology_lab_code"),
+    ("math_lab_cond", None, "maths_lab_code"),
+    ("lang_lab_cond", None, "language_lab_code"),
+    ("geo_lab_cond", None, "geography_lab_code"),
+    ("home_sc_lab_cond", None, "home_science_lab_code"),
+    ("psycho_lab_cond", None, "psychology_lab_code"),
+    ("comp_lab_cond", None, "computer_lab_code"),
+    ("comp_ict_lab_yn", None, "computer_ict_lab_yn"),
+    ("ict_lab_yn", None, "ict_lab_samagra_yn"),
+    ("ict_lab", None, "ict_lab"),
+    # digital equipment — counts
+    ("laptop", "INT64", "laptops"),
+    ("tablet", "INT64", "tablets"),
+    ("desktop", "INT64", "desktops"),
+    ("digiboard", "INT64", "digital_boards"),
+    ("teachdev_tot", "INT64", "teaching_devices"),
+    ("server_tot", "INT64", "servers"),
+    ("smart_class_tv_tot", "INT64", "smart_classrooms"),
+    ("projector", "INT64", "projectors"),
+    ("printer", "INT64", "printers"),
+    ("internet", None, "internet"),
+    ("dth", None, "dth"),
+    # 2025-26 additions
+    ("librarian_yn", None, "librarian_yn"),
+    ("land_avl_yn", None, "land_available_yn"),
+    ("kitchen_garden_yn", None, "kitchen_garden_yn"),
+    ("staff_qtr_yn", None, "staff_quarters_yn"),
+    ("tinkering_lab_yn", None, "tinkering_lab_yn"),
+    ("boarding_pri_yn", None, "boarding_primary_yn"),
+    ("boarding_upr_yn", None, "boarding_upper_primary_yn"),
+    ("boarding_sec_yn", None, "boarding_secondary_yn"),
+    ("boarding_hsec_yn", None, "boarding_higher_secondary_yn"),
+    ("cyber_safety", "INT64", "students_oriented_cyber_safety"),
+    ("psycho_social", "INT64", "students_trained_psychosocial"),
+    ("enrichment_activities", None, "enrichment_activities_yn"),
+    # safety file group — 2025-26 only. Folded in here rather than given its own
+    # table: same grain, same subject (the school's physical and operational
+    # environment), and 2025-26's facility file already carries cyber_safety and
+    # psycho_social, so splitting would scatter one topic across two tables.
+    ("sdmp_plan_yn", None, "disaster_mgmt_plan_yn"),
+    ("struct_safaud_yn", None, "structural_safety_audit_yn"),
+    ("nonstr_safaud_yn", None, "nonstructural_safety_audit_yn"),
+    ("cctv_cam_yn", None, "cctv_yn"),
+    ("fire_ext_yn", None, "fire_extinguisher_yn"),
+    ("nodal_tch_yn", None, "safety_nodal_teacher_yn"),
+    ("safty_trng_yn", None, "safety_training_yn"),
+    ("dismgmt_taug_yn", None, "disaster_mgmt_taught_yn"),
+    ("slfdef_grt_yn", None, "self_defence_offered_yn"),
+    ("slfdef_trained", "INT64", "girls_trained_self_defence"),
+    ("guide_display_yn", None, "safety_guidelines_displayed_yn"),
+    ("tch_first_level_counsellor", None, "teacher_first_level_counsellor_yn"),
+    ("safe_sec_audit", None, "safety_security_audit_yn"),
+    ("teacher_displaying_photo", None, "teacher_photo_displayed_yn"),
+    ("vidya_pravesh", None, "vidya_pravesh_yn"),
+    ("stu_atndnc_yn", None, "student_attendance_tracked_yn"),
+    ("tch_atndnc_yn", None, "teacher_attendance_tracked_yn"),
+    ("sch_youth_club_yn", None, "youth_club_yn"),
+    ("sch_eco_club_yn", None, "eco_club_yn"),
+    ("tch_icard_yn", None, "teacher_id_card_yn"),
+    ("self_cert_obtained_yn", None, "self_certification_yn"),
+]
+
+# 2020-21 misspells the girls' urinal count. Fixed on the way out, as `managment`
+# and `psuedocode` are.
+FACILITY_ALIASES = {"urinal_girls": "urinla_girls"}
+
+
+def wide_year_sql(lay, year: str, groups: list[str], fields, aliases: dict[str, str]) -> str:
+    """One edition of a wide, one-row-per-school table, ready to UNION."""
+    present: dict[str, str] = {}          # source column -> table alias holding it
+    for i, group in enumerate(groups):
+        if f"{year}/{group}" not in lay:  # a group not published this edition
+            continue
+        for c in cols(lay, year, group):
+            present.setdefault(c, f"t{i}")
+
+    parts = [
+        f"    {sql_str(year)} AS academic_year",
+        f"    {int(year[:4])} AS academic_year_start",
+        "    t0.pseudocode",
+    ]
+    for source, cast, alias in fields:
+        col = source if source in present else aliases.get(source, "")
+        if col in present:
+            parts.append("    " + _pick([col], col, cast, alias, present[col] + "."))
+        else:
+            parts.append(f"    CAST(NULL AS {cast or 'STRING'}) AS {alias}")
+
+    staged = [g for g in groups if f"{year}/{g}" in lay]
+    frm = f"\n  FROM `{dsp_staging_table(year, staged[0])}` t0"
+    for g in staged[1:]:
+        i = groups.index(g)
+        frm += (f"\n  LEFT JOIN `{dsp_staging_table(year, g)}` t{i}"
+                f"\n    ON t{i}.pseudocode = t0.pseudocode")
+    return "  SELECT\n" + ",\n".join(parts) + frm
+
+
+def wide_table_sql(lay, years: list[str], table: str, groups: list[str], fields,
+                   aliases: dict[str, str], cluster: str, description: str) -> str:
+    usable = [y for y in years if any(f"{y}/{g}" in lay for g in groups)]
+    if not usable:
+        raise SystemExit(f"no staged groups {groups} for years {years}")
+    # Say which editions are going in. A build that quietly covers fewer years than
+    # asked for looks identical to a correct one in the row counts.
+    skipped = [y for y in years if y not in usable]
+    print(f"    editions: {', '.join(usable)}"
+          + (f"   SKIPPED (not staged): {', '.join(skipped)}" if skipped else ""))
+    body = "\n  UNION ALL\n".join(wide_year_sql(lay, y, groups, fields, aliases) for y in usable)
+    return (
+        f"CREATE OR REPLACE TABLE `{table}`\n"
+        "PARTITION BY RANGE_BUCKET(academic_year_start, GENERATE_ARRAY(2015, 2050, 1))\n"
+        f"CLUSTER BY {cluster}\n"
+        f"OPTIONS (description = '{description}')\n"
+        f"AS\n{body}\n"
+    )
+
+
 # ─── validation ──────────────────────────────────────────────────────────────
 
 VALIDATE_SQL = f"""
@@ -450,6 +728,17 @@ FROM `{FACT_TABLE}` GROUP BY 1, 2
 UNION ALL
 SELECT 'gender values present', academic_year, STRING_AGG(DISTINCT gender ORDER BY gender), NULL
 FROM `{FACT_TABLE}` GROUP BY 1, 2
+UNION ALL
+SELECT 'teacher rows per year', academic_year, CAST(COUNT(*) AS STRING),
+       CAST(COUNT(DISTINCT pseudocode) AS STRING)
+FROM `{TEACHER_TABLE}` GROUP BY 1, 2
+UNION ALL
+SELECT 'teachers total', academic_year, CAST(SUM(teachers_total) AS STRING), NULL
+FROM `{TEACHER_TABLE}` GROUP BY 1, 2
+UNION ALL
+SELECT 'facility rows per year', academic_year, CAST(COUNT(*) AS STRING),
+       CAST(COUNT(DISTINCT pseudocode) AS STRING)
+FROM `{FACILITY_TABLE}` GROUP BY 1, 2
 UNION ALL
 SELECT 'fact schools missing from dim', academic_year, CAST(COUNT(*) AS STRING), NULL
 FROM (
@@ -481,6 +770,8 @@ def main() -> None:
     ap.add_argument("--years", default=",".join(DSP_YEARS))
     ap.add_argument("--dim", action="store_true")
     ap.add_argument("--fact", action="store_true")
+    ap.add_argument("--teacher", action="store_true")
+    ap.add_argument("--facility", action="store_true")
     ap.add_argument("--validate", action="store_true")
     ap.add_argument("--print-sql", action="store_true", help="write the SQL out and run nothing")
     ap.add_argument("--drop-staging", action="store_true")
@@ -494,8 +785,12 @@ def main() -> None:
 
     years = [y.strip() for y in args.years.split(",") if y.strip()]
     lay = layouts()
-    do_dim = args.dim or not (args.fact or args.validate)
-    do_fact = args.fact or not (args.dim or args.validate)
+    assert_layouts_match_staging(lay)
+    picked = args.dim or args.fact or args.teacher or args.facility or args.validate
+    do_dim = args.dim or not picked
+    do_fact = args.fact or not picked
+    do_teacher = args.teacher or not picked
+    do_facility = args.facility or not picked
 
     if do_dim:
         print(f"→ {DIM_TABLE}")
@@ -503,10 +798,28 @@ def main() -> None:
     if do_fact:
         print(f"→ {FACT_TABLE}")
         bq_query(fact_sql(lay, years), args.print_sql, "fact_enrolment")
+    if do_teacher:
+        print(f"→ {TEACHER_TABLE}")
+        bq_query(wide_table_sql(
+            lay, years, TEACHER_TABLE, ["teacher_data"], TEACHER_FIELDS, TEACHER_ALIASES,
+            "pseudocode",
+            "UDISE+ DSP teacher counts, one row per school per academic year. Joins to "
+            "udise_dim_school_dsp on (academic_year, pseudocode). Academic and professional "
+            "qualification are two separate axes that each total the staff - do not add them "
+            "together. Built by udise/scripts/dsp_build_bq.py."), args.print_sql, "fact_teacher")
+    if do_facility:
+        print(f"→ {FACILITY_TABLE}")
+        bq_query(wide_table_sql(
+            lay, years, FACILITY_TABLE, ["facility_data", "safety"], FACILITY_FIELDS,
+            FACILITY_ALIASES, "pseudocode",
+            "UDISE+ DSP school facilities and safety, one row per school per academic year. "
+            "Joins to udise_dim_school_dsp on (academic_year, pseudocode). 9 = Not Applicable "
+            "and No = 2 (not 0) throughout. Column coverage varies sharply by edition - see the "
+            "schema YAML. Built by udise/scripts/dsp_build_bq.py."), args.print_sql, "fact_facility")
     # Validation reads BOTH finished tables, so it only makes sense after a full
     # build or when asked for explicitly — running it after `--dim` alone just fails
     # on a fact table that does not exist yet.
-    if args.validate or (do_dim and do_fact):
+    if args.validate or (do_dim and do_fact and do_teacher and do_facility):
         print("→ validation")
         bq_query(VALIDATE_SQL, args.print_sql, "validate")
     print("✓ done.")
