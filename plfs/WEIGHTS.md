@@ -145,6 +145,75 @@ Our `_combined()` in `weights.py` handles all three correctly.
 
 ## What the total actually means
 
+**Verified, and it is less than I first claimed.** Two things are established and one is not, and the
+line between them matters because this section has now carried three different wrong explanations.
+
+### Established: our arithmetic is MoSPI's arithmetic
+
+The per-release README states the rule directly. `docs_annual_2018_19/README_July18_June19.pdf`
+"Note for users" §3:
+
+> For generating combined estimate (taking both the subsamples together) ... Final weight = MLTS/100
+> if NSS=NSC, = MLTS/200 otherwise.
+
+and §4:
+
+> Generation of combined estimate for the entire Year: For annual estimate, MLTS may be divided by
+> number of quarters.
+
+That is exactly `_combined()`. The sample also matches the published counts exactly — 2018-19 has
+420,757 V1 persons in 101,579 households, the figures printed in its own README. **So the level of the
+weighted total is MoSPI's, not an artefact of this pipeline.**
+
+### Established: the frame and the PPS size measure are Census 2011
+
+`EstimationProcedure_PLFS.pdf` §1.2.7 (rural frame = "List of 2011 Population Census villages"),
+§1.2.8 (urban strata by town size "as per Population Census 2011"), §1.2.11.1 (allocation "in
+proportion to the population as per Census 2011"). The technical clarification §2-3 gives the weight as
+`Σzᵢ/zᵢ`, "an inverse of inclusion probability", where `Σzᵢ` is "the total size (Census Population in
+rural sector) of the NSS region". No calibration, post-stratification or benchmarking step appears
+anywhere in the estimation procedure.
+
+That explains a shortfall against the current population, and in the right direction.
+
+### NOT established: why the level is what it is, or why it moves
+
+The totals run **78-84% of contemporaneous population**, and the ratio drifts upward:
+
+| release | Σ weights | / Census 2011 | / contemporaneous pop |
+|---|---|---|---|
+| annual_2018_19 | 1.078B | 0.890 | 0.779 |
+| annual_2021_22 | 1.158B | 0.956 | 0.817 |
+| annual_2023_24 | 1.204B | 0.994 | 0.836 |
+| calendar_2025 | 1.193B | 0.985 | 0.822 |
+
+Sample size is near-constant across these (413k-428k V1 persons) while the mean weight per person
+rises 12.4%, from 2,562 to 2,880. **Neither ratio is flat.** If the weights were pinned to the 2011
+frame, column 3 would be constant; if they tracked current population, column 4 would be. Both drift.
+
+So "reproduces Census 2011 by construction" — which this file asserted before this revision — is
+wrong. `annual_2023_24` landing at 0.994 is where a drifting series happens to sit, not a design
+identity. Two earlier explanations were also wrong: "PLFS under-counts institutional populations /
+floating workers" (institutional population is ~1% of India, not 20%) and, in data-assistant's schema
+note, "PLFS's own *projected* population" (there is no projection).
+
+**Four guesses is enough. The honest statement is: the shortfall's direction follows from a
+Census-2011 frame, and its magnitude and drift are not explained by any document in `raw/docs/`.**
+If you need the reason, it is a question for MoSPI, not for inference.
+
+### What to do about it
+
+- **A percentage needs no correction, ever.** This is the operative point and it does not depend on
+  any of the above: the frame's vintage and any scale error cancel between a numerator and a
+  denominator. It is why PLFS publishes ratios (`EstimationProcedure` §3.6).
+- **A count needs a per-release factor, measured rather than reasoned.** Divide the target year's
+  population by that release's weighted total. Do not derive one factor and reuse it: the ratio moves
+  from 0.78 to 0.84 across the releases, so a single factor is wrong at both ends.
+
+## Validation
+
+## What the total actually means
+
 **The summed weight reproduces the CENSUS 2011 population, by construction.** It is not an estimate
 of the current population, it is not 15% wrong, and the gap is not under-coverage.
 

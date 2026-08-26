@@ -123,8 +123,10 @@ def weight_rule_of(release_id: str) -> str:
 
 # ---- Self-test -----------------------------------------------------------
 
-# Census 2011, the population of the frame these weights gross up to. Not a benchmark PLFS is
-# failing to hit — see WEIGHTS.md "What the total actually means".
+# Census 2011, used as a STABLE YARDSTICK for drift detection, not as a target the weights are
+# supposed to hit. The observed ratio to it runs 0.89-1.00 and drifts upward, so this is a reference
+# point that makes a change in the weights visible — nothing more. See WEIGHTS.md "What the total
+# actually means", including what is NOT established about why the level moves.
 CENSUS_2011 = 1.2109
 
 # PPS assigns weight = frame_size / unit_size, so a unit recorded with near-zero size gets a
@@ -138,9 +140,12 @@ SUSPECT_WEIGHT = 1_000_000
 def _self_test() -> int:
     """Assert the two properties that follow from PLFS's documented sample design.
 
-    1. Each release's summed weight lands near the CENSUS 2011 population. That is not a coincidence
-       or an approximation to today's population — it is what an inverse-inclusion-probability weight
-       whose PPS size measure is Census 2011 population must produce. See WEIGHTS.md.
+    1. Each release's summed weight stays inside the band the ten loaded releases actually occupy,
+       measured against Census 2011 as a fixed yardstick. This is DRIFT DETECTION, not a claim that
+       the weights should equal any particular number: the observed ratio runs 0.89-1.00 and moves
+       upward release to release. A new release landing outside the band means the load or the weight
+       rule changed, which is the thing worth catching. See WEIGHTS.md for what is and is not
+       established about the level itself.
     2. No single weight is absurd. The band in (1) is a national aggregate and is far too coarse to
        notice a single catastrophic weight: the Assam PPS defect inflates its release by 4.4%, well
        inside any sane band, while inflating Assam threefold and the national age-25-29 estimate by
@@ -205,8 +210,9 @@ def _self_test() -> int:
         for f in fails:
             print(f"  - {f}\n")
     else:
-        print(f"\nOK — every release grosses up to the Census 2011 frame ({CENSUS_2011}B) within "
-              f"0.85-1.05, and no weight exceeds {SUSPECT_WEIGHT:,}.")
+        print(f"\nOK — every release sits within 0.85-1.05 of the Census 2011 yardstick "
+              f"({CENSUS_2011}B) and no weight exceeds {SUSPECT_WEIGHT:,}. NB: that band is where "
+              f"these releases happen to fall, not a target — see WEIGHTS.md.")
     return len(fails)
 
 
