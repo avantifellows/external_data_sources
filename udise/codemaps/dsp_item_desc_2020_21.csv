@@ -1,0 +1,37 @@
+item_desc,item_group,item_id,dimension,label,note
+General,1,1,social_category,General,
+SC,1,2,social_category,Scheduled Caste,
+ST,1,3,social_category,Scheduled Tribe,
+OBC,1,4,social_category,Other Backward Classes,
+Muslim,2,5,religion,Muslim,
+Christian,2,6,religion,Christian,
+Sikh,2,7,religion,Sikh,
+Buddhist,2,8,religion,Buddhist,
+Parsi,2,9,religion,Parsi,
+Jain,2,10,religion,Jain,
+Others,2,,religion,Other religion,"2020-21 only. The coded scheme (item_group=2) stops at 10=Jain and has no 'other religion' member, so there is no item_id to map this to. Left unmapped rather than invented."
+BPL,3,13,economic,BPL,
+Aadhar,,,identity,Students with Aadhaar,"2020-21 only. Not an enrolment breakdown at all — a count of students holding an Aadhaar number. No coded equivalent in any later edition; do not add it to a social-category or religion total."
+Total repeaters,5,0,status,Repeater student,
+Total CWSN,4,,disability,CWSN (total; disability type not broken out),"2020-21 publishes ONE total for children with special needs. From 2022-23 the same concept is broken out into item_group=4's 20 disability types. Comparing 2020-21 to a later year means summing item_group=4 across all item_ids in the later year — never comparing this row to a single disability type."
+<blank>,,,,,"NOT A REAL VALUE — documents what an EMPTY item_desc means, and it is deliberately left unmapped. 182,426 of the 1,509,136 schools in 2020-21 (12%) carry one extra enrolment row whose item_desc is empty, positioned right after BPL. Investigated: it is NOT a total (it never exceeds the school's General+SC+ST+OBC sum), NOT a duplicate of BPL or Aadhar, and NOT EWS-shaped (75% of the schools carrying it are management=1, Dept. of Education, where the RTE/EWS quota does not apply). It is a genuine subgroup worth ~8.9% of enrolment in the schools that report it. No codebook names it. It stays unmapped rather than guessed; the rows are still in the fact with item_dimension NULL and item_source_label NULL, so they can be found and excluded."
+Age<5,8,,age,Under 5,"2020-21 age rows carry a readable label. From 2022-23 the same cut is published as item_group=8 with an opaque `item_id` the codebook describes only as 'Age id (2 to 22)' — no id-to-age table is published, so ages are NOT comparable across the 2020-21 boundary."
+Age5,8,,age,Age 5,
+Age6,8,,age,Age 6,
+Age7,8,,age,Age 7,
+Age8,8,,age,Age 8,
+Age9,8,,age,Age 9,
+Age10,8,,age,Age 10,
+Age11,8,,age,Age 11,
+Age12,8,,age,Age 12,
+Age13,8,,age,Age 13,
+Age14,8,,age,Age 14,
+Age15,8,,age,Age 15,
+Age16,8,,age,Age 16,
+Age17,8,,age,Age 17,
+Age18,8,,age,Age 18,
+Age19,8,,age,Age 19,
+Age20,8,,age,Age 20,
+Age21,8,,age,Age 21,
+Age22,8,,age,Age 22,
+Age23,8,,age,Age 23,

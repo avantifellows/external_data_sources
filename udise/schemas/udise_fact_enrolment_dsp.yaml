@@ -1,0 +1,250 @@
+# udise_fact_enrolment_dsp
+#
+# Built by udise/scripts/dsp_build_bq.py from the DSP staging tables. Regenerable
+# end to end from the portal zips in gs://avantifellows-external-data/udise/raw/dsp/.
+#
+# NOT the same product as udise_fact_enrolment. That table is Report 4000, a
+# state-level dashboard cross-tab. This is the Data Sharing Portal microdata: one
+# row per SCHOOL. Never union or join the two.
+
+description: >
+  UDISE+ Data Sharing Portal (DSP) enrolment microdata, five academic years
+  (2020-21, 2022-23, 2023-24, 2024-25, 2025-26), reshaped from the published wide
+  cross-tab into one row per school x item x class x gender.
+
+  WHAT UDISE+ IS. UDISE+ (Unified District Information System for Education Plus)
+  is the Ministry of Education's annual census of every school in India —
+  government, aided and private, roughly 1.5 million of them. Every school files a
+  Data Capture Format (DCF) return each year. The Data Sharing Portal publishes a
+  de-identified school-level extract of that return; the UDISE+ dashboard publishes
+  aggregated cross-tabs of the same census (that is Report 4000, in
+  udise_fact_enrolment).
+
+  WHY AVANTI HAS THIS. It is the only school-level source we hold that carries a
+  poverty and social-composition breakdown: BPL enrolment (item_group=3,
+  item_id=13), social category, religion, disability and repeaters — per school, per
+  class, per gender. AISHE has no household-income variable in any edition. This is
+  the table that sizes the low-income student population Avanti serves.
+
+  BPL IS THE POVERTY VARIABLE HERE — NOT EWS. The codebook documents EWS as
+  item_group=10, item_id=32, and it is tempting to reach for it. Do not: it is
+  published in ONE edition only (2023-24) and covers just 25,100 schools with
+  762,929 students. BPL is present in every edition and covers 1.11-1.27 million
+  schools with 87-92 million students. Any EWS trend built off this table is a
+  trend of one year and 2% of schools. The coverage table below is the check to run
+  before using any item group.
+
+  ITEM GROUP COVERAGE BY EDITION (schools reporting, from the staged source):
+
+    group           2020-21     2022-23     2023-24     2024-25     2025-26
+    1 social cat.   text labels 1,455,815   1,458,937   1,463,480   1,461,019
+    2 religion      text labels   820,925     851,476     868,942     873,820
+    3 BPL           text labels 1,113,091   1,196,403   1,253,747   1,267,015
+    4 disability    total only    577,188     593,987     627,227     646,043
+    5 repeaters     text labels   232,507     519,923     689,038     658,908
+    10 EWS          absent        absent       25,100     absent      absent
+
+  2020-21 labels its items with text rather than codes and publishes ONE total for
+  disability where later editions break out 21 types, so its column reads
+  "text labels" rather than a count.
+
+  DO NOT READ 2020-21 AS THE START OF A BPL TREND. BPL as a share of total
+  (item_group=1) enrolment runs:
+
+    2020-21  21.8%    2022-23  36.4%    2023-24  35.2%
+    2024-25  35.1%    2025-26  34.6%
+
+  The four coded editions sit in a tight 34.6-36.4% band; 2020-21 is 13 points
+  below all of them. That is almost certainly a reporting-completeness break at the
+  2020-21/2022-23 boundary — a COVID-year census, a different collection instrument,
+  and the 182,426 schools carrying an unlabelled extra row — not a real collapse in
+  measured poverty. Treat 2020-21 as a separate regime, or start the series at
+  2022-23.
+
+  THE ITEM BREAKDOWN, AND WHY IT DOES NOT ADD UP TO TOTAL ENROLMENT. The source
+  does not publish a plain "students enrolled" number here. It publishes several
+  independent breakdowns of the same student body, each identified by an
+  (item_group, item_id) pair:
+
+    item_group=1  social category  General / SC / ST / OBC          (partitions the students)
+    item_group=2  religion         Muslim / Christian / Sikh / Buddhist / Parsi / Jain
+                                   (a SUBSET — most students belong to none of these)
+    item_group=3  economic         item_id=13 = BPL (Below Poverty Line)
+    item_group=4  disability       CWSN disability types — the codebooks name 20,
+                                   the data carries a 21st with no published label
+    item_group=5  status           item_id=0 = repeater students
+    item_group=8  age              the age distribution (see age_years below)
+    item_group=10 economic         item_id=32 = EWS — 2023-24 ONLY, 25,100 schools
+
+  Only item_group=1 partitions the student body, so SUM(students) WHERE
+  item_group='1' is the closest thing to total enrolment in this table. Every other
+  group overlaps it: a student can be SC and BPL and a repeater at once. Summing
+  across item_groups counts the same children several times over. The `cut` column
+  and `item_dimension` exist so that mistake is hard to make by accident.
+
+  GENDER IS NOT A CLEAN MALE/FEMALE SPLIT BEFORE 2025-26. Through 2024-25 the
+  source has only `_b` and `_g` columns, and the codebook states outright that `_b`
+  means "Boys + Transgenders". So a gender ratio built from those editions silently
+  folds transgender students into boys. The 2025-26 edition adds a separate `_t`
+  column per class. Rather than leave that in a footnote, the `gender` VALUE says
+  which is which: 'boys_incl_transgender' for 2020-21 through 2024-25, and
+  'boys' / 'transgender' as distinct values for 2025-26. Comparing 'boys' across
+  that boundary is comparing two different quantities — add 'transgender' back in
+  for 2025-26, or compare girls.
+
+  ZERO CELLS ARE NOT STORED. Absence means zero. Most schools do not teach most
+  classes and most items are zero in the classes they do teach, so keeping the zero
+  cells would multiply this table several times over for no information. Any query
+  that needs an explicit zero must LEFT JOIN from the school x class grid it wants,
+  not assume a row exists.
+
+  THE SCHOOL KEY IS PSEUDONYMISED. `pseudocode` joins this table to
+  udise_dim_school_dsp WITHIN a year, and joins the DSP file groups to each other.
+  It is NOT a UDISE code, there is no school name anywhere in the release, and it
+  CANNOT be linked to Avanti's own school lists. Whether it is stable across years
+  has not been verified — do not build a longitudinal school-level panel on it
+  without checking first.
+
+  NO PII. The grain is the school, never the student.
+
+rows: 504108627
+grain: (academic_year, pseudocode, cut, item_group, item_id, class_level, gender)
+validation: >
+  SUM(students) WHERE item_group='1' AND academic_year='2024-25' = 246,932,680 —
+  exactly the all-India total udise_fact_enrolment carries from Report 4000. Two
+  different UDISE+ products, built by different pipelines from different files,
+  reconciling to the digit. Re-check this if the parser ever changes.
+  Other checks that passed on build: 13 class levels in every edition; zero fact
+  schools missing from udise_dim_school_dsp; unmapped item rows confined to
+  2020-21's 350,527 unlabelled rows; NULL age_years confined to 2020-21's
+  107,129 "Age<5" rows.
+partitioned_by: academic_year_start (integer range)
+clustered_by: [item_dimension, item_group, class_level, gender]
+
+source:
+  publisher: Ministry of Education, Government of India
+  dataset: UDISE+ Data Sharing Portal — School Enrolment 1 and Age Wise Enrolment 2
+  editions: [2020-21, 2022-23, 2023-24, 2024-25, 2025-26]
+  raw: gs://avantifellows-external-data/udise/raw/dsp/<year>/<group>_All State_<year>.zip
+  codebooks: udise/docs/DSP_Schema_2020-21.pdf, udise/docs/DSP_Schema_2024-25.pdf
+  note: >
+    2021-22 is absent: no such edition was downloaded from the portal, so the gap is
+    in what we hold. If it turns out to exist upstream, add it to DSP_YEARS in
+    scripts/sources.py, drop the zips into raw/dsp/2021-22/ and re-run the pipeline —
+    no other code change is needed.
+
+columns:
+  - name: academic_year
+    type: STRING
+    mode: REQUIRED
+    description: 'Academic year of the edition, e.g. "2024-25".'
+
+  - name: academic_year_start
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Calendar year the academic year starts in (2024 for "2024-25"). Exists so the
+      table can be range-partitioned; filter on it to cut scan cost.
+
+  - name: pseudocode
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Pseudonymised school id. Joins to udise_dim_school_dsp on
+      (academic_year, pseudocode). Cannot be resolved to a real school and cannot be
+      joined to Avanti's school lists. Cross-year stability unverified.
+
+  - name: cut
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Which published breakdown this row came from: 'item_breakdown' (the
+      social-category / religion / BPL / EWS / disability / repeater file) or 'age'
+      (the age-distribution file). These describe the same students two different
+      ways — NEVER sum across cuts.
+
+  - name: item_group
+    type: STRING
+    mode: NULLABLE
+    description: >
+      The breakdown this row belongs to, as the source codes it: 1 social category,
+      2 religion, 3 BPL, 4 disability, 5 repeaters, 8 age, 10 EWS. NULL only where a
+      2020-21 label had no coded equivalent (see item_source_label).
+
+  - name: item_id
+    type: STRING
+    mode: NULLABLE
+    description: >
+      The member within item_group — e.g. (1,2) is Scheduled Caste, (3,13) is BPL,
+      (10,32) is EWS. 2020-21 labels its rows with text rather than codes; those are
+      mapped back to (item_group, item_id) via codemaps/dsp_item_desc_2020_21.csv
+      wherever the mapping is certain. It is NULL where it is not: 2020-21's
+      "Total CWSN" (one total where later editions break out 20 disability types),
+      its religion "Others" (no such member exists in the coded scheme), its
+      "Aadhar" row, and item_group=8 (age) in 2020-21.
+
+  - name: item_dimension
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Plain-language family of the item: social_category, religion, economic,
+      disability, status, age, identity. Denormalized from codemaps/dsp_item_group.csv
+      and codemaps/dsp_item_desc_2020_21.csv so no join is needed to filter.
+
+  - name: item_label
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Plain-language label — 'Scheduled Caste', 'BPL', 'EWS', 'Autism Spectrum
+      Disorder'. NULL for item_group=8 (age) in 2022-23 onward, because the source
+      publishes an opaque age id there and no id-to-age table; see item_id.
+
+  - name: item_source_label
+    type: STRING
+    mode: NULLABLE
+    description: >
+      The verbatim 2020-21 `item_desc` text ('General', 'BPL', 'Aadhar',
+      'Total CWSN', 'Age<5'…). NULL for 2022-23 onward, which publish codes instead.
+      Kept so a 2020-21 number can always be traced back to the string the source
+      actually printed.
+
+  - name: age_years
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      Student age in years, for cut='age' rows only; NULL on every item_breakdown
+      row. DERIVED, NOT PUBLISHED: from 2022-23 the source gives an opaque
+      "Age id (2 to 22)" with no id-to-age key, and 2020-21 gives words. The mapping
+      age = item_id + 1 is derived in codemaps/dsp_age_item_id.csv, which states the
+      evidence (max id 22 lines up with 2020-21's max label Age23; the modal id for
+      class 1 is 5 and RTE fixes class-1 entry at age 6; modal id per class tracks
+      Age(id+1) at classes 1, 5 and 10). Raw item_id is kept beside it so the
+      derivation can be checked or rejected. Two edge cases: age 23 is a "23 or
+      older" catch-all, and 2020-21's "Age<5" bucket lumps ages 3 and 4, so it lands
+      as NULL rather than being split.
+
+  - name: class_level
+    type: STRING
+    mode: REQUIRED
+    description: '"PP" (pre-primary) or "1" … "12".'
+
+  - name: class_order
+    type: INTEGER
+    mode: REQUIRED
+    description: 0 for pre-primary, 1-12 for classes 1-12. For ordering and range filters.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'girls'; 'boys_incl_transgender' for 2020-21 to 2024-25 (the source folds
+      transgender students into the boys column and says so); 'boys' and
+      'transgender' as separate values for 2025-26 only. Read the gender note in the
+      table description before computing any ratio across years.
+
+  - name: students
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Number of students in this school x item x class x gender cell. Always > 0 —
+      zero cells are not stored.

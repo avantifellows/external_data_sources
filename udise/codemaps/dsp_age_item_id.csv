@@ -1,0 +1,22 @@
+item_id,age_years,note
+2,3,"DERIVED, not published. See the derivation note on item_id=22."
+3,4,
+4,5,
+5,6,"Modal id for class 1. The RTE Act fixes class-1 entry age at 6, which is the external anchor for the whole mapping."
+6,7,
+7,8,
+8,9,
+9,10,"Modal id for class 5."
+10,11,
+11,12,
+12,13,
+13,14,
+14,15,"Modal id for class 10."
+15,16,
+16,17,
+17,18,
+18,19,
+19,20,
+20,21,
+21,22,
+22,23,"Top bucket — read as '23 or older', not exactly 23. Both encodings show a bump at the top of the range rather than the taper you would expect of a single year of age. DERIVATION of this whole table: the codebooks describe item_group=8's item_id only as 'Age id (2 to 22)' and publish no id-to-age key. The 2020-21 edition labels the same cut in words (Age<5, Age5 … Age23), so the two can be aligned on the data: (a) max id 22 lines up with max label Age23; (b) the modal id for class 1 is 5 and RTE sets class-1 entry at age 6; (c) modal id per class tracks Age(id+1) at classes 1, 5 and 10 alike; (d) ids 2 and 3 (ages 3 and 4) together correspond to 2020-21's single 'Age<5' bucket, which reconciles 21 ids against 20 labels exactly. Raw item_id is kept in the fact alongside age_years so anyone who disagrees can re-derive."

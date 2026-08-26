@@ -55,23 +55,49 @@ row above the `Location / … / Girls / Boys / Overall` sub-header; data follows
 
 `udise/` holds two unrelated UDISE+ releases:
 
-1. **Report 4000** — a dashboard cross-tab, already ingested as
-   `udise_fact_enrolment` (42,270 rows, state-level aggregate). Everything else in
-   this file refers to it.
-2. **DSP microdata** — Data Sharing Portal, **one row per school**, 2020-21 and
-   2024-25. Raw zips are in `raw/dsp/` (gitignored, ~754 MB) and registered in
-   `sources.py` (`DSP_YEARS`, `DSP_GROUPS`, `dsp_zip()`). **Nothing is built yet** —
-   read [`docs/DSP_INGEST_PLAN.md`](docs/DSP_INGEST_PLAN.md) before starting, it has
-   the codebook gotchas that will otherwise bite:
-   - `Yes=1, No=2` — not 1/0.
-   - `_b` columns are **"Boys + Transgenders"**, so `_b`/`_g` is not a clean split.
-   - Most attributes are numeric DCF codes needing codemaps;
-     `codemaps/dsp_item_group.csv` decodes the enrolment breakdown (social
-     category, religion, BPL, EWS, 20 disability types, repeaters).
-   - `managment` is misspelt in the source. Keep it raw, rename on the way out.
-   - One enrolment CSV is 562 MB uncompressed — stream it or push it to BQ.
-   - The school key `pseudocode` is pseudonymised: it joins the DSP groups to each
-     other but **cannot be linked to Avanti's school lists**.
+1. **Report 4000** — a dashboard cross-tab, ingested as `udise_fact_enrolment`
+   (42,270 rows, state-level aggregate). Everything above this section refers to it.
+2. **DSP microdata** — Data Sharing Portal, **one row per school**, five editions
+   (2020-21, 2022-23, 2023-24, 2024-25, 2025-26; 2021-22 is not held). Raw zips in
+   `raw/dsp/` (gitignored, ~1.7 GB). Ingested as `udise_dim_school_dsp` and
+   `udise_fact_enrolment_dsp` by `scripts/dsp_stage.py` → `scripts/dsp_build_bq.py`.
 
-Keep the two apart in table names and schemas. A DSP table should be
-`udise_dim_school_dsp` / `udise_fact_*_dsp`, never merged into the Report 4000 fact.
+Keep the two apart in table names and schemas. A DSP table is `*_dsp`; never merge
+one into the Report 4000 fact, and never union them — they are different grains.
+
+## Working on DSP
+
+Read [`schemas/README.md`](schemas/README.md) first — it carries the re-entry
+status line and the five gotchas. In short:
+
+- **`9` = Not Applicable** on nearly every coded column. **Yes=1, No=2** — not 1/0.
+- **`_b` is "Boys + Transgenders"** through 2024-25; 2025-26 is the first edition
+  with a separate `_t` column. The `gender` value in the fact says which
+  (`boys_incl_transgender` vs `boys`) rather than relying on a footnote.
+- **Only `item_group=1` partitions the students.** Religion, BPL, EWS, disability
+  and repeaters all overlap it. Summing across item groups double-counts.
+- **`managment` is misspelt at source.** Only `psuedocode` → `pseudocode` is fixed
+  at the staging boundary; every other source spelling is kept raw in staging and
+  renamed in `dsp_build_bq.py`.
+- **`pseudocode` is pseudonymised** — joins the DSP tables to each other within a
+  year and reaches nothing else. Cross-year stability is unverified.
+- **Five editions, four layouts.** `dsp_stage.py` takes column names from each
+  CSV's own header and records them in the committed `schemas/dsp_layouts.json`, so
+  a silent upstream schema change shows up as a git diff. Do not hand-maintain a
+  per-year column list.
+
+### Don'ts specific to DSP
+
+- **Don't read a DSP CSV with pandas.** The 2025-26 enrolment file is 1.17 GB
+  uncompressed. Everything streams zip → gzip → GCS → BigQuery, and every reshape
+  happens in SQL.
+- **Don't publish the 2020-21 profile_2 columns at source positions 20-45.** The
+  CSV header and the codebook disagree about what those 26 columns mean. See the
+  `not_published` block in `schemas/udise_dim_school_dsp.yaml`.
+- **Don't invent an age mapping.** From 2022-23 the age cut is `item_group=8` with
+  an `item_id` the codebook describes only as "Age id (2 to 22)" — no id-to-age
+  table is published. 2020-21's readable age labels are carried as-is; the two are
+  not comparable, and the schema says so.
+- **Don't leave the staging dataset behind.** `udise_dsp_staging` is transient
+  (14-day table expiry). Drop it with `dsp_build_bq.py --drop-staging` once the
+  finished tables validate.

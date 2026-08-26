@@ -30,5 +30,6 @@ item_group,item_id,dimension,label,note
 4,18,disability,Hemophilia,
 4,19,disability,Sickle Cell disease,
 4,20,disability,Acid Attack victim,
+4,21,disability,,"UNDOCUMENTED. The codebooks list item_ids 1-20 for item_group=4; the data carries a 21st. Present in 2022-23 (1,460 schools, 1,681 students). No label is given because none is published — do not guess one. It is included in a SUM over item_group=4."
 5,0,status,Repeater student,
 10,32,economic,EWS,"Economically Weaker Section enrolment in the school"

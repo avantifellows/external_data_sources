@@ -1,0 +1,12 @@
+code,label,lowest_class,highest_class,note
+1,Primary only (1-5),1,5,
+2,Primary with Upper Primary (1-8),1,8,
+3,"Primary with Upper Primary, Secondary and Higher Secondary (1-12)",1,12,
+4,Upper Primary only (6-8),6,8,
+5,"Upper Primary, Secondary and Higher Secondary (6-12)",6,12,
+6,Primary Upper Primary and Secondary only (1-10),1,10,
+7,Upper Primary and Secondary (6-10),6,10,
+8,Secondary only (9-10),9,10,
+10,Secondary with Higher Secondary (9-12),9,12,
+11,Higher Secondary only / Jr. College (11-12),11,12,
+9,Not Applicable,,,"code 9 is the release-wide Not Applicable sentinel, not a school category"
