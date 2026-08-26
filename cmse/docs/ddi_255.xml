@@ -1,0 +1,2340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<codeBook version="2.5" ID="DDI-IND-MOSPI-NSS-CMSE80-2025" xml-lang="en" xmlns="ddi:codebook:2_5" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="ddi:codebook:2_5 https://ddialliance.org/Specification/DDI-Codebook/2.5/XMLSchema/codebook.xsd">
+<docDscr>
+  <citation>
+    <titlStmt>
+      <IDNo>DDI-IND-MOSPI-NSS-CMSE80-2025</IDNo>
+      <titl>Comprehensive Modular Survey on Education-NSS 80th Round-2025</titl>
+    </titlStmt>
+    <prodStmt>
+      <producer abbr="" affiliation="" role="">Data Informatics and Innovation Division</producer>
+      <prodDate date="27/08/2025">27/08/2025</prodDate>
+      <software version="v5">NADA</software>
+    </prodStmt>
+    <verStmt>
+      <version></version>
+    </verStmt>
+  </citation>
+</docDscr>
+<stdyDscr>
+  <citation>
+    <titlStmt>
+      <titl>Comprehensive Modular Survey on Education-NSS 80th Round-2025</titl>
+      <subTitl/>
+      <altTitl/>
+      <parTitl/>
+      <IDNo>DDI-IND-MOSPI-NSS-CMSE80-2025</IDNo>
+    </titlStmt>
+    <rspStmt>
+      <AuthEnty affiliation="MoSPI">NSS</AuthEnty>
+    </rspStmt>
+    <prodStmt>
+      <copyright/>
+      <software version="beta" date="2026-08-20">MetadataEditor</software>
+      <prodDate/>
+      <prodPlac/>
+    </prodStmt>
+    <distStmt>
+      <depDate date=""/>
+      <distDate date=""/>
+    </distStmt>
+    <serStmt>
+      <serName/>
+      <serInfo><![CDATA[]]></serInfo>
+    </serStmt>
+    <verStmt>
+      <version date=""/>
+      <verResp/>
+      <notes><![CDATA[]]></notes>
+    </verStmt>
+    <biblCit format=""><![CDATA[]]></biblCit>
+    <notes><![CDATA[]]></notes>
+  </citation>
+  <studyAuthorization date="">
+    <authorizationStatement><![CDATA[]]></authorizationStatement>
+  </studyAuthorization>
+  <stdyInfo>
+    <studyBudget><![CDATA[]]></studyBudget>
+    <subject>
+      <keyword vocab="" vocabURI="">school</keyword>
+      <keyword vocab="" vocabURI="">education</keyword>
+      <keyword vocab="" vocabURI="">boarding and lodging</keyword>
+      <keyword vocab="" vocabURI="">coaching/ tuition </keyword>
+      <keyword vocab="" vocabURI="">Course</keyword>
+      <keyword vocab="" vocabURI="">Transport</keyword>
+      <keyword vocab="" vocabURI="">Textbooks</keyword>
+      <keyword vocab="" vocabURI="">Uniform</keyword>
+      <keyword vocab="" vocabURI="">stationery</keyword>
+      <keyword vocab="" vocabURI="">fee </keyword>
+    </subject>
+    <abstract><![CDATA[The objective of the Comprehensive Modular Survey (CMS) on education is to generate information on education-related indicators, primarily focusing on households’ expenditure on education. This survey is designed to fill existing data gaps that cannot be met by data available from other sources, such as administrative records, other surveys etc. The survey will be conducted in the second quarter (i.e., April 2025 – June 2025) of the calendar
+year 2025. CMS:]]></abstract>
+    <sumDscr>
+      <timePrd date="APRIL 2025" event="start" cycle=""/>
+      <timePrd date="JUNE 2025" event="end" cycle=""/>
+      <nation abbr="">INDIA</nation>
+      <geogCover>The survey will cover the whole of the Indian Union except the villages in Andaman and Nicobar Islands which remain extremely difficult to access.  Education module will be canvassed in the 4409 FSUs covered in the second sub-round of 80th round during April – June, 2025.</geogCover>
+      <geogCoverNote/>
+      <geogUnit/>
+      <anlyUnit><![CDATA[Randomly selected households based on sampling procedure and members of the household.]]></anlyUnit>
+      <universe><![CDATA[The survey used the interview method of data collection from a sample of randomly selected households and members of the household.]]></universe>
+      <dataKind>Sample survey data [ssd]</dataKind>
+    </sumDscr>
+    <qualityStatement>
+      <standardsCompliance>
+        <complianceDescription/>
+      </standardsCompliance>
+      <otherQualityStatement/>
+    </qualityStatement>
+    <notes><![CDATA[]]></notes>
+    <exPostEvaluation completionDate="" type="">
+      <evaluationProcess/>
+      <outcomes/>
+    </exPostEvaluation>
+  </stdyInfo>
+  <method>
+    <dataColl>
+      <timeMeth/>
+      <frequenc/>
+      <sampProc><![CDATA[SAMPLING FRAME FOR FIRST STAGE UNIT:
+The sampling frame for urban sector is the list of Urban Frame Survey (UFS) blocks as per latest Urban Frame Survey and for rural sector, it is the list of villages as per Census 2011 updated by removing those villages which are urbanized and included in latest UFS (till the time of sample selection). Sometimes, with a view to ensuring uniformity in the size of FSUs and operational convenience, large villages/UFS blocks are notionally divided into smaller units of more or less equal size, known as sub-units depending on a pre-defined criteria based on population in the village or number of households in the UFS block. The sector-specific criteria for sub-unit formation are as below :
+
+Rural Sector
+(i) The number of SUs to be formed in the villages (with Census 2011 population of 1000 or more and except some States/UTs) is decided based on projected present population of the village. The criteria for the formation of the SUs are given below:
+
+Projected Population of the village Number of SUs to be formed
+less than 1200            1
+1200 to 2399              2
+2400 to 3599              3
+... ...
+
+(ii) For rural areas of Himachal Pradesh, Sikkim, Andaman &amp; Nicobar Islands, Ladakh, parts of Uttarakhand (except four districts Dehradun, Nainital, Haridwar and Udham Singh Nagar), Jammu and Kashmir (seven districts Poonch, Rajouri, Udhampur, Reasi, Doda, Kishtwar, Ramban) and Idukki district of Kerala; SU is formed in a village if population as per Census 2011 is more than or equals to 500. The criteria for the number of SUs to be formed are as below:
+
+Projected Population of the village Number of SUs to be formed
+less than 600            1
+600 to 1199              2
+1200 to 1799            3
+... ...
+
+Urban Sector:
+
+Sub-units are formed in the UFS blocks with number of households 250 or more. The number of SUs to be formed within the UFS blocks is decided by the following criteria:
+
+Number of Households in UFS Block Number of SUs to be formed
+less than 250               1
+250 to 499                    2
+500 to 749                    3
+... ...
+Thus, the list of villages / UFS blocks / SUs (for those villages or UFS blocks where sub-units are formed) together constitute the sampling frame for selection of the First Stage Units.
+]]></sampProc>
+      <sampleFrame>
+        <sampleFrameName/>
+        <custodian/>
+        <universe/>
+        <frameUnit isPrimary="">
+          <unitType numberOfUnits=""/>
+        </frameUnit>
+        <updateProcedure/>
+      </sampleFrame>
+      <deviat/>
+      <collMode>Face-to-face computer-assisted interviews [CAPI]</collMode>
+      <resInstru><![CDATA[]]></resInstru>
+      <instrumentDevelopment type=""/>
+      <collSitu><![CDATA[]]></collSitu>
+      <actMin><![CDATA[]]></actMin>
+      <ConOps><![CDATA[]]></ConOps>
+      <weight><![CDATA[The total number of sample FSUs allocated to the States and UTs in proportion to the projected population figures as on 1st October 2024 as available from the report, ‘Population Projections for India and States 2011-2036’ of the Technical Group on Population Projections, Ministry of Health and Family Welfare, Government of India, subject to a minimum sample allocation to each State/UT. A minimum of 4 FSUs (2 each for the rural and urban sectors) was allocated to each State/ UT.]]></weight>
+      <cleanOps><![CDATA[]]></cleanOps>
+    </dataColl>
+    <notes><![CDATA[]]></notes>
+    <anlyInfo>
+      <respRate><![CDATA[]]></respRate>
+      <EstSmpErr><![CDATA[]]></EstSmpErr>
+      <dataAppr><![CDATA[]]></dataAppr>
+    </anlyInfo>
+    <stdyClas><![CDATA[]]></stdyClas>
+  </method>
+  <dataAccs>
+    <setAvail>
+      <accsPlac URI=""/>
+      <origArch/>
+      <avlStatus/>
+      <collSize/>
+      <complete/>
+      <fileQnty/>
+      <notes><![CDATA[]]></notes>
+    </setAvail>
+    <useStmt>
+      <restrctn/>
+      <citReq><![CDATA[]]></citReq>
+      <deposReq><![CDATA[]]></deposReq>
+      <conditions><![CDATA[]]></conditions>
+      <disclaimer><![CDATA[]]></disclaimer>
+    </useStmt>
+    <notes><![CDATA[]]></notes>
+  </dataAccs>
+  <notes><![CDATA[]]></notes>
+</stdyDscr>
+<fileDscr ID="F1">
+  <fileTxt>
+    <fileName>CMSE80HH25</fileName>
+    <fileCont>Household level</fileCont>
+    <dimensns>
+      <caseQnty>52085</caseQnty>
+      <varQnty>31</varQnty>
+    </dimensns>
+    <dataChck></dataChck>
+    <dataMsng></dataMsng>
+    <verStmt>
+      <version></version>
+    </verStmt>
+  </fileTxt>
+  <notes></notes>
+</fileDscr>
+<fileDscr ID="F2">
+  <fileTxt>
+    <fileName>CMSE80PER25</fileName>
+    <fileCont>Person level </fileCont>
+    <dimensns>
+      <caseQnty>221617</caseQnty>
+      <varQnty>38</varQnty>
+    </dimensns>
+    <dataChck></dataChck>
+    <dataMsng></dataMsng>
+    <verStmt>
+      <version></version>
+    </verStmt>
+  </fileTxt>
+  <notes></notes>
+</fileDscr>
+<fileDscr ID="F3">
+  <fileTxt>
+    <fileName>CMSE80PERST25</fileName>
+    <fileCont>Erstwhile Person level</fileCont>
+    <dimensns>
+      <caseQnty>1675</caseQnty>
+      <varQnty>28</varQnty>
+    </dimensns>
+    <dataChck></dataChck>
+    <dataMsng></dataMsng>
+    <verStmt>
+      <version></version>
+    </verStmt>
+  </fileTxt>
+  <notes></notes>
+</fileDscr>
+<dataDscr>
+<var ID="V1" name="schedule_id" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Schedule ID</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V2" name="survey_year" files="F1" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="13"/>
+  <labl>Survey year</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">2025.0</sumStat>
+  <sumStat type="max">2025.0</sumStat>
+  <sumStat type="mean">2025.0</sumStat>
+  <sumStat type="stdev">0.0</sumStat>
+  <catgry>
+    <catValu>2025</catValu>
+    <catStat type="vald"/>
+  </catgry>
+</var>
+<var ID="V3" name="sector" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="8"/>
+  <labl>Sector</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V4" name="nss_region" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="12"/>
+  <labl>NSS-Region</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V5" name="district" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="10"/>
+  <labl>District</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V6" name="stratum" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="9"/>
+  <labl>Stratum</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V7" name="group" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="7"/>
+  <labl>Group</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V8" name="sub_stratum" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Sub-Stratum</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V9" name="fod_sub_region" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>FOD Sub-Region</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V10" name="fsu_serial_no" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="15"/>
+  <labl>FSU Serial No.</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V11" name="second_stage_stratum_no" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="25"/>
+  <labl>Second Stage Stratum Number</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V12" name="sample_hhld_no" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>Sample hhld. No.</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V13" name="informant_sl_no" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="17"/>
+  <labl>Informant Sl.No.</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V14" name="response_code" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="15"/>
+  <labl>Response Code</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V15" name="survey_code" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Survey Code</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V16" name="substitution_reason" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="21"/>
+  <labl>Reason for substitution of original household</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V17" name="household_size" files="F1" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="16"/>
+  <labl>Household size</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">1.0</sumStat>
+  <sumStat type="max">26.0</sumStat>
+  <sumStat type="mean">4.254929442257848</sumStat>
+  <sumStat type="stdev">2.0071920015107896</sumStat>
+  <catgry>
+    <catValu>1</catValu>
+    <catStat type="vald"/>
+  </catgry>
+  <catgry>
+    <catValu>2</catValu>
+    <catStat type="invd"/>
+  </catgry>
+  <catgry>
+    <catValu>3</catValu>
+    <catStat type="min"/>
+  </catgry>
+  <catgry>
+    <catValu>4</catValu>
+    <catStat type="max"/>
+  </catgry>
+  <catgry>
+    <catValu>5</catValu>
+    <catStat type="mean"/>
+  </catgry>
+  <catgry>
+    <catValu>6</catValu>
+    <catStat type="stdev"/>
+  </catgry>
+  <catgry>
+    <catValu>7</catValu>
+  </catgry>
+  <catgry>
+    <catValu>8</catValu>
+  </catgry>
+  <catgry>
+    <catValu>9</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10</catValu>
+  </catgry>
+  <catgry>
+    <catValu>11</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12</catValu>
+  </catgry>
+  <catgry>
+    <catValu>13</catValu>
+  </catgry>
+  <catgry>
+    <catValu>14</catValu>
+  </catgry>
+  <catgry>
+    <catValu>15</catValu>
+  </catgry>
+  <catgry>
+    <catValu>16</catValu>
+  </catgry>
+  <catgry>
+    <catValu>17</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18</catValu>
+  </catgry>
+  <catgry>
+    <catValu>19</catValu>
+  </catgry>
+  <catgry>
+    <catValu>20</catValu>
+  </catgry>
+  <catgry>
+    <catValu>21</catValu>
+  </catgry>
+  <catgry>
+    <catValu>24</catValu>
+  </catgry>
+  <catgry>
+    <catValu>26</catValu>
+  </catgry>
+</var>
+<var ID="V18" name="household_type" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>Household type</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V19" name="religion" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="10"/>
+  <labl>Religion</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V20" name="social_group" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="14"/>
+  <labl>Social group</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V21" name="in_hostel_or_mess" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="19"/>
+  <labl>Whether staying in students’ hostel/ mess</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V22" name="any_member_attending_school" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="29"/>
+  <labl>Whether any erstwhile household member of age 3 years and above is currently attending school education</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V23" name="num_members_attending_school" files="F1" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="30"/>
+  <labl>Number of erstwhile household members of age 3 years and above currently attending school education</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V24" name="monthly_expenditure_purchased_goods" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="34"/>
+  <labl>Usual consumption expenditure in a month for household purposes out of purchase (including online purchase) of goods and services excluding items like clothing, footwear (A)</labl>
+  <sumStat type="vald">52082</sumStat>
+  <sumStat type="invd">3</sumStat>
+  <sumStat type="min">1.0</sumStat>
+  <sumStat type="max">486000.0</sumStat>
+  <sumStat type="mean">13342.126992050997</sumStat>
+  <sumStat type="stdev">9112.203566445018</sumStat>
+</var>
+<var ID="V25" name="monthly_expenditure_homegrown" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="31"/>
+  <labl>Imputed value of usual consumption in a month from home grown stock like rice, cereals, pulses, vegetables, milk, firewood, chips, cow dung, etc. (B)</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">25000.0</sumStat>
+  <sumStat type="mean">888.311510031679</sumStat>
+  <sumStat type="stdev">1363.7837345364696</sumStat>
+</var>
+<var ID="V26" name="monthly_expenditure_in_kind_gifts" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="34"/>
+  <labl>Imputed value of usual consumption in a month from wages in kind, free collection, gifts, etc. (C)</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">25500.0</sumStat>
+  <sumStat type="mean">470.70179514255545</sumStat>
+  <sumStat type="stdev">586.4326183365439</sumStat>
+</var>
+<var ID="V27" name="annual_expenditure_clothing_footwear" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="34"/>
+  <labl>Expenditure on purchase (including online purchase) of items like clothing, footwear etc. during last 365 days (D)</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">180000.0</sumStat>
+  <sumStat type="mean">12121.381031007008</sumStat>
+  <sumStat type="stdev">9395.403680251162</sumStat>
+</var>
+<var ID="V28" name="annual_expenditure_durables" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="29"/>
+  <labl>Expenditure on purchase (including online purchase) of household durables during last 365 days (E)</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">2712000.0</sumStat>
+  <sumStat type="mean">9908.77765191514</sumStat>
+  <sumStat type="stdev">35207.37082203187</sumStat>
+</var>
+<var ID="V29" name="usual_monthly_consumption_expenditure" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="34"/>
+  <labl>Usual monthly consumption expenditure [A + B + C + ((D+E)/12)]</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">1.0</sumStat>
+  <sumStat type="max">494333.0</sumStat>
+  <sumStat type="mean">16535.966055486224</sumStat>
+  <sumStat type="stdev">10491.996237590436</sumStat>
+</var>
+<var ID="V30" name="canvass_time_minutes" files="F1" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="22"/>
+  <labl>Time to canvass(minutes)</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">6.0</sumStat>
+  <sumStat type="max">285.0</sumStat>
+  <sumStat type="mean">46.929634251703945</sumStat>
+  <sumStat type="stdev">13.362229330228308</sumStat>
+  <catgry>
+    <catValu>6</catValu>
+    <catStat type="vald"/>
+  </catgry>
+  <catgry>
+    <catValu>7</catValu>
+    <catStat type="invd"/>
+  </catgry>
+  <catgry>
+    <catValu>10</catValu>
+    <catStat type="min"/>
+  </catgry>
+  <catgry>
+    <catValu>12</catValu>
+    <catStat type="max"/>
+  </catgry>
+  <catgry>
+    <catValu>15</catValu>
+    <catStat type="mean"/>
+  </catgry>
+  <catgry>
+    <catValu>16</catValu>
+    <catStat type="stdev"/>
+  </catgry>
+  <catgry>
+    <catValu>17</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18</catValu>
+  </catgry>
+  <catgry>
+    <catValu>19</catValu>
+  </catgry>
+  <catgry>
+    <catValu>20</catValu>
+  </catgry>
+  <catgry>
+    <catValu>21</catValu>
+  </catgry>
+  <catgry>
+    <catValu>22</catValu>
+  </catgry>
+  <catgry>
+    <catValu>23</catValu>
+  </catgry>
+  <catgry>
+    <catValu>24</catValu>
+  </catgry>
+  <catgry>
+    <catValu>25</catValu>
+  </catgry>
+  <catgry>
+    <catValu>26</catValu>
+  </catgry>
+  <catgry>
+    <catValu>27</catValu>
+  </catgry>
+  <catgry>
+    <catValu>28</catValu>
+  </catgry>
+  <catgry>
+    <catValu>29</catValu>
+  </catgry>
+  <catgry>
+    <catValu>30</catValu>
+  </catgry>
+  <catgry>
+    <catValu>31</catValu>
+  </catgry>
+  <catgry>
+    <catValu>32</catValu>
+  </catgry>
+  <catgry>
+    <catValu>33</catValu>
+  </catgry>
+  <catgry>
+    <catValu>34</catValu>
+  </catgry>
+  <catgry>
+    <catValu>35</catValu>
+  </catgry>
+  <catgry>
+    <catValu>36</catValu>
+  </catgry>
+  <catgry>
+    <catValu>37</catValu>
+  </catgry>
+  <catgry>
+    <catValu>38</catValu>
+  </catgry>
+  <catgry>
+    <catValu>39</catValu>
+  </catgry>
+  <catgry>
+    <catValu>40</catValu>
+  </catgry>
+  <catgry>
+    <catValu>41</catValu>
+  </catgry>
+  <catgry>
+    <catValu>42</catValu>
+  </catgry>
+  <catgry>
+    <catValu>43</catValu>
+  </catgry>
+  <catgry>
+    <catValu>44</catValu>
+  </catgry>
+  <catgry>
+    <catValu>45</catValu>
+  </catgry>
+  <catgry>
+    <catValu>46</catValu>
+  </catgry>
+  <catgry>
+    <catValu>47</catValu>
+  </catgry>
+  <catgry>
+    <catValu>48</catValu>
+  </catgry>
+  <catgry>
+    <catValu>49</catValu>
+  </catgry>
+  <catgry>
+    <catValu>50</catValu>
+  </catgry>
+  <catgry>
+    <catValu>51</catValu>
+  </catgry>
+  <catgry>
+    <catValu>52</catValu>
+  </catgry>
+  <catgry>
+    <catValu>53</catValu>
+  </catgry>
+  <catgry>
+    <catValu>54</catValu>
+  </catgry>
+  <catgry>
+    <catValu>55</catValu>
+  </catgry>
+  <catgry>
+    <catValu>56</catValu>
+  </catgry>
+  <catgry>
+    <catValu>57</catValu>
+  </catgry>
+  <catgry>
+    <catValu>58</catValu>
+  </catgry>
+  <catgry>
+    <catValu>59</catValu>
+  </catgry>
+  <catgry>
+    <catValu>60</catValu>
+  </catgry>
+  <catgry>
+    <catValu>63</catValu>
+  </catgry>
+  <catgry>
+    <catValu>64</catValu>
+  </catgry>
+  <catgry>
+    <catValu>65</catValu>
+  </catgry>
+  <catgry>
+    <catValu>66</catValu>
+  </catgry>
+  <catgry>
+    <catValu>67</catValu>
+  </catgry>
+  <catgry>
+    <catValu>68</catValu>
+  </catgry>
+  <catgry>
+    <catValu>69</catValu>
+  </catgry>
+  <catgry>
+    <catValu>70</catValu>
+  </catgry>
+  <catgry>
+    <catValu>71</catValu>
+  </catgry>
+  <catgry>
+    <catValu>72</catValu>
+  </catgry>
+  <catgry>
+    <catValu>73</catValu>
+  </catgry>
+  <catgry>
+    <catValu>74</catValu>
+  </catgry>
+  <catgry>
+    <catValu>75</catValu>
+  </catgry>
+  <catgry>
+    <catValu>77</catValu>
+  </catgry>
+  <catgry>
+    <catValu>78</catValu>
+  </catgry>
+  <catgry>
+    <catValu>80</catValu>
+  </catgry>
+  <catgry>
+    <catValu>81</catValu>
+  </catgry>
+  <catgry>
+    <catValu>85</catValu>
+  </catgry>
+  <catgry>
+    <catValu>87</catValu>
+  </catgry>
+  <catgry>
+    <catValu>88</catValu>
+  </catgry>
+  <catgry>
+    <catValu>90</catValu>
+  </catgry>
+  <catgry>
+    <catValu>95</catValu>
+  </catgry>
+  <catgry>
+    <catValu>98</catValu>
+  </catgry>
+  <catgry>
+    <catValu>100</catValu>
+  </catgry>
+  <catgry>
+    <catValu>102</catValu>
+  </catgry>
+  <catgry>
+    <catValu>103</catValu>
+  </catgry>
+  <catgry>
+    <catValu>105</catValu>
+  </catgry>
+  <catgry>
+    <catValu>110</catValu>
+  </catgry>
+  <catgry>
+    <catValu>112</catValu>
+  </catgry>
+  <catgry>
+    <catValu>115</catValu>
+  </catgry>
+  <catgry>
+    <catValu>117</catValu>
+  </catgry>
+  <catgry>
+    <catValu>120</catValu>
+  </catgry>
+  <catgry>
+    <catValu>125</catValu>
+  </catgry>
+  <catgry>
+    <catValu>128</catValu>
+  </catgry>
+  <catgry>
+    <catValu>130</catValu>
+  </catgry>
+  <catgry>
+    <catValu>140</catValu>
+  </catgry>
+  <catgry>
+    <catValu>145</catValu>
+  </catgry>
+  <catgry>
+    <catValu>150</catValu>
+  </catgry>
+  <catgry>
+    <catValu>165</catValu>
+  </catgry>
+  <catgry>
+    <catValu>285</catValu>
+  </catgry>
+</var>
+<var ID="V31" name="mult" files="F1" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="12"/>
+  <labl>MULT</labl>
+  <sumStat type="vald">52085</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">700.0</sumStat>
+  <sumStat type="max">18679050.0</sumStat>
+  <sumStat type="mean">551064.950561582</sumStat>
+  <sumStat type="stdev">756523.065059458</sumStat>
+</var>
+<var ID="V32" name="schedule_id" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Schedule ID</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V33" name="survey_year" files="F2" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="13"/>
+  <labl>Survey year</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">2025.0</sumStat>
+  <sumStat type="max">2025.0</sumStat>
+  <sumStat type="mean">2025.0</sumStat>
+  <sumStat type="stdev">0.0</sumStat>
+  <catgry>
+    <catValu>2025</catValu>
+    <catStat type="vald"/>
+  </catgry>
+</var>
+<var ID="V34" name="sector" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="8"/>
+  <labl>Sector</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V35" name="nss_region" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="12"/>
+  <labl>NSS-Region</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V36" name="district" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="10"/>
+  <labl>District</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V37" name="stratum" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="9"/>
+  <labl>Stratum</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V38" name="group" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="7"/>
+  <labl>Group</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V39" name="sub_stratum" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Sub-Stratum</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V40" name="fod_sub_region" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>FOD Sub-Region</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V41" name="fsu_serial_no" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="15"/>
+  <labl>FSU Serial No.</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V42" name="second_stage_stratum_no" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="25"/>
+  <labl>Second Stage Stratum Number</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V43" name="sample_hhld_no" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>Sample hhld. No.</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V44" name="person_serial_no" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="18"/>
+  <labl>Person serial no.</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V45" name="relation_to_head" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="18"/>
+  <labl>Relation to head</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V46" name="gender" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="8"/>
+  <labl>Gender</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V47" name="age" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="5"/>
+  <labl>Age</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">120.0</sumStat>
+  <sumStat type="mean">30.822436906915986</sumStat>
+  <sumStat type="stdev">19.443499433399563</sumStat>
+</var>
+<var ID="V48" name="currently_enrolled_school" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="27"/>
+  <labl>Whether currently enrolled in school education?</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V49" name="enrolment_level" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="17"/>
+  <labl>Level of current enrolment</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V50" name="school_type" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Type of school currently enrolled</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V51" name="school_expenditure_incurred" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="29"/>
+  <labl>Whether any expenditure incurred/ to be incurred on school education during the current academic year</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V52" name="school_exp_course_fee" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="23"/>
+  <labl>Person-wise details of expenditure (Rs.) incurred / to be incurred on school education (excluding expenditure on private coaching/tuition class) during the current academic year: Course fee (including admission fee, tuition fees, examination fee, developm</labl>
+  <sumStat type="vald">55859</sumStat>
+  <sumStat type="invd">165758</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">360000.0</sumStat>
+  <sumStat type="mean">9646.078089475286</sumStat>
+  <sumStat type="stdev">17145.806177821778</sumStat>
+</var>
+<var ID="V53" name="school_exp_transport" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="22"/>
+  <labl>Transport</labl>
+  <sumStat type="vald">55859</sumStat>
+  <sumStat type="invd">165758</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">150000.0</sumStat>
+  <sumStat type="mean">2491.4272543368124</sumStat>
+  <sumStat type="stdev">4928.660100157897</sumStat>
+</var>
+<var ID="V54" name="school_exp_uniform" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="20"/>
+  <labl>Uniform</labl>
+  <sumStat type="vald">55859</sumStat>
+  <sumStat type="invd">165758</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">20000.0</sumStat>
+  <sumStat type="mean">1319.9855887144417</sumStat>
+  <sumStat type="stdev">1233.2638288207927</sumStat>
+</var>
+<var ID="V55" name="school_exp_textbooks_stationery" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="33"/>
+  <labl>Textbooks, stationery</labl>
+  <sumStat type="vald">55859</sumStat>
+  <sumStat type="invd">165758</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">46000.0</sumStat>
+  <sumStat type="mean">2306.1872930056034</sumStat>
+  <sumStat type="stdev">2133.3732895291228</sumStat>
+</var>
+<var ID="V56" name="school_exp_other" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="18"/>
+  <labl>Other expenditure</labl>
+  <sumStat type="vald">55859</sumStat>
+  <sumStat type="invd">165758</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">60000.0</sumStat>
+  <sumStat type="mean">704.7728029502855</sumStat>
+  <sumStat type="stdev">1259.709473873729</sumStat>
+</var>
+<var ID="V57" name="school_exp_total" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="18"/>
+  <labl>Total</labl>
+  <sumStat type="vald">55859</sumStat>
+  <sumStat type="invd">165758</sumStat>
+  <sumStat type="min">10.0</sumStat>
+  <sumStat type="max">413000.0</sumStat>
+  <sumStat type="mean">16468.45102848243</sumStat>
+  <sumStat type="stdev">22538.18746512204</sumStat>
+</var>
+<var ID="V58" name="received_private_coaching" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="27"/>
+  <labl>Whether received private coaching/ tuition classes during the current academic year?</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V59" name="private_coaching_expenditure_incurred" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="34"/>
+  <labl>Whether any expenditure incurred/ to be incurred on private coaching/ tuition classes during the current academic year?</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V60" name="private_coaching_exp_course_fee" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="33"/>
+  <labl>Person-wise details of expenditure incurred / to be incurred during the current academic year on private coaching/tuition class: Course Fee (including registration fee, admission fee, tuition fee, examination fee and other compulsory payments)</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V61" name="private_coaching_exp_transport" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="32"/>
+  <labl>Transport</labl>
+  <sumStat type="vald">14880</sumStat>
+  <sumStat type="invd">206737</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">32000.0</sumStat>
+  <sumStat type="mean">474.8686155913978</sumStat>
+  <sumStat type="stdev">1759.7713583572122</sumStat>
+</var>
+<var ID="V62" name="private_coaching_exp_uniform" files="F2" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="30"/>
+  <labl>Uniform</labl>
+  <sumStat type="vald">14880</sumStat>
+  <sumStat type="invd">206737</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">4500.0</sumStat>
+  <sumStat type="mean">21.949932795698924</sumStat>
+  <sumStat type="stdev">202.5942453141851</sumStat>
+  <catgry>
+    <catStat type="vald"/>
+  </catgry>
+  <catgry>
+    <catValu>150</catValu>
+    <catStat type="invd"/>
+  </catgry>
+  <catgry>
+    <catValu>500</catValu>
+    <catStat type="min"/>
+  </catgry>
+  <catgry>
+    <catValu>550</catValu>
+    <catStat type="max"/>
+  </catgry>
+  <catgry>
+    <catValu>560</catValu>
+    <catStat type="mean"/>
+  </catgry>
+  <catgry>
+    <catValu>580</catValu>
+    <catStat type="stdev"/>
+  </catgry>
+  <catgry>
+    <catValu>600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>630</catValu>
+  </catgry>
+  <catgry>
+    <catValu>650</catValu>
+  </catgry>
+  <catgry>
+    <catValu>675</catValu>
+  </catgry>
+  <catgry>
+    <catValu>700</catValu>
+  </catgry>
+  <catgry>
+    <catValu>750</catValu>
+  </catgry>
+  <catgry>
+    <catValu>800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>850</catValu>
+  </catgry>
+  <catgry>
+    <catValu>900</catValu>
+  </catgry>
+  <catgry>
+    <catValu>950</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1100</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1150</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1250</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1460</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1650</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1700</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1850</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2100</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3100</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3260</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4500</catValu>
+  </catgry>
+</var>
+<var ID="V63" name="private_coaching_exp_textbooks_material" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="34"/>
+  <labl>Textbooks and study material</labl>
+  <sumStat type="vald">14880</sumStat>
+  <sumStat type="invd">206737</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">16000.0</sumStat>
+  <sumStat type="mean">1023.0710349462365</sumStat>
+  <sumStat type="stdev">1075.1396721976637</sumStat>
+</var>
+<var ID="V64" name="private_coaching_exp_other" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="28"/>
+  <labl>Other expenses</labl>
+  <sumStat type="vald">14880</sumStat>
+  <sumStat type="invd">206737</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">8700.0</sumStat>
+  <sumStat type="mean">205.65530913978495</sumStat>
+  <sumStat type="stdev">395.40987632973963</sumStat>
+</var>
+<var ID="V65" name="private_coaching_exp_total" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="28"/>
+  <labl>Total</labl>
+  <sumStat type="vald">14880</sumStat>
+  <sumStat type="invd">206737</sumStat>
+  <sumStat type="min">60.0</sumStat>
+  <sumStat type="max">209600.0</sumStat>
+  <sumStat type="mean">10927.917405913979</sumStat>
+  <sumStat type="stdev">12724.815448082047</sumStat>
+</var>
+<var ID="V66" name="hostel_fee_expenditure" files="F2" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="24"/>
+  <labl>Expenditure incurred / to be incurred on hostel fees (lodging/ boarding and other associated fees)</labl>
+  <sumStat type="vald">470</sumStat>
+  <sumStat type="invd">221147</sumStat>
+  <sumStat type="min">0.0</sumStat>
+  <sumStat type="max">149000.0</sumStat>
+  <sumStat type="mean">12944.85744680851</sumStat>
+  <sumStat type="stdev">17774.727052711627</sumStat>
+  <catgry>
+    <catStat type="vald"/>
+  </catgry>
+  <catgry>
+    <catValu>36</catValu>
+    <catStat type="invd"/>
+  </catgry>
+  <catgry>
+    <catValu>150</catValu>
+    <catStat type="min"/>
+  </catgry>
+  <catgry>
+    <catValu>200</catValu>
+    <catStat type="max"/>
+  </catgry>
+  <catgry>
+    <catValu>250</catValu>
+    <catStat type="mean"/>
+  </catgry>
+  <catgry>
+    <catValu>500</catValu>
+    <catStat type="stdev"/>
+  </catgry>
+  <catgry>
+    <catValu>520</catValu>
+  </catgry>
+  <catgry>
+    <catValu>580</catValu>
+  </catgry>
+  <catgry>
+    <catValu>620</catValu>
+  </catgry>
+  <catgry>
+    <catValu>650</catValu>
+  </catgry>
+  <catgry>
+    <catValu>680</catValu>
+  </catgry>
+  <catgry>
+    <catValu>750</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1230</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1250</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1900</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2340</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2530</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2550</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3025</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3056</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4100</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4850</catValu>
+  </catgry>
+  <catgry>
+    <catValu>5000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>5500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>5600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>6000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>6500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>7000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>7200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>7500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>8400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>8500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>9000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>9500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>14000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>15000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>16000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>17500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>19000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>20000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>23000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>24000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>25000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>26000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>28000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>28600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>30000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>32000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>33600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>34700</catValu>
+  </catgry>
+  <catgry>
+    <catValu>36000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>37000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>38000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>39000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>40000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>41000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>42000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>43000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>45000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>46000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>48000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>48500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>49200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>50000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>52500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>64500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>65000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>72000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>149000</catValu>
+  </catgry>
+</var>
+<var ID="V67" name="funding_source_1" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="18"/>
+  <labl>First major source of funding of the expenditure incurred/ to be incurred during the current academic year</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V68" name="funding_source_2" files="F2" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="18"/>
+  <labl>Second major source of funding of the expenditure incurred/ to be incurred during the current academic year, if any</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V69" name="mult" files="F2" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="12"/>
+  <labl>MULT</labl>
+  <sumStat type="vald">221617</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">700.0</sumStat>
+  <sumStat type="max">18679050.0</sumStat>
+  <sumStat type="mean">523971.7340366488</sumStat>
+  <sumStat type="stdev">653469.9008780561</sumStat>
+</var>
+<var ID="V70" name="schedule_id" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Schedule ID</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V71" name="survey_year" files="F3" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="13"/>
+  <labl>Survey year</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">2025.0</sumStat>
+  <sumStat type="max">2025.0</sumStat>
+  <sumStat type="mean">2025.0</sumStat>
+  <sumStat type="stdev">0.0</sumStat>
+  <catgry>
+    <catValu>2025</catValu>
+    <catStat type="vald"/>
+  </catgry>
+</var>
+<var ID="V72" name="sector" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="8"/>
+  <labl>Sector</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V73" name="nss_region" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="12"/>
+  <labl>NSS-Region</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V74" name="district" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="10"/>
+  <labl>District</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V75" name="stratum" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="9"/>
+  <labl>Stratum</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V76" name="group" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="7"/>
+  <labl>Group</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V77" name="sub_stratum" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="13"/>
+  <labl>Sub-Stratum</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V78" name="fod_sub_region" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>FOD Sub-Region</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V79" name="fsu_serial_no" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="15"/>
+  <labl>FSU Serial No.</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V80" name="second_stage_stratum_no" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="25"/>
+  <labl>Second Stage Stratum Number</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V81" name="sample_hhld_no" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="16"/>
+  <labl>Sample hhld. No.</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V82" name="erstwhile_person_serial_no" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="28"/>
+  <labl>Erstwhile Person serial no.</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V83" name="gender" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="8"/>
+  <labl>Gender</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V84" name="age" files="F3" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="5"/>
+  <labl>Age</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">3.0</sumStat>
+  <sumStat type="max">29.0</sumStat>
+  <sumStat type="mean">13.41910447761194</sumStat>
+  <sumStat type="stdev">3.617278052870421</sumStat>
+  <catgry>
+    <catValu>3</catValu>
+    <catStat type="vald"/>
+  </catgry>
+  <catgry>
+    <catValu>4</catValu>
+    <catStat type="invd"/>
+  </catgry>
+  <catgry>
+    <catValu>5</catValu>
+    <catStat type="min"/>
+  </catgry>
+  <catgry>
+    <catValu>6</catValu>
+    <catStat type="max"/>
+  </catgry>
+  <catgry>
+    <catValu>7</catValu>
+    <catStat type="mean"/>
+  </catgry>
+  <catgry>
+    <catValu>8</catValu>
+    <catStat type="stdev"/>
+  </catgry>
+  <catgry>
+    <catValu>9</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10</catValu>
+  </catgry>
+  <catgry>
+    <catValu>11</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12</catValu>
+  </catgry>
+  <catgry>
+    <catValu>13</catValu>
+  </catgry>
+  <catgry>
+    <catValu>14</catValu>
+  </catgry>
+  <catgry>
+    <catValu>15</catValu>
+  </catgry>
+  <catgry>
+    <catValu>16</catValu>
+  </catgry>
+  <catgry>
+    <catValu>17</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18</catValu>
+  </catgry>
+  <catgry>
+    <catValu>19</catValu>
+  </catgry>
+  <catgry>
+    <catValu>20</catValu>
+  </catgry>
+  <catgry>
+    <catValu>21</catValu>
+  </catgry>
+  <catgry>
+    <catValu>22</catValu>
+  </catgry>
+  <catgry>
+    <catValu>29</catValu>
+  </catgry>
+</var>
+<var ID="V85" name="type_of_residence" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="19"/>
+  <labl>Type of residence</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V86" name="present_place_of_residence" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="28"/>
+  <labl>Present place of residence</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V87" name="current_enrolment_level" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="25"/>
+  <labl>Level of current enrolment</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V88" name="any_expenditure_incurred" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="26"/>
+  <labl>Whether any expenditure incurred/ to be incurred by the household during the current academic year for the member</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V89" name="total_education_expenditure" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="29"/>
+  <labl>expenditure incurred/ to be incurred during the current academic year for the member on education-related expenditure including boarding/ lodging charges etc. (lump sum expenditure)</labl>
+  <sumStat type="vald">1447</sumStat>
+  <sumStat type="min">185.0</sumStat>
+  <sumStat type="max">385000.0</sumStat>
+  <sumStat type="mean">37313.531444367654</sumStat>
+  <sumStat type="stdev">49229.93770270117</sumStat>
+</var>
+<var ID="V90" name="school_education_expenditure" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="30"/>
+  <labl>expenditure incurred/ to be incurred during the current academic year for the member on school education only</labl>
+  <sumStat type="vald">1008</sumStat>
+  <sumStat type="min">185.0</sumStat>
+  <sumStat type="max">250000.0</sumStat>
+  <sumStat type="mean">19166.135912698413</sumStat>
+  <sumStat type="stdev">28388.735239578033</sumStat>
+</var>
+<var ID="V91" name="school_expenditure_nonreporting_code" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="34"/>
+  <labl>code for non-reporting of expenditure incurred/ to be incurred during the current academic year for the member on school education only</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V92" name="private_coaching_expenditure" files="F3" intrvl="discrete">
+  <varFormat type="numeric"/>
+  <location width="30"/>
+  <labl>expenditure incurred/ to be incurred during the current academic year for the member on private coaching/ tuition classes only</labl>
+  <sumStat type="vald">319</sumStat>
+  <sumStat type="min">500.0</sumStat>
+  <sumStat type="max">120000.0</sumStat>
+  <sumStat type="mean">15312.445141065831</sumStat>
+  <sumStat type="stdev">19242.44199359057</sumStat>
+  <catgry>
+    <catValu>500</catValu>
+    <catStat type="vald"/>
+  </catgry>
+  <catgry>
+    <catValu>600</catValu>
+    <catStat type="min"/>
+  </catgry>
+  <catgry>
+    <catValu>1000</catValu>
+    <catStat type="max"/>
+  </catgry>
+  <catgry>
+    <catValu>1200</catValu>
+    <catStat type="mean"/>
+  </catgry>
+  <catgry>
+    <catValu>1400</catValu>
+    <catStat type="stdev"/>
+  </catgry>
+  <catgry>
+    <catValu>1500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>1800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>2500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>3600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>4800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>5000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>5300</catValu>
+  </catgry>
+  <catgry>
+    <catValu>5600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>6000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>7000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>7200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>7500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>8000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>8400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>8500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>9000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>9500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>9700</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10650</catValu>
+  </catgry>
+  <catgry>
+    <catValu>10800</catValu>
+  </catgry>
+  <catgry>
+    <catValu>11000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>12600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>13000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>14400</catValu>
+  </catgry>
+  <catgry>
+    <catValu>15000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>15500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>16000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>17000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18120</catValu>
+  </catgry>
+  <catgry>
+    <catValu>18500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>20000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>22000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>24000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>24500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>25000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>25200</catValu>
+  </catgry>
+  <catgry>
+    <catValu>27600</catValu>
+  </catgry>
+  <catgry>
+    <catValu>28000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>30000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>31500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>35000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>36000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>38850</catValu>
+  </catgry>
+  <catgry>
+    <catValu>40000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>43500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>45000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>48000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>50000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>54000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>55000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>56500</catValu>
+  </catgry>
+  <catgry>
+    <catValu>58000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>60000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>67650</catValu>
+  </catgry>
+  <catgry>
+    <catValu>70000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>75000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>80000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>96000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>100000</catValu>
+  </catgry>
+  <catgry>
+    <catValu>120000</catValu>
+  </catgry>
+</var>
+<var ID="V93" name="private_coaching_nonreporting_code" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="34"/>
+  <labl>code for non-reporting of expenditure incurred/ to be incurred during the current academic year for the member on private coaching/ tuition classes only</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V94" name="boarding_lodging_expenditure" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="30"/>
+  <labl>expenditure incurred/ to be incurred during the current academic year for the member on boarding and lodging</labl>
+  <sumStat type="vald">488</sumStat>
+  <sumStat type="min">500.0</sumStat>
+  <sumStat type="max">235000.0</sumStat>
+  <sumStat type="mean">29644.977459016394</sumStat>
+  <sumStat type="stdev">24437.584907355587</sumStat>
+</var>
+<var ID="V95" name="boarding_lodging_nonreporting_code" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="34"/>
+  <labl>code for non-reporting of expenditure incurred/ to be incurred during the current academic year for the member on boarding and lodging</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V96" name="household_majority_funding" files="F3" intrvl="discrete">
+  <varFormat type="character"/>
+  <location width="28"/>
+  <labl>Whether the sampled household is funding the majority of the educationrelated expenditure (incurred/ to be incurred) during the current academic year</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="min">None</sumStat>
+  <sumStat type="max">None</sumStat>
+  <sumStat type="mean">None</sumStat>
+  <sumStat type="stdev">None</sumStat>
+</var>
+<var ID="V97" name="mult" files="F3" intrvl="contin">
+  <varFormat type="numeric"/>
+  <location width="12"/>
+  <labl>MULT</labl>
+  <sumStat type="vald">1675</sumStat>
+  <sumStat type="invd"/>
+  <sumStat type="min">767.0</sumStat>
+  <sumStat type="max">4510450.0</sumStat>
+  <sumStat type="mean">274847.3749253731</sumStat>
+  <sumStat type="stdev">429172.87225403625</sumStat>
+</var>
+</dataDscr></codeBook>

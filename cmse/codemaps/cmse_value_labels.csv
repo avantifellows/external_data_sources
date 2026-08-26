@@ -1,0 +1,145 @@
+block,item,variable_label,code,code_description
+BLOCK_01,ITM_1,Sector,1,rural
+BLOCK_01,ITM_1,Sector,2,urban
+BLOCK_01,ITM_2,Type of Sample,1,central
+BLOCK_01,ITM_2,Type of Sample,2,state
+BLOCK_01,ITM_14,Survey Code,1,original
+BLOCK_01,ITM_14,Survey Code,2,substitute
+BLOCK_01,ITM_14,Survey Code,3,casualty
+BLOCK_01,ITM_15,reason for substitution/casualty of the original household,1,informant busy
+BLOCK_01,ITM_15,reason for substitution/casualty of the original household,2,members away from home
+BLOCK_01,ITM_15,reason for substitution/casualty of the original household,3,informant non-cooperative
+BLOCK_01,ITM_15,reason for substitution/casualty of the original household,9,others
+BLOCK_02,ITM_5(i),Whether any remark has been entered by JSO/SE/SSO/SS in block 7/8,1,yes
+BLOCK_02,ITM_5(i),Whether any remark has been entered by JSO/SE/SSO/SS in block 7/8,2,no
+BLOCK_02,ITM_5(ii),Whether any remark has been entered by JSO/SE/SSO/SS in block 3.1-6.1,1,yes
+BLOCK_02,ITM_5(ii),Whether any remark has been entered by JSO/SE/SSO/SS in block 3.1-6.1,2,no
+BLOCK_02,ITM_7,Response code of the informant as assessed by SE/JSO,1,informant co-operative and capable
+BLOCK_02,ITM_7,Response code of the informant as assessed by SE/JSO,2,informant co-operative but not capable
+BLOCK_02,ITM_7,Response code of the informant as assessed by SE/JSO,3,informant busy
+BLOCK_02,ITM_7,Response code of the informant as assessed by SE/JSO,4,informant reluctant
+BLOCK_02,ITM_7,Response code of the informant as assessed by SE/JSO,9,others
+BLOCK_03,COL_03,Relation to head,1,self
+BLOCK_03,COL_03,Relation to head,2,spouse of head
+BLOCK_03,COL_03,Relation to head,3,married child
+BLOCK_03,COL_03,Relation to head,4,spouse of married child
+BLOCK_03,COL_03,Relation to head,5,unmarried child
+BLOCK_03,COL_03,Relation to head,6,grandchild
+BLOCK_03,COL_03,Relation to head,7,father/mother/father-in-law/mother-in-law
+BLOCK_03,COL_03,Relation to head,8,brother/ sister/ brother-in-law/ sister-in-law/ other relatives
+BLOCK_03,COL_03,Relation to head,9,servant/ employees /other nonrelatives
+BLOCK_03,COL_04,gender,1,male
+BLOCK_03,COL_04,gender,2,female
+BLOCK_03,COL_04,gender,3,transgender
+BLOCK_03,COL_06,Whether currently enrolled in school education?,1,yes
+BLOCK_03,COL_06,Whether currently enrolled in school education?,2,no
+BLOCK_03,ITM_03,household type (for rural areas),1,self-employed in agriculture
+BLOCK_03,ITM_03,household type (for rural areas),2,self-employed in non-agriculture
+BLOCK_03,ITM_03,household type (for rural areas),3,regular wage/salary earning in agriculture
+BLOCK_03,ITM_03,household type (for rural areas),4,regular wage/salary earning in non-agriculture
+BLOCK_03,ITM_03,household type (for rural areas),5,casual labour in agriculture
+BLOCK_03,ITM_03,household type (for rural areas),6,casual labour in non-agriculture
+BLOCK_03,ITM_03,household type (for rural areas),9,others
+BLOCK_03,ITM_03,household type (for urban areas),1,self-employed
+BLOCK_03,ITM_03,household type (for urban areas),2,regular wage/salary earning
+BLOCK_03,ITM_03,household type (for urban areas),3,casual labour
+BLOCK_03,ITM_03,household type (for urban areas),9,others
+BLOCK_03,ITM_04,Household Religion,1,Hinduism
+BLOCK_03,ITM_04,Household Religion,2,Islam
+BLOCK_03,ITM_04,Household Religion,3,Christianity
+BLOCK_03,ITM_04,Household Religion,4,Sikhism
+BLOCK_03,ITM_04,Household Religion,5,Jainism
+BLOCK_03,ITM_04,Household Religion,6,Buddhism
+BLOCK_03,ITM_04,Household Religion,7,Zoroastrianism
+BLOCK_03,ITM_04,Household Religion,9,others
+BLOCK_03,ITM_05,social group,1,scheduled tribe (ST)
+BLOCK_03,ITM_05,social group,2,scheduled caste (SC)
+BLOCK_03,ITM_05,social group,3,other backward class (OBC)
+BLOCK_03,ITM_05,social group,9,others
+BLOCK_03,ITM_06,Whether staying in students' hostel/mess,1,yes
+BLOCK_03,ITM_06,Whether staying in students' hostel/mess,2,no
+BLOCK_03,ITM_07,Whether any erstwhile household member of age 3 years and above is currently attending school education,1,yes
+BLOCK_03,ITM_07,Whether any erstwhile household member of age 3 years and above is currently attending school education,2,no
+BLOCK_04,ITM_03,gender,1,male
+BLOCK_04,ITM_03,gender,2,female
+BLOCK_04,ITM_03,gender,3,transgender
+BLOCK_04,ITM_05,Type of residence,1,students' hostel
+BLOCK_04,ITM_05,Type of residence,2,paying guest/Mess
+BLOCK_04,ITM_05,Type of residence,3,others
+BLOCK_04,ITM_06,Present place of residence,1,rural
+BLOCK_04,ITM_06,Present place of residence,2,urban
+BLOCK_04,ITM_07,Level of current enrolment,01,class I
+BLOCK_04,ITM_07,Level of current enrolment,02,class II
+BLOCK_04,ITM_07,Level of current enrolment,03,class III
+BLOCK_04,ITM_07,Level of current enrolment,04,class IV
+BLOCK_04,ITM_07,Level of current enrolment,05,class V
+BLOCK_04,ITM_07,Level of current enrolment,06,class VI
+BLOCK_04,ITM_07,Level of current enrolment,07,class VII
+BLOCK_04,ITM_07,Level of current enrolment,08,class VIII
+BLOCK_04,ITM_07,Level of current enrolment,09,class IX
+BLOCK_04,ITM_07,Level of current enrolment,10,class X
+BLOCK_04,ITM_07,Level of current enrolment,11,class XI
+BLOCK_04,ITM_07,Level of current enrolment,12,class XII
+BLOCK_04,ITM_07,Level of current enrolment,13,diploma /certificate course (upto secondary)
+BLOCK_04,ITM_07,Level of current enrolment,14,diploma/certificate (higher secondary equivalent)
+BLOCK_04,ITM_07,Level of current enrolment,15,below class I
+BLOCK_04,ITM_08,Whether any expenditure incurred/ to be incurred by the household during the current academic year for the member,1,yes
+BLOCK_04,ITM_08,Whether any expenditure incurred/ to be incurred by the household during the current academic year for the member,2,no
+BLOCK_04,ITM_09(ii),expenditure incurred/ to be incurred during the current academic year for the member on school education only,1,Amount of expenditure
+BLOCK_04,ITM_09(ii),expenditure incurred/ to be incurred during the current academic year for the member on school education only,2,Not known
+BLOCK_04,ITM_09(iii),expenditure incurred/ to be incurred during the current academic year for the member on private coaching/ tuition classes only,1,Amount of expenditure
+BLOCK_04,ITM_09(iii),expenditure incurred/ to be incurred during the current academic year for the member on private coaching/ tuition classes only,2,Not known
+BLOCK_04,ITM_09(iii),expenditure incurred/ to be incurred during the current academic year for the member on private coaching/ tuition classes only,3,Free tuition
+BLOCK_04,ITM_09(iii),expenditure incurred/ to be incurred during the current academic year for the member on private coaching/ tuition classes only,4,No tuition
+BLOCK_04,ITM_09(iv),expenditure incurred/ to be incurred during the current academic year for the member on boarding and lodging,1,Amount of expenditure
+BLOCK_04,ITM_09(iv),expenditure incurred/ to be incurred during the current academic year for the member on boarding and lodging,2,Not known
+BLOCK_04,ITM_09(iv),expenditure incurred/ to be incurred during the current academic year for the member on boarding and lodging,3,Free boarding/lodging
+BLOCK_04,ITM_10,Whether the sampled household is funding the majority of the education related expenditure (incurred/ to be incurred) during the current academic year,1,yes
+BLOCK_04,ITM_10,Whether the sampled household is funding the majority of the education related expenditure (incurred/ to be incurred) during the current academic year,2,no
+BLOCK_05,ITM_06,Level of current enrolment,01,class I
+BLOCK_05,ITM_06,Level of current enrolment,02,class II
+BLOCK_05,ITM_06,Level of current enrolment,03,class III
+BLOCK_05,ITM_06,Level of current enrolment,04,class IV
+BLOCK_05,ITM_06,Level of current enrolment,05,class V
+BLOCK_05,ITM_06,Level of current enrolment,06,class VI
+BLOCK_05,ITM_06,Level of current enrolment,07,class VII
+BLOCK_05,ITM_06,Level of current enrolment,08,class VIII
+BLOCK_05,ITM_06,Level of current enrolment,09,class IX
+BLOCK_05,ITM_06,Level of current enrolment,10,class X
+BLOCK_05,ITM_06,Level of current enrolment,11,class XI
+BLOCK_05,ITM_06,Level of current enrolment,12,class XII
+BLOCK_05,ITM_06,Level of current enrolment,13,diploma /certificate course (upto secondary)
+BLOCK_05,ITM_06,Level of current enrolment,14,diploma/certificate (higher secondary equivalent)
+BLOCK_05,ITM_06,Level of current enrolment,15,below class I
+BLOCK_05,ITM_07,Type of school currently enrolled,1,government
+BLOCK_05,ITM_07,Type of school currently enrolled,2,government aided school (private school aided by government)
+BLOCK_05,ITM_07,Type of school currently enrolled,3,private un-aided(recognized)
+BLOCK_05,ITM_07,Type of school currently enrolled,4,private unaided (unrecognised)
+BLOCK_05,ITM_07,Type of school currently enrolled,5,others
+BLOCK_05,ITM_08,Whether any expenditure incurred/ to be incurred on school education during the current academic year,1,yes
+BLOCK_05,ITM_08,Whether any expenditure incurred/ to be incurred on school education during the current academic year,2,no
+BLOCK_05,ITM_10,Whether received private coaching/ tuition classes during the current academic year,1,yes
+BLOCK_05,ITM_10,Whether received private coaching/ tuition classes during the current academic year,2,no
+BLOCK_05,ITM_11,Whether any expenditure incurred/ to be incurred on private coaching/tuition classes during the current academic year?,1,yes
+BLOCK_05,ITM_11,Whether any expenditure incurred/ to be incurred on private coaching/tuition classes during the current academic year?,2,no
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,01,funded from the earning of the student
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,02,funded by other members of the household
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,03,funded by erstwhile household members
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,04,received as gifts from friends/relatives
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,05,scholarships from school
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,06,scholarships from government
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,07,scholarships from charitable and other organisations
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,08,educational loan
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,10,other loan
+BLOCK_05,ITM_14.1,First major source of funding of the expenditure incurred/ to be incurred during the current academic year,19,others
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,01,funded from the earning of the student
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,02,funded by other members of the household
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,03,funded by erstwhile household members
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,04,received as gifts from friends/relatives
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,05,scholarships from school
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,06,scholarships from government
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,07,scholarships from charitable and other organisations
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,08,educational loan
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,10,other loan
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,19,others
+BLOCK_05,ITM_14.2,Second major source of funding of the expenditure incurred/ to be incurred during the current academic year,99,if no second source of funding
