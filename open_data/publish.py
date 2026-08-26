@@ -259,6 +259,19 @@ EXAM_DATASETS = [
 AISHE_REPORT_YEARS = ["2012-13","2013-14","2014-15","2015-16","2016-17","2017-18",
                       "2018-19","2019-20","2020-21","2021-22","2022-23","2023-24"]
 STAT_DATASETS = [
+    {"id": "clat", "category": "admissions",
+     "title": "CLAT 2026 counselling (NLU law admissions)",
+     "blurb": "Closing ranks for 26 National Law Universities across all five CLAT 2026 allotment rounds — the consortium's own per-university allotment PDFs, plus the extracted cut-off table (every published reservation category, final-list vintage).",
+     "source": {"label": "consortiumofnlus.ac.in", "url": "https://consortiumofnlus.ac.in/"},
+     "files": [
+        ("clat/raw/clat_2026_ug_list1_pdfs.zip", "CLAT 2026 — First allotment list, per-NLU PDFs", "raw", 2026),
+        ("clat/raw/clat_2026_ug_list2_pdfs.zip", "CLAT 2026 — Second allotment list, per-NLU PDFs", "raw", 2026),
+        ("clat/raw/clat_2026_ug_list3_pdfs.zip", "CLAT 2026 — Third allotment list, per-NLU PDFs", "raw", 2026),
+        ("clat/raw/clat_2026_ug_list4_pdfs.zip", "CLAT 2026 — Fourth allotment list, per-NLU PDFs", "raw", 2026),
+        ("clat/raw/clat_2026_ug_list5_pdfs.zip", "CLAT 2026 — Fifth (final) allotment list, per-NLU PDFs", "raw", 2026),
+        ("clat/extracted/clat_cutoff_tables_2026.csv", "CLAT 2026 — Closing ranks by NLU, programme and category (final list)", "extracted", 2026),
+     ]},
+
     {"id": "collegefees", "category": "admissions",
      "title": "College fees and hostel charges (JoSAA + KCET, 2025-26)",
      "blurb": "Tuition, total institute fees and hostel/mess charges per college, course and seat category, hand-collected from each college's own published fee structure — the source link travels on every row. JoSAA colleges effectively complete; KCET partial (25 colleges); entry-year figures.",
