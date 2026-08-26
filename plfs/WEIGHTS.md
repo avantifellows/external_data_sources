@@ -143,10 +143,48 @@ Our `_combined()` in `weights.py` handles all three correctly.
 
 ## Validation
 
-`python3 scripts/weights.py` runs a self-test: it sums the calibrated weights
-across each release's `perv1`/`cperv1` table and prints the result. **All
-totals should land in ~1.08-1.22B** (India's actual population is ~1.4B;
-PLFS under-counts institutional populations / floating workers).
+## What the total actually means
+
+**The summed weight reproduces the CENSUS 2011 population, by construction.** It is not an estimate
+of the current population, it is not 15% wrong, and the gap is not under-coverage.
+
+Read the survey's own documents, both in `raw/docs/`:
+
+| where | what it says |
+|---|---|
+| `EstimationProcedure_PLFS.pdf` §1.2.7 | rural frame is the "List of 2011 Population Census villages"; urban is UFS blocks on 2011 census towns |
+| §1.2.8 | urban strata by size class of towns "as per Population Census 2011" |
+| §1.2.11.1 | sample allocated "in proportion to the population as per Census 2011" |
+| `Technical clarification ... 2022-23.pdf` §2-3 | `weight = 1/P(selection) = Σzᵢ/zᵢ`, "an inverse of inclusion probability", where `Σzᵢ` is "the total size (**Census Population** in rural sector) of the NSS region" |
+
+Searched the estimation procedure for *calibration*, *post-stratification*, *benchmarking* and
+*projection*: **no matches.** These are pure design weights and nothing is applied after them. So the
+PPS size measure *is* Census 2011 population, and summing the weights can only give the 2011 frame's
+population. Measured: `annual_2023_24` state sums come to 1,200.8m against Census 2011's 1,207.5m for
+the same 30 states — a ratio of **0.994**.
+
+**This is why PLFS publishes rates and not counts** (`EstimationProcedure` §3.6 defines its outputs as
+ratios `R = Ŷ/X̂`). The frame's vintage cancels between a numerator and a denominator, so:
+
+- **A percentage needs no correction at all.** Ever.
+- **A count is a 2011-frame count.** For a current-year figure, scale by population growth since 2011
+  — about **×1.21** for 2025 (1.4639bn / 1.2109bn). Say which of the two you are quoting.
+
+An earlier version of this section said totals "should land in ~1.08-1.22B (India's actual population
+is ~1.4B; PLFS under-counts institutional populations / floating workers)". The band was right and
+the explanation was invented — institutional population is ~1% of India, not 15%. That guess also
+reached `data-assistant`'s schema note in a different wrong form ("PLFS's own *projected* population"),
+and an analysis then argued from it that there was an unexplained coverage deficit. A wrong mechanism
+attached to right numbers cannot be caught by checking the numbers, which is why the primary document
+is not optional.
+
+Still unexplained, and much smaller: the four earliest releases gross up to 0.89-0.96 of the frame
+where 2022-23 onward sit at 0.97-1.01.
+
+## Validation
+
+`python3 scripts/weights.py` asserts the two properties that follow from the design above, and exits
+non-zero if either fails.
 
 Current output:
 
@@ -164,8 +202,43 @@ calendar_2024      combined                 1.21B  ✓
 calendar_2025      simple                   1.19B  ✓
 ```
 
-If a release ever drifts outside `0.95B – 1.35B`, the self-test flags it. Run
-this after adding any new release, or after touching `weights.py`.
+The self-test checks **both**:
+
+1. **Ratio to the Census 2011 frame within 0.85-1.05.** A release outside it is not grossing up to
+   the frame its design implies, so the load or the weight rule is wrong.
+2. **No single weight above `SUSPECT_WEIGHT` (1,000,000).** The national band in (1) is far too coarse
+   to catch one catastrophic weight: the Assam PPS defect below inflates its release by only 4.4%,
+   comfortably inside any sane band, while inflating Assam threefold and the national age-25-29
+   estimate by 11.2%. It has to be checked per record.
+
+It also **counts and reports rows whose weight fails to compute** instead of skipping them. The
+previous version wrapped the call in `except Exception: pass`, so a release with a changed layout would
+have read low and passed the band check as a plausible number.
+
+Run it after adding any release, or after touching `weights.py`.
+
+## The 2022-23 PPS weight defect
+
+`annual_2022_23` and `calendar_2022` each contain **nine rows with weight 5,925,062** — 17x the
+largest legitimate weight in any release. An **uninhabited** Assam village was selected by PPS: its
+Census 2011 population is zero (entered as one for selection), and `weight = Σzᵢ/zᵢ` explodes as `zᵢ`
+approaches zero. MoSPI documented it in
+`raw/docs_annual_2022_23/Technical clarification regarding high multiplier value in PLFS 2022-23.pdf`,
+confirmed it happened once in ~12,000 FSUs a year, and fixed the design from January 2025 (SRSWOR
+instead of PPS, plus a separate all-India stratum for uninhabited villages).
+
+Nine rows stand for 53.3m people:
+
+| | contaminated | expected |
+|---|---|---|
+| Assam, all ages | 94.0m | ~31m (Census 2011: 31.21m) |
+| Assam, age 25-29 | 15.6m | 3.76m (adjacent releases: 2.90m, 3.02m) |
+| National, age 25-29 | 105.7m | 93.8m — **11.2% inflated** |
+
+`load_bq.py` marks these rows with **`weight_suspect = TRUE`** on the loaded tables, so the exclusion
+is explicit and greppable rather than folklore. **Filter `WHERE NOT weight_suspect` for any estimate**
+— nothing legitimate is excluded by it. The rows are kept rather than dropped because they are
+legitimately sampled and their responses are real; it is only the weight that is unusable.
 
 ## How to apply weights in analysis code
 

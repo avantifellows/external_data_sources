@@ -123,37 +123,93 @@ def weight_rule_of(release_id: str) -> str:
 
 # ---- Self-test -----------------------------------------------------------
 
-def _self_test() -> None:
-    """Sanity-check: each release's calibrated weight summed across all
-    persons should yield ~1.1-1.2B (close to India's ~1.4B population — PLFS
-    slightly under-counts institutional/floating populations)."""
+# Census 2011, the population of the frame these weights gross up to. Not a benchmark PLFS is
+# failing to hit — see WEIGHTS.md "What the total actually means".
+CENSUS_2011 = 1.2109
+
+# PPS assigns weight = frame_size / unit_size, so a unit recorded with near-zero size gets a
+# near-infinite weight. MoSPI documented this happening once — an uninhabited Assam village in
+# 2022-23, weight 5,925,062 — and asked users to account for it. The largest legitimate weight across
+# the eleven releases is 347,281, so this bound sits ~2.9x above anything real and ~17x below the
+# defect. Rows above it must be excluded from any estimate: nine of them stand for 53.3m people.
+SUSPECT_WEIGHT = 1_000_000
+
+
+def _self_test() -> int:
+    """Assert the two properties that follow from PLFS's documented sample design.
+
+    1. Each release's summed weight lands near the CENSUS 2011 population. That is not a coincidence
+       or an approximation to today's population — it is what an inverse-inclusion-probability weight
+       whose PPS size measure is Census 2011 population must produce. See WEIGHTS.md.
+    2. No single weight is absurd. The band in (1) is a national aggregate and is far too coarse to
+       notice a single catastrophic weight: the Assam PPS defect inflates its release by 4.4%, well
+       inside any sane band, while inflating Assam threefold and the national age-25-29 estimate by
+       11.2%. It has to be checked per record.
+
+    Returns the number of failures, so callers and CI can act on it.
+    """
     import csv as _csv
 
-    print(f'{"Release":<18} {"Rule":<14} {"Σ weights (B)":>15} {"Status":>8}')
-    print("-" * 60)
+    fails = []
+    print(f'{"Release":<18} {"Rule":<14} {"Σ weights":>12} {"/C2011":>8} {"max weight":>12} {"suspect":>8}')
+    print("-" * 78)
     for rid, cfg in RELEASES.items():
         if cfg["weight_rule"] == "limited":
-            print(f'  {rid:<18} {cfg["weight_rule"]:<14} {"—":>15} {"skip":>8}')
+            print(f'  {rid:<18} {cfg["weight_rule"]:<14} {"—":>12} {"":>8} {"":>12} {"skip":>8}')
             continue
         weight_fn = get_weight_fn(rid)
-        # Pick the person-level file
         out_dir = cfg["out_dir"]
         per_path = (out_dir / "perv1.csv") if (out_dir / "perv1.csv").exists() else (out_dir / "cperv1.csv")
         if not per_path.exists():
-            print(f'  {rid:<18} {cfg["weight_rule"]:<14} {"missing":>15}')
+            print(f'  {rid:<18} {cfg["weight_rule"]:<14} {"missing":>12}')
+            fails.append(f"{rid}: {per_path} is missing")
             continue
-        total = 0.0
+        total, mx, n_suspect, n_bad = 0.0, 0.0, 0, 0
         with per_path.open() as f:
             for row in _csv.DictReader(f):
                 try:
-                    total += weight_fn(row)
-                except Exception:
-                    pass
+                    w = weight_fn(row)
+                except Exception as e:   # noqa: BLE001 - counted and reported, never swallowed
+                    # The previous version was `except Exception: pass`, which silently dropped any
+                    # row whose weight would not compute. A release with a changed layout would then
+                    # read LOW and sail through the band check as a plausible number.
+                    n_bad += 1
+                    if n_bad == 1:
+                        fails.append(f"{rid}: weight_fn raised on a row ({type(e).__name__}: {e}); "
+                                     f"the layout or the weight rule is wrong for this release")
+                    continue
+                total += w
+                mx = max(mx, w)
+                if w > SUSPECT_WEIGHT:
+                    n_suspect += 1
         billions = total / 1e9
-        ok = 0.95 <= billions <= 1.35
-        status = "✓" if ok else "WARN"
-        print(f'  {rid:<18} {cfg["weight_rule"]:<14} {billions:>14.2f}B {status:>8}')
+        ratio = billions / CENSUS_2011
+        flag = ""
+        if not 0.85 <= ratio <= 1.05:
+            fails.append(f"{rid}: summed weight is {ratio:.3f} of the Census 2011 frame "
+                         f"({billions:.3f}B) — outside 0.85-1.05, so this release is not grossing up "
+                         f"to the frame its design implies")
+            flag = " TOTAL"
+        if n_suspect:
+            fails.append(f"{rid}: {n_suspect} row(s) exceed the suspect-weight bound "
+                         f"({SUSPECT_WEIGHT:,}; max seen {mx:,.0f}). PPS on a near-zero-size unit — "
+                         f"see the MoSPI clarification in raw/docs_annual_2022_23/. Exclude them.")
+            flag = " WEIGHT"
+        if n_bad:
+            flag += " ROWS"
+        print(f'  {rid:<18} {cfg["weight_rule"]:<14} {billions:>11.3f}B {ratio:>8.3f} '
+              f'{mx:>12,.0f} {n_suspect:>8}{flag}')
+
+    if fails:
+        print(f"\n{len(fails)} problem(s):\n")
+        for f in fails:
+            print(f"  - {f}\n")
+    else:
+        print(f"\nOK — every release grosses up to the Census 2011 frame ({CENSUS_2011}B) within "
+              f"0.85-1.05, and no weight exceeds {SUSPECT_WEIGHT:,}.")
+    return len(fails)
 
 
 if __name__ == "__main__":
-    _self_test()
+    import sys as _sys
+    _sys.exit(1 if _self_test() else 0)

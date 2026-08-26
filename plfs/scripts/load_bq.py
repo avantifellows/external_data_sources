@@ -45,7 +45,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from releases import RELEASES, ROOT
-from weights import get_weight_fn, weight_rule_of
+from weights import get_weight_fn, weight_rule_of, SUSPECT_WEIGHT
 
 CODEMAPS = ROOT / "codemaps"
 CLEAN = ROOT / "clean"
@@ -356,6 +356,33 @@ def _compute_weight_annual(df: pd.DataFrame, release_id: str) -> pd.Series:
     return df.apply(lambda r: fn(r.to_dict()), axis=1).astype("float64")
 
 
+def _flag_suspect_weights(df: pd.DataFrame, release_id: str) -> pd.Series:
+    """Mark rows whose weight is a PPS artefact rather than a population estimate.
+
+    PPS assigns weight = frame_size / unit_size, so a unit recorded with near-zero size gets a
+    near-infinite weight. MoSPI published a technical clarification about exactly one occurrence —
+    an UNINHABITED Assam village in PLFS 2022-23, Census 2011 population zero, entered as one for
+    selection — whose nine surveyed persons each carry weight 5,925,062. That is ~17x the largest
+    legitimate weight in any release (347,281), and those nine rows stand for 53.3m people: 4.4% of
+    the national weighted total, threefold on Assam, and 11.2% on the national age-25-29 estimate.
+    It affects annual_2022_23 and calendar_2022, which overlap in period. MoSPI fixed the design from
+    January 2025 (SRSWOR, plus a separate all-India stratum for uninhabited villages) and asked users
+    of the affected data to account for it.
+
+    THIS COLUMN IS THE ACCOUNTING, made explicit on the table rather than left to each analyst to
+    rediscover. Before it existed the only protection was prose in a schema note, and the
+    contaminated figures went live on a dashboard. Consumers should filter
+    `WHERE NOT weight_suspect` for any estimate; nothing legitimate is excluded by it.
+
+    Deliberately a flag and not a deletion: the rows are legitimately sampled and their responses are
+    real. It is the weight that is unusable, so the rows stay queryable and the exclusion is
+    greppable.
+    """
+    if weight_rule_of(release_id) == "limited":
+        return pd.Series([False] * len(df), dtype="boolean")
+    return (df["weight_annual"] > SUSPECT_WEIGHT).fillna(False).astype("boolean")
+
+
 def _read_release_csv(path: Path) -> pd.DataFrame:
     """Read a clean CSV with all-string dtypes (preserves zero-padded codes)."""
     return pd.read_csv(path, dtype=str, keep_default_na=False, na_values=[""])
@@ -441,6 +468,7 @@ def build_persons_for_release(release_id: str, labels: dict[str, dict[str, str]]
 
     # ── Calibrated weight ───────────────────────────────────────────────────
     df["weight_annual"] = _compute_weight_annual(df, release_id)
+    df["weight_suspect"] = _flag_suspect_weights(df, release_id)
 
     return df
 
@@ -509,6 +537,7 @@ def build_households_for_release(release_id: str, labels: dict[str, dict[str, st
         )
 
     df["weight_annual"] = _compute_weight_annual(df, release_id)
+    df["weight_suspect"] = _flag_suspect_weights(df, release_id)
     return df
 
 
