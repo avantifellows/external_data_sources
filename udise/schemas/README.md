@@ -1,13 +1,12 @@
 # udise schemas
 
-▶ **NEXT: pair the two DSP tables with their data-assistant schema docs** at
-`data-assistant/docs/schemas/external/`, then open both PRs. The BigQuery build is
-done — staging, `udise_dim_school_dsp` and `udise_fact_enrolment_dsp` are all
-loaded and validated.
+▶ **NEXT: push both branches and open the paired PRs** — `add-udise-dsp-microdata`
+here and `add-udise-dsp-schemas` in data-assistant. Both are committed locally; the
+push is gated by the ship hook. The BigQuery build is done and validated, staging is
+dropped, and the source zips are in GCS.
 
 ```bash
-python3 scripts/dsp_build_bq.py --validate        # re-run the checks any time
-python3 scripts/dsp_build_bq.py --drop-staging    # once you are happy with the numbers
+python3 scripts/dsp_build_bq.py --validate    # re-run the checks any time
 ```
 
 | Table | Grain | Schema |
