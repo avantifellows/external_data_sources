@@ -85,6 +85,33 @@ def decompose(code: str, label: str):
     return canon, state, sub, women, pwd, special
 
 
+# An NLU's state-roster rows sometimes print without the state suffix
+# (GNLU's plain 'SEBC'; TN labels whose code got line-wrapped). Those rows
+# are the NLU's OWN-state quota by construction, so the domicile falls back
+# to the university's home state. All-India codes never take this fallback.
+NLU_STATE = [
+    ("DSNLU", "Andhra Pradesh"), ("NLUJA", "Assam"), ("CNLU", "Bihar"),
+    ("HNLU", "Chhattisgarh"), ("Silvassa", "Dadra and Nagar Haveli"),
+    ("Goa", "Goa"), ("Gandhinagar", "Gujarat"), ("DBRANLU", "Haryana"),
+    ("Sonepat", "Haryana"), ("HPNLU", "Himachal Pradesh"),
+    ("NUSRL", "Jharkhand"), ("NLSIU", "Karnataka"), ("NUALS", "Kerala"),
+    ("MPDNLU", "Madhya Pradesh"), ("NLIU", "Madhya Pradesh"),
+    ("MNLU", "Maharashtra"), ("NLUO", "Odisha"), ("RGNUL", "Punjab"),
+    ("Jodhpur", "Rajasthan"), ("TNNLU", "Tamil Nadu"),
+    ("NLUT", "Tripura"), ("RMLNLU", "Uttar Pradesh"),
+    ("RPNLUP", "Uttar Pradesh"), ("WBNUJS", "West Bengal"),
+    ("NALSAR", "Telangana"),
+]
+ALL_INDIA_CODES = {"General", "EWS", "OBC", "SC", "ST", "PWD", "W"}
+
+
+def nlu_state(college: str) -> str | None:
+    for key, st in NLU_STATE:
+        if key in college:
+            return st
+    return None
+
+
 def main() -> None:
     o = pd.read_csv(EXTRACTED / "clat_cutoff_tables_2026.csv")
     dec = [decompose(str(r.category_code), str(r.category_label))
@@ -95,6 +122,12 @@ def main() -> None:
     o["is_women_row"]       = [d[3] for d in dec]
     o["is_pwd_row"]         = [d[4] for d in dec]
     o["special_quota"]      = [d[5] for d in dec]
+    fallback = (o.domicile_state.isna()
+                & o.category_canonical.notna()
+                & ~o.category_code.isin(ALL_INDIA_CODES))
+    o.loc[fallback, "domicile_state"] = o.loc[fallback, "college"].map(nlu_state)
+    print(f"  domicile inferred from the NLU's own state on "
+          f"{int(fallback.sum())} suffix-less state-roster rows")
     o["rank_basis"] = "CLAT 2026 All India Rank"
     o["list_basis"] = "5th (final) allotment list, 2026-05-20"
 
