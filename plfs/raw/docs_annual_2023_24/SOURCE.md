@@ -27,4 +27,4 @@ duplicate. They are on GCS under this release's path for provenance.
 | `Data_LayoutPLFS_2023-24.xlsx` | 56,677 | column offsets, for verifying the parser |
 | `District_codes_PLFS_Panel_4_202324_2024.xlsx` | 29,510 | district codes for panel 4 |
 | `NMDS_2dot0_PLFS_final_upd.docx` | 33,277 | national metadata structure |
-| `Note_on_Updated_Instruction_for_PLFS_2023-24.pdf` | 545,720 | no weight changes, but records the urban frame code moving to **2017-22 UFS-18** (from UFS-15 and UFS-17) — the one documented mechanism found for the weighted total drifting across releases |
+| `Note_on_Updated_Instruction_for_PLFS_2023-24.pdf` | 545,720 | no weight changes, but records the urban frame code moving to **2017-22 UFS-18** (from UFS-15 and UFS-17), which is why a release's weighted total can shift without anything having broken |
