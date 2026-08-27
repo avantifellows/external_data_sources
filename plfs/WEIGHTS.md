@@ -131,19 +131,31 @@ Three things this audit changed or found:
    ever enabled it needs `half_yearly` and its own divisor handling, **not** `combined`. Recorded here
    because "limited" hides that.
 
-## One documented mechanism for the drift
+## Why the totals move between releases — context, not an open question
 
 `raw/docs_annual_2023_24/Note_on_Updated_Instruction_for_PLFS_2023-24.pdf` §2.1.5 records the urban
 frame code changing: "A new frame code **2017-22 UFS-18** for urban samples has been added. The updated
 frame codes for urban areas … are: 2007-12 UFS-15, 2012-17 UFS-17, 2017-22 UFS-18."
 
-So the urban sampling frame IS refreshed between releases, which is a documented reason for the frame's
-implied population — and therefore the weighted total — to move. It does not quantify the drift, and it
-says nothing about rural, so it is a mechanism rather than the explanation.
+So the urban sampling frame is refreshed between releases, which is a documented reason for the frame's
+implied population — and therefore the weighted total — to move. Useful to know when a release's total
+shifts and you are wondering whether something broke: the answer may simply be that the frame was
+updated.
 
-**Follow-up worth doing: the frame code is not parsed.** It is item 11 of Schedule 0.0PL, and no clean
-CSV carries it, so the hypothesis cannot be tested against our own data. Parsing it would let the urban
-drift be attributed to frame vintage directly instead of argued from a note.
+**NOTHING DEPENDS ON PINNING THIS DOWN, and an earlier version of this section wrongly called it a
+follow-up worth doing.** Two reasons it is not owed work:
+
+- **Percentages are unaffected.** Any scale error cancels between a numerator and a denominator, which
+  is why PLFS publishes ratios and why the India HE dashboard reads only rates from these weights.
+- **A count needs a MEASURED factor, not an explained one.** The correction is the target year's
+  population over that release's own weighted total. That is empirical: it is correct whatever the
+  cause of the level, and it stays correct as the level drifts, which is exactly why it is computed per
+  release rather than derived once from a mechanism.
+
+The frame code itself is item 11 of Schedule 0.0PL and no clean CSV carries it, so the hypothesis
+cannot be tested against our own data. That is a fact about the parse, not a gap holding anything up —
+worth doing only if someone one day wants to attribute the urban drift specifically, which no current
+consumer needs.
 
 ## Sub-sample-wise and quarterly estimates
 
