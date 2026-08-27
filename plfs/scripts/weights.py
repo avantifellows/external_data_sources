@@ -123,10 +123,11 @@ def weight_rule_of(release_id: str) -> str:
 
 # ---- Self-test -----------------------------------------------------------
 
-# Census 2011, used as a STABLE YARDSTICK for drift detection, not as a target the weights are
-# supposed to hit. The observed ratio to it runs 0.89-1.00 and drifts upward, so this is a reference
-# point that makes a change in the weights visible — nothing more. See WEIGHTS.md "What the total
-# actually means", including what is NOT established about why the level moves.
+# Census 2011, used as a STABLE YARDSTICK, not as a target the weights are supposed to hit. Excluding
+# the Assam PPS defect, the recent six releases sit at 0.962-0.996 of it — flat within 3.3% — and the
+# four earliest at 0.890-0.956. So this is a reference point that makes a CHANGE in the weights visible;
+# a new release landing outside the band below means the load or the weight rule moved. See WEIGHTS.md,
+# including what is and is not established about the level itself.
 CENSUS_2011 = 1.2109
 
 # PPS assigns weight = frame_size / unit_size, so a unit recorded with near-zero size gets a

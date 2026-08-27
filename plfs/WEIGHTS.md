@@ -149,7 +149,7 @@ follow-up worth doing.** Two reasons it is not owed work:
   is why PLFS publishes ratios and why the India HE dashboard reads only rates from these weights.
 - **A count needs a MEASURED factor, not an explained one.** The correction is the target year's
   population over that release's own weighted total. That is empirical: it is correct whatever the
-  cause of the level, and it stays correct as the level drifts, which is exactly why it is computed per
+  cause of the level, and it stays correct if the level ever moves, which is why it is computed per
   release rather than derived once from a mechanism.
 
 The frame code itself is item 11 of Schedule 0.0PL and no clean CSV carries it, so the hypothesis
@@ -237,26 +237,39 @@ anywhere in the estimation procedure.
 
 That explains a shortfall against the current population, and in the right direction.
 
-### NOT established: why the level is what it is, or why it moves
+### The totals are STABLE across recent releases, and sit below contemporaneous population
 
-The totals run **78-84% of contemporaneous population**, and the ratio drifts upward:
+With the documented Assam PPS defect excluded — nine rows carrying 5,925,062 each, which inflated
+`annual_2022_23` and `calendar_2022` — the picture is two eras, not a trend:
 
-| release | Σ weights | / Census 2011 | / contemporaneous pop |
-|---|---|---|---|
-| annual_2018_19 | 1.078B | 0.890 | 0.779 |
-| annual_2021_22 | 1.158B | 0.956 | 0.817 |
-| annual_2023_24 | 1.204B | 0.994 | 0.836 |
-| calendar_2025 | 1.193B | 0.985 | 0.822 |
+| era | Σ weights / Census 2011 | spread |
+|---|---|---|
+| **2022-23 onward** (6 releases) | 0.962 – 0.996 | **3.3%** |
+| 2018-19 → 2021-22 (4 releases) | 0.890 – 0.956 | 6.6% |
 
-Sample size is near-constant across these (413k-428k V1 persons) while the mean weight per person
-rises 12.4%, from 2,562 to 2,880. **Neither ratio is flat.** If the weights were pinned to the 2011
-frame, column 3 would be constant; if they tracked current population, column 4 would be. Both drift.
+Per release: 2018-19 0.890, 2019-20 0.923, 2020-21 0.914, 2021-22 0.956, then CY2022 0.962,
+2022-23 0.966, CY2023 0.975, CY2025 0.985, 2023-24 0.995, CY2024 0.996.
 
-So "reproduces Census 2011 by construction" — which this file asserted before this revision — is
-wrong. `annual_2023_24` landing at 0.994 is where a drifting series happens to sit, not a design
-identity. Two earlier explanations were also wrong: "PLFS under-counts institutional populations /
-floating workers" (institutional population is ~1% of India, not 20%) and, in data-assistant's schema
-note, "PLFS's own *projected* population" (there is no projection).
+**So there is no drift to explain in the current data.** The recent six sit flat at 96-100% of the 2011
+count. Excluding the Assam defect is what made that visible: it had put 2022-23 and CY2022 at 1.010 and
+1.006, above their neighbours, so removing it tightened the series rather than disturbing it.
+
+The four earliest releases sit 4-11% lower. That is a level difference confined to 2018-2021, not an
+ongoing trend, and it coincides with documented design changes — the MoSPI clarification records NSS
+regions becoming the basic stratum for 2022-23 and 2023-24, and SRSWOR replacing PPS from January 2025.
+
+### What is genuinely not established
+
+Why the level sits below contemporaneous population at all — roughly 82-84% on recent releases. A PPS
+design with inverse-probability weights should be unbiased for the current total, and a 2011 frame
+misses only people in units formed since 2011, which is far less than the gap. So the frame's vintage
+does not account for it, and no document in `raw/docs/` does either.
+
+That is MoSPI's number rather than a calculation of ours, and nothing here depends on it: see the rule
+below. Three earlier explanations in this repo and its consumers were wrong — "under-counts
+institutional populations / floating workers" (institutional population is ~1% of India, not 20%),
+"PLFS's own *projected* population" (there is no projection), and "reproduces Census 2011 by
+construction" (which this file asserted, on the strength of one release landing at 0.994).
 
 **Four guesses is enough. The honest statement is: the shortfall's direction follows from a
 Census-2011 frame, and its magnitude and drift are not explained by any document in `raw/docs/`.**
