@@ -163,6 +163,7 @@ PLFS/
 ├── README.md                     ← this file
 ├── WEIGHTS.md                    ← per-release weight rules
 ├── EARNINGS.md                   ← the three earnings bases, and why not to average them
+├── STATUS.md                     ← the 14 activity codes, and the three clocks columns run on
 │
 ├── raw/                          ← source files (mostly gitignored; data is gated)
 │   ├── docs_*/                   ← layout XLSX + README PDF per release
@@ -267,10 +268,22 @@ See [WEIGHTS.md](WEIGHTS.md). Four rules across releases:
 
 ### Earnings
 
-See [EARNINGS.md](EARNINGS.md). PLFS records earnings on **three bases**, not one: `ern_reg` (monthly,
-regular salaried), `ern_self` (monthly, self-employment) and `ern11`-`ern27` (daily, per activity, over
-the last 7 days — this is where CASUAL workers' earnings live). They are on two different reference
-periods and must never be averaged together.
+See [EARNINGS.md](EARNINGS.md). PLFS records earnings on **three bases**, not one: `ern_reg` (the
+preceding calendar month, for those regular salaried in the CURRENT WEEKLY status), `ern_self` (last 30
+days, same basis) and `ern11`-`ern27` (daily, per activity, over the last 7 days — this is where CASUAL
+workers' earnings live). **None of the three is a usual-status figure**, so all of them cross a 7-day
+classification against the 365-day `pas`. They must never be averaged together.
+
+Casual pay needs three numbers, not one — a daily rate (₹400 median), the days worked (5.45 a week, not
+7) and the hours (7.6 a day). A monthly equivalent without the days hides the half that makes the work
+precarious.
+
+### Activity status
+
+See [STATUS.md](STATUS.md). The fourteen status codes, the three reference periods each column hangs
+off, the principal-vs-subsidiary rule and its validation against a published figure, and the fact that
+conditions of employment (contract, social security, paid leave) are collected for casual workers too —
+so a formality measure keyed on `pas='31'` excludes them by construction, not for want of data.
 
 - **`combined`** — `mult / no_qtr / IF(nss = nsc, 100, 200)`. Standard rule.
   Used by all annual releases + CY2022 + CY2024.
