@@ -61,8 +61,13 @@ estimate for the Calendar Year 2023."
 
 ### 3. `simple` — CY2025 only
 
-CY2025 (catalog 284) redesigned the weighting. Each record's `mult` is
-already a fully-calibrated annual weight; just strip the 2 implied decimals.
+CY2025 (catalog 284) redesigned the weighting. Each record's `mult` is already an ANNUAL weight —
+no combining across quarters, just strip the 2 implied decimals.
+
+("Fully-calibrated" is what this said, and it is the wrong word in a document whose whole finding is
+that PLFS applies no calibration — see "What is genuinely not established" below. It meant ready to
+use, not calibrated to a population total. A loose word in the one place a reader checks the mechanism
+is how the invented-mechanism error happened the first time.)
 
 ```
 weight = mult / 100
