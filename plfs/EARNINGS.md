@@ -94,10 +94,40 @@ rather than leaving a blank cell to be read as missing data.
 
 ## Days and hours, and why casual pay needs three numbers
 
-`sts11`–`sts27`, the daily activity status codes, exist in the layout and are **empty in every release
-loaded here**. `hr11`–`hr27` are populated and line up with `ern11`–`ern27` cell by cell — a day with
-`hr=0` carries `ern=0`, a day with `hr=8` carries that day's wage — so **days worked is derived from
-hours**, counting a day when either activity records positive hours.
+**Two statements that stood here were wrong, and both are corrected below.** They said `sts11`–`sts27`
+were empty in every release, and that `hr11`–`hr27` line up with `ern11`–`ern27` cell by cell. Neither
+survives the manual or the data.
+
+**Which daily block a release carries.** Measured on V1, the two blocks are MUTUALLY EXCLUSIVE across
+releases: `sts11`–`sts27` are populated in the eight releases where `hr11`–`hr27` are empty, and
+`hr11`–`hr27` in the two where `sts` is empty. calendar_2021 carries neither, nor any `ern`.
+
+| block | releases |
+|---|---|
+| `sts11`–`sts27` (daily status codes) | annual_2018-19 … annual_2023-24, calendar_2022, calendar_2023 |
+| `hr11`–`hr27` (hours per activity per day) | calendar_2024, calendar_2025 |
+| neither | calendar_2021 |
+
+So days worked is derived from HOURS only because that is what the two releases carrying it have.
+For the other eight it would have to come from `sts`, which is a different derivation and is not
+written yet — see STATUS.md. The limit is our method, not the data: `ern11`–`ern27` is populated in
+NINE releases, not two.
+
+**Hours and earnings do NOT line up cell by cell.** §3.6.9 records hours (column 6) for every work
+status — codes 11 to 72. §3.6.11 records wage earnings (column 9) only for casual work:
+
+> "The wage earnings will be recorded in column (9), separately for each day (items 3.1 to 3.7), in
+> respect of each of the economic activities with status code 41, 42 and 51 recorded in column 4."
+
+A person whose USUAL status is casual can spend part of the reference week self-employed or in
+regular work. Those days carry hours and no wage, so **counting days from hours over-counts casual
+days**, and a daily rate computed as week's earnings ÷ hours-days is understated for them.
+
+Measured on `calendar_2025`, casual workers with a wage recorded: 9.5% by weight have more
+hours-days than earnings-days, and mean days a week is **5.414** counted from hours against **5.201**
+counted from earnings. The MEDIAN DAILY WAGE IS ₹400 EITHER WAY — the heaping on round values makes
+it robust to the denominator — so figures already published from it stand. The days figure does not:
+the 5.45 below is days of ANY work by a casual worker, not days of casual work.
 
 Measured on `calendar_2025`, all ages, weighted:
 
@@ -105,7 +135,7 @@ Measured on `calendar_2025`, all ages, weighted:
 |---|---|
 | casual workers (`pas` in 41, 51) | 9.90 crore |
 | with a wage recorded | 87.2% |
-| days worked per week | **5.45** |
+| days worked per week (from hours — days of ANY work, see above) | **5.45** |
 | hours per day | **7.6** |
 | median daily wage | **₹400** |
 | median hourly wage | **₹52.7** |
