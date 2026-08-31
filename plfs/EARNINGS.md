@@ -108,10 +108,10 @@ releases: `sts11`–`sts27` are populated in the eight releases where `hr11`–`
 | `hr11`–`hr27` (hours per activity per day) | calendar_2024, calendar_2025 |
 | neither | calendar_2021 |
 
-So days worked is derived from HOURS only because that is what the two releases carrying it have.
-For the other eight it would have to come from `sts`, which is a different derivation and is not
-written yet — see STATUS.md. The limit is our method, not the data: `ern11`–`ern27` is populated in
-NINE releases, not two.
+**Days are derived from the EARNINGS cells, not the hours cells** — see below — so the casual daily
+wage covers all NINE releases carrying `ern11`–`ern27`, not the two carrying `hr11`–`hr27`. The
+HOURLY wage still needs the hours block and so is available for calendar_2024 and calendar_2025
+only; consumers should blank it elsewhere rather than divide by zero.
 
 **Hours and earnings do NOT line up cell by cell.** §3.6.9 records hours (column 6) for every work
 status — codes 11 to 72. §3.6.11 records wage earnings (column 9) only for casual work:
@@ -123,11 +123,19 @@ A person whose USUAL status is casual can spend part of the reference week self-
 regular work. Those days carry hours and no wage, so **counting days from hours over-counts casual
 days**, and a daily rate computed as week's earnings ÷ hours-days is understated for them.
 
-Measured on `calendar_2025`, casual workers with a wage recorded: 9.5% by weight have more
-hours-days than earnings-days, and mean days a week is **5.414** counted from hours against **5.201**
-counted from earnings. The MEDIAN DAILY WAGE IS ₹400 EITHER WAY — the heaping on round values makes
-it robust to the denominator — so figures already published from it stand. The days figure does not:
-the 5.45 below is days of ANY work by a casual worker, not days of casual work.
+So **a day counts when it carries casual earnings**, and hours are summed only from cells whose
+paired earnings cell is positive. Measured on `calendar_2025`, usually-casual people: 385,663
+activity-day cells carry positive hours, 41,080 of them (10.7%) carry a **zero** wage, and **none**
+carries a blank one — so a positive earnings cell identifies a casual activity-day unambiguously.
+
+What that correction moved, weighted: days a week **5.41 → 5.20**, exact median hourly wage
+**₹50.00 → ₹53.13**. What it did not move: the population (8.63 crore either way) and the exact
+median daily wage, **₹400 on both denominators** — the heaping on round values makes it robust — so
+figures already published from it stand.
+
+One thing this cannot see: a genuinely unpaid casual day carries hours and a zero wage exactly like a
+non-casual day, and is dropped. It contributes nothing to the week's earnings, so keeping it would
+only deflate the daily rate — but that is a choice, not an identity.
 
 Measured on `calendar_2025`, all ages, weighted:
 
@@ -135,10 +143,15 @@ Measured on `calendar_2025`, all ages, weighted:
 |---|---|
 | casual workers (`pas` in 41, 51) | 9.90 crore |
 | with a wage recorded | 87.2% |
-| days worked per week (from hours — days of ANY work, see above) | **5.45** |
-| hours per day | **7.6** |
+| days worked per week (casual days) | **5.20** |
+| hours per casual day | **7.71** |
 | median daily wage | **₹400** |
-| median hourly wage | **₹52.7** |
+| median hourly wage | **₹53.13** |
+
+All of these are POOLED weighted figures over usually-casual people carrying a week's earnings and at
+least one casual day. An earlier version gave median hourly **₹52.7** without saying how it was
+derived, and it does not reproduce: on the corrected denominator the pooled weighted figure is
+₹53.13, and on the old hours-based one it is ₹50.00. Quote the derivation with the number.
 
 A casual worker's pay is a daily rate **times the days they get**, and both vary. Quoting a monthly
 equivalent without the days hides the half that makes the work precarious, and turns a derivation from
