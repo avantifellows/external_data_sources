@@ -46,7 +46,16 @@ tokens ("iAnEeReOriSnPgA…" = AEROSPACE ENGINEERING × the institute tail).
   with full-match asserts on every step;
 - one bucket the source itself prints twice (BPUT 5-year integrated CSE,
   two adjacent rank windows) is kept verbatim, disambiguated by `dup_seq`,
-  and pinned in an assert so anything new fails the build.
+  and pinned in an assert so anything new fails the build;
+- a final `polish_spellings` pass (fixpoint) catches what tail-removal
+  can't: transposition/space jitter ("Elcetric la Engineering") resolves by
+  letter-multiset grouping with word-evidence scoring, and single-fragment
+  interleaves ("aCivil", "wCaormputer", "mCiivliigl uEdnagineering" — eight
+  more institutes whose city shard lands in the programme) recover by
+  removing a known-good programme as a subsequence and requiring the
+  remainder to be a short lowercase shard. A handful of programmes that
+  exist nowhere clean in the document are spelled by hand in `MANUAL`.
+  Anything still fused after the pass fails the build.
 
 ## Where this surfaces
 

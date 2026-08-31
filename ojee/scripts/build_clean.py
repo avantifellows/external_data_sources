@@ -95,6 +95,10 @@ CONTINUATIONS = {
     "KALLINGA GLOBAL INSTITUTE OF TECHNOLOGY, INNOVATION & MANA": ["GEMENT,JAJPUR"],
     "Odisha University of Technology and Research (formerly College of Eng": ["ineering and Technology), Bhubaneswar"],
     "RADHAKRISHNA INSTITUTE OF TECHNOLOGY & ENGINEERING, BHUBA": ["NESWAR"],
+    # these two overflow only their CITY, so the head ends at a comma and the
+    # city interleaves the programme ("BCuormlaputer" = Burla x Computer)
+    "Sambalpur University Institute of Information Technology, Jyoti Vihar,": ["Burla"],
+    "Balaji Institute of Technology & Science, Knowledge Centre, Gunupur,": ["Rayagada"],
 }
 
 FUSE_SIG = None  # set lazily
@@ -102,7 +106,14 @@ FUSE_SIG = None  # set lazily
 
 def looks_fused(s: str) -> bool:
     import re
-    return sum(1 for t in s.split() if len(re.findall(r"[a-z][A-Z]", t)) >= 2) >= 1
+    for t in s.split():
+        if len(re.findall(r"[a-z][A-Z]", t)) >= 2:
+            return True
+        # a Titlecase city interleaved into a Titlecase word leaves two
+        # leading capitals and no case flips ("BCuormlaputer", "RCaiyvailg")
+        if len(t) > 4 and re.match(r"^[A-Z]{2,}[a-z]", t):
+            return True
+    return False
 
 
 def remove_subsequence(fused: str, tail: str) -> str | None:
@@ -157,9 +168,21 @@ def defuse(df: pd.DataFrame) -> pd.DataFrame:
         assert not looks_fused(best) and not best.startswith(")"), \
             f"still fused after removal: {best!r}"
         df.at[idx, "programme"] = best
-        df.at[idx, "institute"] = row.institute + best_tail
+        joiner = " " if row.institute.endswith(",") else ""
+        df.at[idx, "institute"] = row.institute + joiner + best_tail
         fixed += 1
     print(f"  de-fused {fixed} rows (institute tail re-joined, programme recovered)")
+
+    # rows the overflow did not reach keep the truncated institute head —
+    # complete them too (single-tail institutes only; CUTM's two campuses
+    # can only be told apart by which tail embedded)
+    for head, tails in CONTINUATIONS.items():
+        if len(tails) == 1:
+            joiner = " " if head.endswith(",") else ""
+            df.loc[df.institute == head, "institute"] = head + joiner + tails[0]
+    # tripwire: a head cut at a comma means an overflow tail we don't know
+    dangling = sorted(df.loc[df.institute.str.rstrip().str.endswith(","), "institute"].unique())
+    assert not dangling, f"institutes still truncated at a comma (unregistered overflow?): {dangling}"
 
     # second sweep: a recovered spelling can be the canonical form for a
     # remainder that lost its spaces (OUTR's AEROSPACEENGINEERING finds
@@ -177,6 +200,128 @@ def defuse(df: pd.DataFrame) -> pd.DataFrame:
                 return best_form[p[: -len(suf)].replace(" ", "")] + " - TFW"
         return best_form[p.replace(" ", "")]
     df["programme"] = df.programme.map(renorm)
+
+    # the source's own column edge cuts two spellings mid-word; complete the
+    # word only (never guess beyond it — the tfw FLAG comes from the seat
+    # column, so "- TF" rows were already correct functionally)
+    df["programme"] = (df.programme
+                       .str.replace(r"Machine Learni$", "Machine Learning", regex=True)
+                       .str.replace(r"- TF$", "- TFW", regex=True))
+    return polish_spellings(df)
+
+
+def polish_spellings(df: pd.DataFrame) -> pd.DataFrame:
+    """Two artifact classes the tail-removal above cannot see:
+
+    TRANSPOSITIONS / SPACE JITTER — x-coordinate noise swaps adjacent chars
+    or moves a space ("Elcetric la Engineering", "InformationTechnology").
+    Both preserve the letter multiset, so variants group by sorted-letters
+    key; the winner is decided by EVIDENCE, not frequency (a dirty spelling
+    can outnumber the clean one): score a variant by how many of its words
+    also occur in unrelated programmes ("Electronics" is everywhere,
+    "Elcetronics" only at one institute).
+
+    SINGLE-FRAGMENT INTERLEAVES — an institute tail this short drops one
+    fragment into the programme ("aCivil Engineering", "wCaormputer…",
+    "mCiivliigl uEdnagineering"). Removing a known-good programme as a
+    subsequence leaves just the fragment; a unique longest fit recovers the
+    programme. The fragment is a truncated city shard — not restorable, so
+    it is dropped, never appended.
+    """
+    import re
+    from collections import Counter
+
+    def split_tfw(p: str) -> tuple[str, bool]:
+        return (p[:-6].rstrip(), True) if p.endswith("- TFW") else (p, False)
+
+    def letters(s: str) -> str:
+        return "".join(sorted(re.sub(r"[^a-z0-9]", "", s.lower())))
+
+    # CIPET's and EAST's overflow-hit programmes exist NOWHERE clean in the
+    # document, so subsequence recovery has no target — spelled by hand
+    # (fragments: CIPET drops "swar", EAST drops "war"; both verified)
+    MANUAL = {
+        "sPwlaasrtic Engineering": "Plastic Engineering",
+        "sMwaanrufacturing Engineering & Technology": "Manufacturing Engineering & Technology",
+        "sInwtaergrated M.Sc. in Material Science and Engg": "Integrated M.Sc. in Material Science and Engg",
+        "wEanrvironmental Engineering": "Environmental Engineering",
+        "Txetlie Engineering": "Textile Engineering",
+        # OUTR spells one programme two ways, both with the space shifted
+        "MechanicalE ngg.( Artificial Intelligence and Robotics)":
+            "Mechanical Engineering (Artificial Intelligence and Robotics)",
+        "MechanicalE ngineering (Artificial Intelligence and Robotics)":
+            "Mechanical Engineering (Artificial Intelligence and Robotics)",
+        # glued spaces with no clean sibling anywhere in the document
+        "InformationTechnology(SSC)": "Information Technology(SSC)",
+        "Integrated MSc in AppliedPhysics": "Integrated MSc in Applied Physics",
+    }
+
+    fixed_sp = fixed_il = 0
+    # to a FIXPOINT: when every variant of a programme is dirty, round one's
+    # multiset winner is itself dirty — recovery cleans the winner, and the
+    # next round pulls the remaining variants onto the cleaned spelling
+    for _ in range(4):
+        bases = Counter(split_tfw(p)[0] for p in df.programme)
+        word_df = Counter()
+        for b in bases:
+            for w in set(re.findall(r"[A-Za-z]{3,}", b)):
+                word_df[w] += 1
+
+        def evidence(b: str) -> int:
+            return sum(1 for w in set(re.findall(r"[A-Za-z]{3,}", b)) if word_df[w] >= 4)
+
+        canonical: dict[str, str] = {}
+        for b in bases:
+            k = letters(b)
+            if k not in canonical or (evidence(b), bases[b]) > (evidence(canonical[k]), bases[canonical[k]]):
+                canonical[k] = b
+        good = sorted({b for b in canonical.values() if evidence(b) >= 1},
+                      key=len, reverse=True)
+
+        changed = 0
+        for idx, p in df.programme.items():
+            base, tfw = split_tfw(p)
+            if base in MANUAL:
+                df.at[idx, "programme"] = MANUAL[base] + (" - TFW" if tfw else "")
+                fixed_il += 1
+                changed += 1
+                continue
+            target = canonical[letters(base)]
+            if target != base:
+                fixed_sp += 1
+            elif (evidence(base) == 0 or looks_fused(base)
+                  # a fragment lands before the capital: "aComputer"
+                  or any(re.match(r"^[a-z]{1,4}[A-Z]", t) for t in base.split())
+                  # or inside a word almost no other programme uses
+                  # ("Cromputer" appears in two sibling rows)
+                  or any(word_df[w] <= 2 and bases[base] <= 12
+                         for w in set(re.findall(r"[A-Za-z]{4,}", base)))):
+                # genuinely unique programmes simply find no subsequence fit
+                # and pass through the recovery unchanged
+                hits = []
+                for g in good:
+                    rem = remove_subsequence(base, g)
+                    # a genuine institute shard is a short run of LOWERCASE
+                    # letters ("r", "a", "war", "miliguda") — an uppercase or
+                    # parenthesised remainder ("(SSC)") is a real suffix that
+                    # distinguishes a separate programme, never a shard
+                    if rem is not None and re.fullmatch(r"[a-z ]{1,10}", rem.strip()):
+                        hits.append(g)
+                        if len(hits) > 1 and len(hits[1]) < len(hits[0]):
+                            break  # longest fit already unique
+                if hits:
+                    target, fixed_il = hits[0], fixed_il + 1
+            if target != base:
+                df.at[idx, "programme"] = target + (" - TFW" if tfw else "")
+                changed += 1
+        if not changed:
+            break
+
+    leftover = sorted({p for p in df.programme
+                       if looks_fused(split_tfw(p)[0])
+                       or any(re.match(r"^[a-z]{1,4}[A-Z]", t) for t in p.split())})
+    assert not leftover, f"unrecoverable fused programmes: {leftover}"
+    print(f"  spelling-normalised {fixed_sp} rows, interleave-recovered {fixed_il} rows")
     return df
 
 

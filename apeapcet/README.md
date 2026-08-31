@@ -37,7 +37,10 @@ and the soft-200 caveat on the CAP portal.
 - college_type from the source's own `type` column: UNIV = government
   university constituent colleges; SF / SS = self-finance / self-supporting
   pools INSIDE those campuses; PVT = private; PU = private university.
-- branch_code verbatim (no legend in the source; naming is a UI concern).
+- branch_code verbatim (no legend in the source PDF). Full names live in
+  [`branch_codes.csv`](branch_codes.csv) — the official EAPCET course list
+  (73 codes seen in our data plus a few extras; QC=Quantum Computing and
+  CSED=CSE-DevOps verified via the single colleges that offer them).
 
 ## Where this surfaces
 
