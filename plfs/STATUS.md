@@ -107,18 +107,17 @@ Two things follow that we have not acted on:
 
 * **MGNREG can be split off casual work for those eight releases**, and only for them. Any such cut
   must name its releases; it cannot span the series.
-* **`ern11`–`ern27` (the daily earnings block) is populated in nine releases, not two.** The casual
-  daily wage is currently derived only for calendar_2024 and calendar_2025 because days worked are
-  taken from `hr11`–`hr27`. Days for the earlier eight would have to come from `sts` instead, which
-  is a different derivation and is not written here — the point is that the limit is our method, not
-  the data.
-* **Hours and earnings do not line up cell by cell**, which is what counting days from hours assumes.
+* **Hours and earnings do not line up cell by cell**, which is what counting days from hours assumed.
   §3.6.9 records hours for every work status (11–72); §3.6.11 records wage earnings only for 41, 42
   and 51. A usually-casual person's self-employed or regular days therefore carry hours and no wage,
-  so days counted from hours over-count casual days. Measured on calendar_2025: 9.5% of casual wage
-  earners by weight are affected, and mean days a week is 5.414 from hours against 5.201 from
-  earnings. The median daily wage is ₹400 either way — the heaping makes it robust — so published
-  medians stand; the days figure is the one that moves. Details in EARNINGS.md.
+  so days counted from hours over-count casual days. **Fixed:** days now count from the earnings
+  cells and hours only from cells whose paired earnings cell is positive. Days a week 5.41 → 5.20,
+  exact median hourly wage ₹50.00 → ₹53.13; the median daily wage is ₹400 either way, so published
+  medians stand. Details in EARNINGS.md.
+* **That fix also extended the casual daily wage from two releases to nine.** `ern11`–`ern27` is
+  populated in nine releases while `hr11`–`hr27` is populated in two, so a days-from-hours derivation
+  could never cover more than those two. The old scope was a limit of the method, not the data. The
+  HOURLY wage genuinely is two releases only — it needs the hours block.
 
 §3.6.5 does the same thing to unemployment: usual-status 81 covers both seeking and being available
 for work, while current status splits it into 81 (sought work) and 82 (available, did not seek).
