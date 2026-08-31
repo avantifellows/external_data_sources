@@ -146,7 +146,12 @@ Measured on `calendar_2025`, all ages, weighted:
 | days worked per week (casual days) | **5.20** |
 | hours per casual day | **7.71** |
 | median daily wage | **₹400** |
-| median hourly wage | **₹52.7** |
+| median hourly wage | **₹53.13** |
+
+All of these are POOLED weighted figures over usually-casual people carrying a week's earnings and at
+least one casual day. An earlier version gave median hourly **₹52.7** without saying how it was
+derived, and it does not reproduce: on the corrected denominator the pooled weighted figure is
+₹53.13, and on the old hours-based one it is ₹50.00. Quote the derivation with the number.
 
 A casual worker's pay is a daily rate **times the days they get**, and both vary. Quoting a monthly
 equivalent without the days hides the half that makes the work precarious, and turns a derivation from
