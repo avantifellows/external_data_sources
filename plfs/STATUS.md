@@ -21,7 +21,13 @@ different clocks and nothing in the column names says so:
   security, paid leave) are **usual status** — 365 days.
 - `ern_reg` and `ern_self` are keyed to **current weekly status** (§3.6 xviii/xix). See `EARNINGS.md`.
 - `ern11`–`ern27`, `hr11`–`hr27` are **per day** of the reference week.
-- `sts11`–`sts27` would be the daily status codes, and are **empty in every release loaded here**.
+- `sts11`–`sts27` are the daily status codes, and are **populated in eight of the eleven releases
+  loaded here** — annual_2018-19 through annual_2023-24, calendar_2022 and calendar_2023 — and empty in
+  calendar_2021, calendar_2024 and calendar_2025. They are **mutually exclusive with `hr11`–`hr27`**:
+  `sts` carries exactly the eight releases where `hr` is empty, `hr` carries the two where `sts` is
+  empty, and calendar_2021 carries neither. `sts` runs the *current*-status vocabulary, where 42 is
+  MGNREG casual work and 41 excludes it, so it is the only place MGNREG can be separated from other
+  casual work — and only for those eight releases. See §3.6.5 under "The fourteen codes" below.
 
 So "is this a point-in-time measure?" has different answers per column. The status shown by any
 analysis built on `pas`/`sas` is *not* point-in-time — it is the whole preceding year.
