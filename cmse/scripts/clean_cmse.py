@@ -8,6 +8,7 @@ Build the CMS-E clean tables from the three MoSPI unit-level CSVs.
                                         ▼
     clean/cmse_fact_student.parquet     59,417 students  (resident + away, `cut` discriminates)
     clean/cmse_fact_household.parquet   52,085 households
+    clean/cmse_fact_person.parquet     214,757 household members, ENROLLED OR NOT
 
 What this script owns
 ---------------------
@@ -20,6 +21,9 @@ What this script owns
 6. Unifying two different expenditure schemas (itemised for resident students,
    lump-sum for students away from home) into one comparable set of columns.
 7. Asserting the grain and reconciling against the totals MoSPI itself published.
+8. Emitting the household ROSTER as well as the student list, which is the only way
+   to ask who is NOT in school — and anchoring it on the student table, since MoSPI
+   publishes no out-of-school figure for CMS-E to check directly.
 
 Usage:
   python3 scripts/clean_cmse.py
@@ -220,6 +224,59 @@ def build_resident_students(per: pd.DataFrame, hh_ctx: pd.DataFrame,
     return out.merge(hh_ctx, on="household_id", how="left", validate="m:1")
 
 
+# ── The roster: every surveyed member the enrolment question was put to ───────
+
+def build_person_roster(per: pd.DataFrame, hh_ctx: pd.DataFrame,
+                        states: dict[str, str]) -> pd.DataFrame:
+    """One row per household member who was asked whether they are enrolled.
+
+    WHY THIS TABLE EXISTS. cmse_fact_student holds only enrolled students, so the
+    question "who is NOT in school" cannot be asked of it at all — and that is the
+    cut this survey can answer better than anything else Avanti has, because the
+    person file is a full household roster, not a list of students.
+
+    THE FILTER IS THE GATE ITSELF, not a populated enrolment level. Block 5 item 3
+    (`currently_enrolled_school`) is 1 or 2 for everyone it was put to and blank
+    otherwise; those blanks are exactly the household members aged 0, 1 and 2, for
+    whom MoSPI never asks. Filtering on the gate makes the denominator correct by
+    construction: a rate computed over this table cannot accidentally include a
+    toddler who was never asked. assert_person_grain() checks that the excluded set
+    really is ages 0-2 rather than trusting it.
+    """
+    r = per[per.currently_enrolled_school.notna()].copy()
+    out = _geo(r, states)
+    out.insert(0, "household_id", _household_id(r))
+    out.insert(1, "person_serial_no", _zpad(r.person_serial_no, 2))
+    out["survey_year"] = S.SURVEY_YEAR
+
+    out["gender_code"] = r.gender.astype("Int64")
+    out["gender_name"] = r.gender.map(S.GENDER)
+    out["age"] = r.age.astype("Int64")
+    out["age_band"] = pd.NA
+    for lo, hi, label in S.AGE_BANDS:
+        out.loc[r.age.between(lo, hi), "age_band"] = label
+    # The one filter that makes an out-of-school rate defensible. CMS-E is a
+    # school-education survey, so above 17 it cannot separate "not in school" from
+    # "in higher education" — a rate on an 18+ band measures neither.
+    out["is_school_age"] = r.age.between(S.SCHOOL_AGE_MIN, S.SCHOOL_AGE_MAX)
+    out["relation_to_head_code"] = r.relation_to_head.astype("Int64")
+    out["relation_to_head_name"] = r.relation_to_head.map(S.RELATION_TO_HEAD)
+
+    out["is_enrolled"] = r.currently_enrolled_school.map(S.CURRENTLY_ENROLLED).astype("boolean")
+
+    # Enrolment detail exists only for the enrolled half, and is NULL rather than
+    # zero on the other — a child who is not in school has no class and no school
+    # type, which is a different fact from having one that was not recorded.
+    out["enrolment_level_code"] = _zpad(r.enrolment_level, 2)
+    out["enrolment_level_name"] = r.enrolment_level.map(S.ENROLMENT_LEVEL)
+    out["enrolment_stage"] = r.enrolment_level.map(S.ENROLMENT_STAGE)
+    out["school_type_code"] = r.school_type.astype("Int64")
+    out["school_type_name"] = r.school_type.map(S.SCHOOL_TYPE)
+
+    out["weight"] = r.mult / S.WEIGHT_DIVISOR
+    return out.merge(hh_ctx, on="household_id", how="left", validate="m:1")
+
+
 # ── Students living away from home (erstwhile file, block 4) ──────────────────
 
 def build_away_students(erst: pd.DataFrame, hh_ctx: pd.DataFrame,
@@ -389,6 +446,130 @@ def assert_grain(students: pd.DataFrame, households: pd.DataFrame) -> None:
           f"{(students.cut == 'away_from_home').sum():,} away from home)")
 
 
+def assert_person_grain(persons: pd.DataFrame, per_raw: pd.DataFrame,
+                       students: pd.DataFrame) -> None:
+    """Grain, the age gate, and the tie back to the reconciled student table.
+
+    cmse_fact_person has no published MoSPI figure of its own to reconcile against
+    — the PIB release does not carry an out-of-school or age-band enrolment number.
+    So its anchor is INTERNAL and it is a strong one: the enrolled half of this
+    roster must be exactly, row for row, the resident students in
+    cmse_fact_student, which is the table whose fourteen figures MoSPI does
+    publish. If those two sets ever diverge, one of them is wrong and the build
+    stops rather than emitting an out-of-school rate over an unverified
+    denominator.
+    """
+    dup = persons.duplicated(subset=["household_id", "person_serial_no"]).sum()
+    if dup:
+        raise SystemExit(
+            f"cmse_fact_person is not unique on (household_id, person_serial_no) ({dup} dupes)"
+        )
+
+    orphan = persons.state_name.isna().sum()
+    if orphan:
+        raise SystemExit(f"{orphan} person rows have no state_name — check the state codemap")
+
+    # Every gate value must decode. S.CURRENTLY_ENROLLED covers 1 and 2, which is all
+    # MoSPI uses today; a third code would map to NA on a column the schema declares
+    # REQUIRED and fail in BigQuery at load time instead of here, next to the cause.
+    undecoded = persons.is_enrolled.isna().sum()
+    if undecoded:
+        raise SystemExit(
+            f"{undecoded} person rows have an is_enrolled that did not decode — "
+            f"currently_enrolled_school carries a value outside {sorted(S.CURRENTLY_ENROLLED)}. "
+            "Add it to S.CURRENTLY_ENROLLED; do NOT let it through as NULL."
+        )
+
+    # The household context is left-joined, so a household_id absent from the context
+    # would silently blank social group, consumption and household type — the columns
+    # every equity cut on this table reads. Left joins fail quietly by design; this is
+    # the check that makes it loud.
+    ctx_cols = ["social_group_name", "mpce", "household_type_name", "household_size"]
+    blank_ctx = {c: int(persons[c].isna().sum()) for c in ctx_cols if persons[c].isna().any()}
+    if blank_ctx:
+        raise SystemExit(
+            f"person rows carry no household context: {blank_ctx}. Some household_id in the "
+            "person file has no row in cmse_fact_household — the two files disagree."
+        )
+
+    # THE AGE GATE, checked rather than assumed. The rows the enrolment question
+    # was never put to must be exactly the under-3s; anything else means MoSPI's
+    # gate is not what this transform believes it is, and every rate built on this
+    # table would carry a denominator nobody checked.
+    ungated = per_raw[per_raw.currently_enrolled_school.isna()]
+    bad = ungated.loc[ungated.age >= S.SCHOOL_AGE_MIN, "age"]
+    if len(bad):
+        raise SystemExit(
+            f"{len(bad)} rows were never asked the enrolment question but are aged "
+            f"{S.SCHOOL_AGE_MIN}+ (ages {sorted(bad.unique())[:8]}). The age gate is not "
+            "what the transform assumes; do NOT publish an out-of-school rate on this."
+        )
+
+    # Every band must resolve. A NULL age_band on a row that passed the gate would
+    # silently drop that person out of every rate.
+    unbanded = persons.age_band.isna().sum()
+    if unbanded:
+        raise SystemExit(f"{unbanded} person rows fall in no age band — check S.AGE_BANDS")
+
+    # THE ANCHOR: enrolled roster == resident students, as SETS, not as counts.
+    # Counts agreeing is much weaker: two different row sets of the same size
+    # would pass it, which is exactly the ambiguity that made the old
+    # enrolment_level filter unproven until it was checked against the raw file.
+    # `== True` rather than a truthiness test, throughout: is_enrolled is pandas'
+    # nullable `boolean`, where NA is neither True nor False, and `df[df.is_enrolled]`
+    # raises on NA rather than excluding it. The explicit comparison is the form that
+    # treats "did not decode" as "not enrolled" instead of blowing up — and the guard
+    # above means NA cannot reach here anyway.
+    key = ["household_id", "person_serial_no"]
+    enrolled = set(map(tuple, persons.loc[persons.is_enrolled == True, key].to_numpy()))
+    resident = set(map(tuple, students.loc[students.cut == "resident", key].to_numpy()))
+    if enrolled != resident:
+        raise SystemExit(
+            f"the enrolled roster and cmse_fact_student's resident cut are different row "
+            f"sets: {len(enrolled):,} vs {len(resident):,}, "
+            f"{len(enrolled ^ resident):,} in one but not the other. One of the two "
+            "enrolment filters is wrong."
+        )
+
+    w_enrolled = persons.loc[persons.is_enrolled == True, "weight"].sum()
+    w_resident = students.loc[students.cut == "resident", "weight"].sum()
+    if abs(w_enrolled - w_resident) > 1:
+        raise SystemExit(
+            f"weighted enrolled roster {w_enrolled:,.0f} != weighted resident students "
+            f"{w_resident:,.0f} — the same rows carry different multipliers."
+        )
+
+    def oos(df):
+        return 100 * df.loc[df.is_enrolled == False, "weight"].sum() / df.weight.sum()
+
+    sa = persons[persons.is_school_age]
+    compulsory = sa[sa.age >= 6]
+    # `max()` on an empty frame is NaN and int(NaN) raises — so if MoSPI ever put the
+    # question to everyone, the summary line would crash on the SUCCESS path.
+    excluded = (f"{len(ungated):,} under-{S.SCHOOL_AGE_MIN}s excluded, max excluded age "
+                f"{int(ungated.age.max())}" if len(ungated) else "none excluded")
+    print(f"\nperson roster ok: {len(persons):,} members asked the enrolment question "
+          f"({excluded})")
+    print(f"  enrolled half is row-for-row cmse_fact_student's resident cut "
+          f"({len(enrolled):,} rows, {w_enrolled / 1e6:,.1f}mn weighted)")
+    # Both, deliberately: the 3-17 blend is the number a reader will reach for and
+    # it is not the one they mean, because pre-primary is optional. Printing the
+    # pair is how the caveat travels with the figure instead of living in a yaml.
+    print(f"  out of school, ages {S.SCHOOL_AGE_MIN}-{S.SCHOOL_AGE_MAX}: {oos(sa):.1f}% "
+          f"({len(sa):,} sampled) — BLENDS optional pre-primary with compulsory schooling")
+    print(f"  out of school, ages 6-{S.SCHOOL_AGE_MAX}: {oos(compulsory):.1f}% "
+          f"({len(compulsory):,} sampled) — the compulsory-schooling figure, report this one")
+    print("  by age band (weighted; 18+ shown for completeness but NOT a supported figure):")
+    for _, _, label in S.AGE_BANDS:
+        b = persons[persons.age_band == label]
+        if not len(b):
+            continue
+        flag = ("   <- optional stage" if label == "3-5"
+                else "" if label in ("6-10", "11-14", "15-17")
+                else "   <- NOT school age")
+        print(f"    {label:6s} n {len(b):7,d}   {oos(b):5.1f}%{flag}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -418,6 +599,7 @@ def main() -> None:
          build_away_students(erst, hh_ctx, states)],
         ignore_index=True,
     )
+    persons = build_person_roster(per, hh_ctx, states)
 
     # All-in education spend, comparable across both cuts. NULL components are
     # treated as zero here so the total is always usable; the component columns
@@ -430,11 +612,15 @@ def main() -> None:
     )
 
     assert_grain(students, households)
+    # The roster is checked AFTER the student table, because its anchor is the
+    # student table: the order is what makes "enrolled == resident" meaningful.
+    assert_person_grain(persons, per, students)
     if not args.no_verify:
         verify(students, households)
 
     S.CLEAN.mkdir(exist_ok=True)
-    for df, table in [(students, S.FACT_STUDENT), (households, S.FACT_HOUSEHOLD)]:
+    for df, table in [(students, S.FACT_STUDENT), (households, S.FACT_HOUSEHOLD),
+                      (persons, S.FACT_PERSON)]:
         df.to_parquet(table.local_path, index=False)
         print(f"  wrote {table.local_path.name:34s} {len(df):>7,} rows x {len(df.columns)} cols")
 

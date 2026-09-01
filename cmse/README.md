@@ -1,7 +1,8 @@
 # CMS-E — Comprehensive Modular Survey: Education (NSS 80th Round, 2025)
 
 MoSPI's nationally representative survey of **what Indian households spend on
-school education**. Unit-level microdata → 2 BigQuery tables.
+school education** — and, from the household roster, **who is not in school at
+all**. Unit-level microdata → 3 BigQuery tables.
 
 ---
 
@@ -32,6 +33,15 @@ Concretely, it answers:
   first funding source for **1.2%** of students; other household members fund
   **95%**. That single pair of numbers grounds the case for privately funded
   scholarships better than anything we have had.
+- **Who never gets to the starting line?** The person file is a full household
+  roster, not a list of students, so it measures children who are *not enrolled*.
+  Across compulsory schooling ages (6–17) **6.2%** are out of school, rising to
+  **14.6%** at ages 15–17 — and the gradient is the steepest
+  thing in this source: **28.8% in the poorest consumption decile against 3.8% in
+  the richest**, a 7.5x gap, with **ST 25.1% against Others 7.5%**. Set beside the
+  25-point ST-to-Others gap in coaching *among those who are enrolled*, that is the
+  full shape of the problem on one survey: a gap in getting in, then a gap in what
+  you can buy once you are.
 
 It is also the natural companion to two tables already in the warehouse:
 `hces_fact_household_master` (consumption and derived income, for levels) and
@@ -47,16 +57,18 @@ It is also the natural companion to two tables already in the warehouse:
 |---|---|---|---|
 | `cmse_fact_student` | one row per student | 59,417 | `state_code`, `gender_name`, `enrolment_level_code`, `cut` |
 | `cmse_fact_household` | one row per surveyed household | 52,085 | `state_code`, `sector_name`, `social_group_name` |
+| `cmse_fact_person` | one row per member asked the enrolment question | 214,757 | `state_code`, `age_band`, `is_enrolled`, `social_group_name` |
 
 **GCS** — `gs://avantifellows-external-data/cmse/`:
 
 - `raw/CMSE80HH25.csv`, `raw/CMSE80PER25.csv`, `raw/CMSE80PERST25.csv` — the
   three MoSPI unit-level files as released
 - `raw/docs/` — all six official MoSPI documentation files plus the DDI codebook
-- `clean/cmse_fact_student.parquet`, `clean/cmse_fact_household.parquet`
+- `clean/cmse_fact_student.parquet`, `clean/cmse_fact_household.parquet`,
+  `clean/cmse_fact_person.parquet`
 
 **In git** — pipeline only: `scripts/` (transform, codemap builder, GCS staging,
-BQ loader), `schemas/` (2 table YAMLs + the concepts primer), `codemaps/`
+BQ loader), `schemas/` (3 table YAMLs + the concepts primer), `codemaps/`
 (13 CSVs, all generated from the official MoSPI code lists), and `docs/` (the
 official documentation — public, small, and the only way to audit the decode).
 
@@ -81,8 +93,8 @@ district codes carry no published name lookup.
 | Licence | Government of India open microdata, free for research and analysis with attribution |
 
 Sample: 4,366 first-stage units (2,384 villages + 1,982 urban blocks), 52,085
-households, 57,742 students, weighted to 242.3 million students in 287.0 million
-households.
+households, 221,617 household members of whom 57,742 are enrolled students,
+weighted to 242.3 million students in 287.0 million households.
 
 ---
 
@@ -102,6 +114,13 @@ urban, and the funding split — and exits non-zero if any drifts:
 …14/14 reconcile
 ```
 
+`cmse_fact_person` has **no published figure of its own** — MoSPI publishes no
+out-of-school number for CMS-E — so its anchor is internal and strict: its enrolled
+half must be exactly, as a row set, `cmse_fact_student`'s `resident` cut, and the
+build fails otherwise. That ties it to the reconciled table at one remove. It does
+not make the out-of-school *level* externally validated; see the foot of
+[`schemas/cmse_fact_person.yaml`](schemas/cmse_fact_person.yaml).
+
 Read [`schemas/README.md`](schemas/README.md) before analysing. Four traps in
 this data change results materially — government in-kind support valued at zero,
 integrated coaching invisible to the coaching columns, state fee regulation
@@ -119,11 +138,12 @@ cmse/
 ├── requirements.txt
 ├── codemaps/                  # 13 CSVs generated from the official code lists
 ├── docs/                      # the six official MoSPI files + DDI codebook
-├── schemas/                   # 2 table YAMLs + the concepts primer
+├── schemas/                   # 3 table YAMLs + the concepts primer
 ├── scripts/
 │   ├── sources.py             # single source of truth: paths, tables, code lists
 │   ├── build_codemaps.py      # official xlsx → codemaps/*.csv
 │   ├── clean_cmse.py          # raw CSV → clean parquet, with reconciliation
+│   ├── check_person_guards.py # breaks each roster guard on purpose; all must fire
 │   ├── upload_to_gcs.py       # stage raw+docs and clean to GCS
 │   └── load_bq.py             # GCS parquet → BigQuery
 ├── raw/                       # gitignored
@@ -138,9 +158,10 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 # 1. put the three MoSPI CSVs in raw/  (from the NADA catalog above)
 python3 scripts/build_codemaps.py         # regenerate codemaps from docs/
 python3 scripts/clean_cmse.py             # → clean/*.parquet, reconciles or fails
+python3 scripts/check_person_guards.py    # proves the roster's guards actually fire
 python3 scripts/upload_to_gcs.py --raw    # stage source CSVs + docs
 python3 scripts/upload_to_gcs.py          # stage clean parquet
-python3 scripts/load_bq.py                # load both tables (WRITE_TRUNCATE)
+python3 scripts/load_bq.py                # load all three tables (WRITE_TRUNCATE)
 ```
 
 Idempotent throughout. No orchestrator, no schedule — this runs on demand, and
