@@ -446,8 +446,37 @@ def assert_grain(students: pd.DataFrame, households: pd.DataFrame) -> None:
           f"{(students.cut == 'away_from_home').sum():,} away from home)")
 
 
+def _weighted_decile(hh: pd.DataFrame) -> pd.Series:
+    """Per-capita consumption decile over HOUSEHOLDS, weighted, hostel households out.
+
+    THE RECIPE IS THE FIGURE. This is the one number in the roster's documentation
+    whose value depends on how the deciles are built, and the plausible alternatives
+    disagree by enough to matter: an unweighted NTILE over households gives a 6.0x
+    poorest-to-richest gap in out-of-school rate, deciles cut within the 15-17 subset
+    give 7.5x, and this — the documented definition — gives 7.6x.
+
+    Weighted, because an unweighted decile of sampled households is a decile of the
+    sample and not of India. Over households rather than over students, because a
+    decile of students double-counts the larger families. And hostel households out
+    BEFORE ranking, because a lone teenager's consumption ranks spuriously high per
+    capita and inverts the top decile.
+
+    It lives here, computed on every build, for one reason: the figure that reached
+    the docs first was computed once in a throwaway script, and it was wrong — it
+    used an unweighted ranking while the documentation beside it specified a weighted
+    one. A number the build recomputes cannot drift from the number the build
+    documents.
+    """
+    d = hh.loc[~hh.is_student_hostel_household, ["mpce_per_capita", "weight"]]
+    d = d.sort_values("mpce_per_capita")
+    # Share of total household weight strictly below each row, bucketed into tenths.
+    below = d.weight.cumsum() - d.weight
+    return (np.minimum(10, (below / d.weight.sum() * 10).astype(int) + 1)
+            .reindex(hh.index))
+
+
 def assert_person_grain(persons: pd.DataFrame, per_raw: pd.DataFrame,
-                       students: pd.DataFrame) -> None:
+                       students: pd.DataFrame, households: pd.DataFrame) -> None:
     """Grain, the age gate, and the tie back to the reconciled student table.
 
     cmse_fact_person has no published MoSPI figure of its own to reconcile against
@@ -569,6 +598,19 @@ def assert_person_grain(persons: pd.DataFrame, per_raw: pd.DataFrame,
                 else "   <- NOT school age")
         print(f"    {label:6s} n {len(b):7,d}   {oos(b):5.1f}%{flag}")
 
+    # The consumption gradient, recomputed rather than remembered — see _weighted_decile.
+    dec = households.assign(dec=_weighted_decile(households))[["household_id", "dec"]]
+    teens = persons[persons.age.between(15, 17)].merge(dec, on="household_id", how="inner")
+    teens = teens[teens.dec.notna()]
+    by_dec = {int(k): oos(g) for k, g in teens.groupby("dec")}
+    if by_dec:
+        lo, hi = by_dec[min(by_dec)], by_dec[max(by_dec)]
+        print(f"  out of school at 15-17 by weighted per-capita decile (households, hostel "
+              f"households excluded):")
+        print("    " + "  ".join(f"{d}:{by_dec[d]:.1f}" for d in sorted(by_dec)))
+        print(f"    poorest {lo:.1f}% vs richest {hi:.1f}% = {lo / hi:.1f}x. NOT monotone — the "
+              "wobbles are sampling noise, so do not assert monotonicity on this series.")
+
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
@@ -614,7 +656,7 @@ def main() -> None:
     assert_grain(students, households)
     # The roster is checked AFTER the student table, because its anchor is the
     # student table: the order is what makes "enrolled == resident" meaningful.
-    assert_person_grain(persons, per, students)
+    assert_person_grain(persons, per, students, households)
     if not args.no_verify:
         verify(students, households)
 
