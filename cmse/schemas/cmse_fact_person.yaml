@@ -286,12 +286,25 @@ columns:
     type: FLOAT
     mode: REQUIRED
     description: >
-      mpce / household_size. THE STEEPEST GRADIENT IN THIS TABLE. Out of school at ages 15-17 by
-      weighted per-capita decile, hostel households excluded: 28.8% in the poorest decile falling to
-      3.8% in the richest — a 7.5x gap, and near-monotone (the wobble at deciles 6 and 10 is sampling
-      noise at ~1,240 sampled per decile). Carries the same short-form caveat as mpce, plus one of its
-      own: households with a teenager are larger, so per-capita ranking mildly penalises exactly the
-      families this survey is about. Exclude is_student_hostel_household rows BEFORE ranking.
+      mpce / household_size. THE STEEPEST GRADIENT IN THIS TABLE — and the one figure here whose
+      value depends on how you build the deciles, so the recipe is stated rather than assumed.
+      DECILES ARE OVER HOUSEHOLDS, WEIGHTED BY THE HOUSEHOLD WEIGHT, WITH
+      is_student_hostel_household EXCLUDED BEFORE RANKING. Weighted because an unweighted NTILE over
+      sampled households is a decile of the sample, not of India; over households rather than over
+      students because a decile of students double-counts the larger families; and hostel households
+      out first because a single teenager's consumption ranks spuriously high per capita.
+      On that basis, out of school at ages 15-17 runs by decile
+      28.1 / 21.0 / 17.0 / 13.3 / 12.3 / 13.7 / 10.2 / 6.4 / 3.4 / 3.7 % — poorest to richest, a
+      7.5x gap. NEAR-monotone, not monotone: deciles 6 and 10 both tick up against their neighbours,
+      which is sampling noise at ~1,150-1,390 sampled per decile and not a real reversal. Do not
+      assert strict monotonicity on this series.
+      clean_cmse.py recomputes and prints this series on every build, so the figure here cannot
+      drift from the data. The recipe matters because the plausible alternatives disagree: an
+      unweighted NTILE over households gives 27.0% to 4.5% (a 6.0x gap), and deciles cut within the
+      15-17 subset itself give 28.8% to 3.8%. All three are computable, only the definition above is
+      the one this column documents, and a figure quoted without its recipe is not reproducible.
+      Carries the same short-form caveat as mpce, plus one of its own: households with a teenager are
+      larger, so per-capita ranking mildly penalises exactly the families this survey is about.
   - name: is_student_hostel_household
     type: BOOLEAN
     mode: REQUIRED

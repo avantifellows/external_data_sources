@@ -37,8 +37,11 @@ Concretely, it answers:
   roster, not a list of students, so it measures children who are *not enrolled*.
   Across compulsory schooling ages (6–17) **6.2%** are out of school, rising to
   **14.6%** at ages 15–17 — and the gradient is the steepest
-  thing in this source: **28.8% in the poorest consumption decile against 3.8% in
-  the richest**, a 7.5x gap, with **ST 25.1% against Others 7.5%**. Set beside the
+  thing in this source: **28.1% in the poorest consumption decile against 3.7% in
+  the richest**, a 7.5x gap, with **ST 25.1% against Others 7.5%**. (Deciles over
+  households, weighted, hostel households excluded — the recipe changes the number,
+  so `schemas/cmse_fact_person.yaml` states it beside the figure and `clean_cmse.py`
+  reprints the whole series on every build.) Set beside the
   25-point ST-to-Others gap in coaching *among those who are enrolled*, that is the
   full shape of the problem on one survey: a gap in getting in, then a gap in what
   you can buy once you are.
