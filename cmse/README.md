@@ -118,10 +118,17 @@ urban, and the funding split — and exits non-zero if any drifts:
 ```
 
 `cmse_fact_person` has **no published figure of its own** — MoSPI publishes no
-out-of-school number for CMS-E — so its anchor is internal and strict: its enrolled
-half must be exactly, as a row set, `cmse_fact_student`'s `resident` cut, and the
-build fails otherwise. That ties it to the reconciled table at one remove. It does
-not make the out-of-school *level* externally validated; see the foot of
+out-of-school number for CMS-E — so its build-time anchor is internal and strict: its
+enrolled half must be exactly, as a row set, `cmse_fact_student`'s `resident` cut, and
+the build fails otherwise.
+
+For the *level*, PLFS is the independent check, and it separates the two age bands
+sharply. At **15–17 it corroborates**: not attending an educational institution runs
+14.2–16.4% across the ten PLFS releases carrying the field, against CMS-E's 14.6%,
+with PLFS on the high side as its principal-activity measure should be. At **3–5 it
+does not** — PLFS reads 73–83% against CMS-E's 46.2%, a gap no bound explains, because
+the two surveys count pre-primary attendance differently. So the secondary-age figure
+carries independent agreement and the pre-primary one does not; see the foot of
 [`schemas/cmse_fact_person.yaml`](schemas/cmse_fact_person.yaml).
 
 Read [`schemas/README.md`](schemas/README.md) before analysing. Four traps in

@@ -327,16 +327,36 @@ columns:
       row count — treat any cell with fewer than ~100 sampled rows as directional only. And note point
       2: this weight is licensed to produce a rate, not a population total.
 
-# ── External validation: what is and is not anchored ─────────────────────────
-# The levels in this table have NO published MoSPI figure behind them. The
-# reconciliation the build enforces is internal (enrolled half == cmse_fact_student's
-# resident cut, as a row set and by weight), which proves the roster and the
-# published-reconciled student table agree — it does not prove the out-of-school
-# rate is right.
+# ── External validation: the 15-17 rate is corroborated, the 3-5 rate is not ──
+# There is still NO published MoSPI figure for these levels — the PIB release carries
+# no out-of-school or age-band enrolment number — so the build's own guard remains
+# internal: the enrolled half must equal cmse_fact_student's resident cut as a row set
+# and by weight. That proves the roster and the published-reconciled student table
+# agree; it cannot prove an out-of-school LEVEL.
 #
-# The intended external check is the UDISE+ and MoE board data already loaded in
-# this warehouse: udise_* carries Class 10 and 12 enrolment by state and
-# moe_fact_board_exam_results carries appeared counts, and those two independently
-# agree within ~3% at Class 10. Neither is an out-of-school rate, but together they
-# bound one. Until that check is run, treat 14.6% at ages 15-17 as reproduced from
-# the microdata and NOT externally validated — and say which of the two you mean.
+# THE EXTERNAL CHECK HAS NOW BEEN RUN, against PLFS rather than the UDISE+/MoE bound
+# originally planned, because PLFS measures the same quantity directly: `pas = '91'` is
+# "attended an educational institution". It is a bound with a KNOWN DIRECTION, which is
+# what makes it a check rather than a rival estimate — 91 is PRINCIPAL activity, so a
+# teenager who both works and studies is coded as working and PLFS OVERSTATES being out
+# of school. The pass condition is PLFS >= CMS-E.
+#
+# AGES 15-17 — CORROBORATED. Across the ten PLFS releases that carry the field, not
+# studying runs 14.2% to 16.4% against CMS-E's 14.6%. All ten pass, PLFS sits above
+# CMS-E in seven of them, and the worst dip is 0.4pp. So 14.6% is corroborated, not
+# merely reproduced, and it is fair to say so.
+#
+# AGES 3-5 — NOT CORROBORATED, and do not present it as though it were. PLFS puts
+# 73-83% of 3-to-5-year-olds outside an educational institution against CMS-E's 46.2%:
+# a 27-to-37-point gap in the direction OPPOSITE to the bound, which no bound artefact
+# explains. The two are not measuring the same thing at pre-primary age. The likely
+# cause — likely, not proven — is that CMS-E counts pre-primary and anganwadi attendance
+# as enrolment (enrolment_level_code '15' is "Below Class I") where PLFS's
+# principal-activity question does not. The 3-5 figure is CMS-E's own, with no
+# independent agreement behind it.
+#
+# Reproduce both with data-assistant's
+# analysis/india-he-dashboard/sql/check_cmse_out_of_school.sql, which also documents the
+# two coverage traps that produce a nonsense answer if missed: calendar_2021 carries
+# `pas` NULL on every row in these age bands, and the annual_* releases carry it NULL on
+# ~53% of 15-to-17-year-olds, so the denominator must be restricted to coded rows.
