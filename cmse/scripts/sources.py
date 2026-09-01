@@ -114,8 +114,19 @@ FACT_HOUSEHOLD = Table(
     bq_name="cmse_fact_household",
     clustering_fields=("state_code", "sector_name", "social_group_name"),
 )
+# The ROSTER. Every surveyed household member the enrolment question was put to,
+# enrolled or not — which is the only way to ask who is NOT in school. Kept as a
+# separate table rather than folded into FACT_STUDENT because that table's grain
+# is "one row per student" and its fourteen-figure reconciliation is written
+# against it; widening it would move the grain other analyses already read.
+FACT_PERSON = Table(
+    bq_name="cmse_fact_person",
+    # age_band and is_enrolled first: this table exists to compute an
+    # out-of-school RATE within an age band, and that is the cut it serves.
+    clustering_fields=("state_code", "age_band", "is_enrolled", "social_group_name"),
+)
 
-TABLES = [FACT_STUDENT, FACT_HOUSEHOLD]
+TABLES = [FACT_STUDENT, FACT_HOUSEHOLD, FACT_PERSON]
 
 
 # ── Official code lists ───────────────────────────────────────────────────────
@@ -209,6 +220,35 @@ FUNDING_SOURCE = {
 }
 
 YES_NO = {1: "Yes", 2: "No"}
+
+# Block 5 item 3, the enrolment gate. The transform reads THIS rather than
+# inferring enrolment from a populated enrolment_level: checked against the raw
+# file, the two row sets are identical (57,742 rows, symmetric difference 0), and
+# reading the gate itself means a future MoSPI edit that separates them fails
+# loudly instead of silently changing who counts as a student.
+CURRENTLY_ENROLLED = {1: True, 2: False}
+
+# Age bands for the roster. Chosen to line up with the schooling stages the
+# survey covers — 3–5 pre-primary, 6–10 primary, 11–14 upper primary, 15–17
+# secondary and higher secondary — so a band maps onto a real rung rather than a
+# round decade.
+#
+# 18+ IS DELIBERATELY ONE UNDIFFERENTIATED PAIR OF BANDS, and is not school age.
+# CMS-E covers school education only, so a non-enrolled 19-year-old may be in a
+# degree programme, in work, or in neither, and this survey CANNOT tell the
+# difference. An "out-of-school rate" computed on an 18+ band is therefore not a
+# statement the data supports — hence the `is_school_age` column the transform
+# derives from SCHOOL_AGE_MIN/MAX, which makes the supported denominator a single
+# flag rather than a convention someone has to remember.
+AGE_BANDS = [
+    (3, 5, "3-5"),
+    (6, 10, "6-10"),
+    (11, 14, "11-14"),
+    (15, 17, "15-17"),
+    (18, 24, "18-24"),
+    (25, 200, "25+"),
+]
+SCHOOL_AGE_MIN, SCHOOL_AGE_MAX = 3, 17
 
 # Block 4 only (students living away from home).
 RESIDENCE_TYPE = {1: "Students' hostel", 2: "Paying guest/mess", 3: "Others"}

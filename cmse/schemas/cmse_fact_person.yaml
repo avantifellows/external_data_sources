@@ -1,0 +1,329 @@
+# cmse_fact_person
+#
+# One row per member of a surveyed household who was asked whether they are
+# currently enrolled in school, in the MoSPI NSS Comprehensive Modular Survey:
+# Education (CMS-E), 80th Round, April–June 2025. 214,757 people in 52,085
+# households.
+#
+# Source CSV:     gs://avantifellows-external-data/cmse/raw/CMSE80PER25.csv
+# Source docs:    gs://avantifellows-external-data/cmse/raw/docs/
+# Source parquet: gs://avantifellows-external-data/cmse/clean/cmse_fact_person.parquet
+# BQ table:       avantifellows.external_data_sources.cmse_fact_person
+# Built by:       cmse/scripts/clean_cmse.py
+
+description: >
+  CMS-E 2025 household roster: one row per surveyed household member the enrolment question was
+  put to, 214,757 rows, ENROLLED OR NOT. This is the only table in the source that can answer
+  "who is NOT in school" — cmse_fact_student holds enrolled students only, so an out-of-school
+  rate cannot be computed from it at all. Carries age, gender, relation to head, the enrolment
+  flag, the enrolment detail where enrolled, and the household's geography, social group, religion,
+  type and consumption denormalized alongside. It carries NO expenditure: for what a household
+  spends, join cmse_fact_student on (household_id, person_serial_no).
+  Six things a first-time user must know before querying.
+  (1) SURVEY WEIGHTS ARE MANDATORY, and this table is where misusing them does the most damage.
+  Each row stands for many real people via `weight`. COUNT(*) is a sample size, never a population.
+  (2) DO NOT PUBLISH POPULATION TOTALS, SEX RATIOS, OR RELIGION / SOCIAL-GROUP DISTRIBUTIONS FROM
+  THIS TABLE. MoSPI's note to data users is explicit that CMS-E's auxiliary variables exist to
+  DISAGGREGATE education outcomes, and that the design is not weighted to produce population
+  structure. A person-level roster makes those queries trivially easy to write and they remain
+  wrong. Use PLFS for population structure and hces_fact_household_master for consumption levels.
+  What this table is FOR is a RATE WITHIN A CELL — the share of 15-to-17-year-old Scheduled Tribe
+  girls in Bihar who are not in school — never a count of them.
+  (3) THE OUT-OF-SCHOOL RATE IS ONLY DEFINED UP TO AGE 17. Filter `is_school_age`. CMS-E covers
+  school education only, so above 17 a person not enrolled in school may be in a degree
+  programme, in work, or in neither, and THIS SURVEY CANNOT TELL THE DIFFERENCE. The 18-24 band
+  reads 95.8% "not enrolled", which measures the absence of higher education from the instrument
+  and nothing about those people. The band is present because dropping rows silently is worse than
+  labelling them; it is not a figure to report.
+  (4) EVERYONE HERE WAS ASKED THE QUESTION, WHICH FIXES THE DENOMINATOR. The released person file
+  has 221,617 rows; the 6,860 excluded from this table are exactly the members aged 0, 1 and 2, of
+  whom MoSPI never asks. So a rate over this table cannot accidentally count a toddler as out of
+  school. The transform asserts that the excluded set really is the under-3s rather than assuming
+  it, and refuses to write if it is not.
+  (5) THE ENROLLED HALF IS EXACTLY cmse_fact_student's 'resident' CUT — checked as a row set, not
+  as a count: 57,742 rows, symmetric difference zero, and the same weighted total of 242.3 million.
+  That tie is this table's reconciliation anchor, because MoSPI publishes no out-of-school or
+  age-band enrolment figure for CMS-E to check against directly. The student table's fourteen
+  published figures therefore stand behind this one at one remove; there is no independent external
+  anchor, and see the note on external validation below before treating a level as confirmed.
+  (6) THE 3-5 BAND IS NOT A COMPULSORY-SCHOOLING GAP, so the headline rate is 6-17, not 3-17.
+  46.2% of 3-to-5-year-olds are not enrolled, because pre-primary is not universal and not
+  compulsory. Rolling that in gives a "3-17 out-of-school rate" of 13.9%, which is not a figure
+  anyone means — it mixes non-attendance at an optional stage with non-attendance at a compulsory
+  one, and more than doubles the number. THE COMPULSORY-SCHOOLING FIGURE IS 6.2% (ages 6-17).
+  Report that one, or report by band; `is_school_age` gives you 3-17, so add `age >= 6`.
+rows: 214757
+grain: one row per surveyed household member asked the enrolment question, unique on (household_id, person_serial_no)
+
+columns:
+  # ── Identity ────────────────────────────────────────────────────────────────
+  - name: household_id
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Composite household id, built from the seven NSS fields that together identify a sampled
+      household. Join key to cmse_fact_household and cmse_fact_student. Verified unique across all
+      52,085 households (zero key collisions). Stable within this round only — NOT comparable to
+      HCES or PLFS household ids, which are built from different rounds.
+  - name: person_serial_no
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Person serial within the household, zero-padded ('01', '02'). Together with household_id this
+      joins 1:1 to cmse_fact_student's 'resident' cut for the enrolled. It does NOT match that
+      table's 'away_from_home' rows, which are numbered in block 4's own sequence and prefixed 'E' —
+      students living away from home are NOT in this roster at all, because they are no longer
+      members of the sampled household.
+  - name: survey_year
+    type: INTEGER
+    mode: REQUIRED
+    description: "2025. Single-round survey — there is no earlier CMS-E to compare against."
+
+  # ── Geography ───────────────────────────────────────────────────────────────
+  - name: state_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      NSS state code, zero-padded 2-digit string. DERIVED — the raw files carry no state column;
+      the code is the first 2 digits of nss_region. 36 states/UTs present; '26' is absent (Dadra &
+      Nagar Haveli merged into '25').
+  - name: state_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      State/UT name, denormalized from state_code. The out-of-school rate at ages 15-17 ranges from
+      Telangana 1.6% and Kerala 4.0% to Uttar Pradesh 23.6% and Gujarat 28.4% (states with 200+
+      sampled 15-to-17-year-olds). Smaller states and UTs fall below any usable sample at this age
+      band — check the cell count before reporting a state rate.
+  - name: nss_region
+    type: STRING
+    mode: REQUIRED
+    description: >
+      NSS region code (3-digit). An NSS region groups districts within a state for sampling. First
+      2 digits are the state, so the region is only meaningful within its state.
+  - name: district_code
+    type: STRING
+    mode: REQUIRED
+    description: >
+      District code as published (2-digit). Numbered WITHIN each state, so '06' is a different
+      district in every state — always key on (state_code, district_code). MoSPI publishes NO
+      district-name lookup for CMS-E, so district-level results can only be reported anonymously.
+  - name: sector_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = Rural, 2 = Urban."
+  - name: sector_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'Rural' or 'Urban'. Out of school at ages 15-17: rural 16.0%, urban 11.2%.
+  - name: stratum
+    type: STRING
+    mode: REQUIRED
+    description: Sampling stratum (3-digit), scoped within state. Needed only for variance estimation.
+  - name: sub_stratum
+    type: STRING
+    mode: REQUIRED
+    description: Sampling sub-stratum (2-digit), scoped within stratum.
+  - name: fsu_serial_no
+    type: STRING
+    mode: REQUIRED
+    description: >
+      First Stage Unit serial (5-digit) — the sampled village or urban block. The primary sampling
+      unit; people in the same FSU are geographically clustered, which is why naive standard errors
+      understate uncertainty on small cuts. The second-stage stratum is the sixth hyphen-segment of
+      household_id if a design-based variance estimate is needed.
+
+  # ── The person ──────────────────────────────────────────────────────────────
+  - name: gender_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = Male, 2 = Female, 3 = Transgender."
+  - name: gender_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'Male', 'Female' or 'Transgender'. Out of school at ages 15-17: female 15.5%, male 13.8% — a
+      1.7-point gap, narrower than usually assumed and worth stating accurately rather than
+      overstating. Transgender is 15 sampled people in that age band: far too thin for any estimate,
+      and not to be silently dropped or folded into another category either.
+  - name: age
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Age in completed years, 3 to 120. Nobody under 3 is in this table — see the table description,
+      point 4.
+  - name: age_band
+    type: STRING
+    mode: REQUIRED
+    description: >
+      DERIVED band: '3-5', '6-10', '11-14', '15-17', '18-24', '25+'. The first four line up with the
+      schooling stages CMS-E covers (pre-primary, primary, upper primary, secondary + higher
+      secondary) so a band maps onto a real rung rather than a round decade. Out-of-school rate by
+      band: 3-5 46.2%, 6-10 2.8%, 11-14 4.2%, 15-17 14.6%. THE LAST TWO BANDS ARE NOT SCHOOL AGE and
+      their rates (18-24 95.8%, 25+ 100.0%) measure the absence of higher education from the
+      instrument — see point 3. Never sum or average across the school-age and non-school-age bands.
+  - name: is_school_age
+    type: BOOLEAN
+    mode: REQUIRED
+    description: >
+      DERIVED, TRUE for ages 3 to 17 inclusive. THE FILTER THAT MAKES AN OUT-OF-SCHOOL RATE
+      DEFENSIBLE, and the one flag to reach for rather than remembering an age convention. It exists
+      for the same reason `is_student_hostel_household` does in the other tables: a rule that must be
+      applied to get the right answer belongs in a column, not in a reader's memory. 61,843 sampled
+      people, 13.9% out of school. But see point 6: that blend is not the compulsory-schooling
+      figure. Add `AND age >= 6` for that, which gives 51,212 sampled and 6.2%.
+  - name: relation_to_head_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "Relation to household head, 1–9."
+  - name: relation_to_head_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'Self', 'Spouse of head', 'Unmarried child', 'Grandchild', etc. At ages 15-17 the roster is
+      overwhelmingly 'Unmarried child' (10,373 of 12,682 sampled, 15.4% out of school), with
+      'Grandchild' next (1,696, 10.6%). A 15-to-17-year-old coded 'Self' is usually a hostel resident
+      surveyed as their own household — see is_student_hostel_household.
+
+  # ── Enrolment ───────────────────────────────────────────────────────────────
+  - name: is_enrolled
+    type: BOOLEAN
+    mode: REQUIRED
+    description: >
+      Currently enrolled in school. Decoded from block 5 item 3 (`currently_enrolled_school`), which
+      is MoSPI's own explicit gate — the transform reads the gate rather than inferring enrolment
+      from a populated enrolment_level, so that a future MoSPI edit separating the two fails the
+      build instead of silently changing who counts as a student. Checked against the raw file: the
+      two rules currently select the identical 57,742 rows. 57,742 TRUE, 157,015 FALSE. The TRUE half
+      is row-for-row cmse_fact_student's 'resident' cut.
+  - name: enrolment_level_code
+    type: STRING
+    mode: NULLABLE
+    description: >
+      Class of current enrolment, zero-padded 2-digit. NULL where is_enrolled is FALSE — a child who
+      is not in school has no class, which is a different fact from having one that went unrecorded.
+      '01'–'12' are Classes I–XII; '13' is a diploma/certificate up to secondary; '14' a
+      diploma/certificate at higher-secondary equivalent; '15' is BELOW Class I, i.e. pre-primary.
+      Note '15' is pre-primary despite being the highest number — sorting on this code puts the
+      youngest children last. Use enrolment_stage for ordering that reads correctly.
+  - name: enrolment_level_name
+    type: STRING
+    mode: NULLABLE
+    description: "'Class I' … 'Class XII', 'Below Class I (pre-primary)', or the two diploma labels. NULL where not enrolled."
+  - name: enrolment_stage
+    type: STRING
+    mode: NULLABLE
+    description: >
+      DERIVED rollup: 'Pre-primary', 'Primary' (I–V), 'Upper primary' (VI–VIII), 'Secondary' (IX–X),
+      'Higher secondary' (XI–XII), 'Diploma/certificate'. NULL where not enrolled. Use this rather
+      than enrolment_level_code for any ordered read.
+  - name: school_type_code
+    type: INTEGER
+    mode: NULLABLE
+    description: >
+      1 = Government, 2 = Government-aided, 3 = Private unaided RECOGNISED, 4 = Private unaided
+      UNRECOGNISED, 5 = Others. NULL where not enrolled. Recognition means recognised by the
+      State/Central government under RTE norms; per the manual this category explicitly excludes
+      coaching centres.
+  - name: school_type_name
+    type: STRING
+    mode: NULLABLE
+    description: Label for school_type_code. NULL where not enrolled.
+
+  # ── Household context (denormalized) ────────────────────────────────────────
+  - name: household_size
+    type: INTEGER
+    mode: REQUIRED
+    description: Number of members in the sampled household.
+  - name: household_type_code
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Principal source of household income. CODED ON DIFFERENT SCALES BY SECTOR — rural uses 1–6 + 9,
+      urban uses 1–3 + 9. Code 3 means "regular wage in agriculture" in a rural household and "casual
+      labour" in an urban one. Never decode this without the sector; use household_type_name.
+  - name: household_type_name
+    type: STRING
+    mode: REQUIRED
+    description: Sector-correct label for household_type_code. Safe to group on directly.
+  - name: religion_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 Hinduism, 2 Islam, 3 Christianity, 4 Sikhism, 5 Jainism, 6 Buddhism, 7 Zoroastrianism, 9 Others."
+  - name: religion_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Label for religion_code. FOR DISAGGREGATION ONLY — a religion-wise distribution of Indian
+      households is one of the things MoSPI's note to data users says not to build from this survey.
+      A rate within a religion is fine; a share of the total is not.
+  - name: social_group_code
+    type: INTEGER
+    mode: REQUIRED
+    description: "1 = ST, 2 = SC, 3 = OBC, 9 = Others. Note 9 (not 4) is the residual category."
+  - name: social_group_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      'Scheduled Tribe (ST)', 'Scheduled Caste (SC)', 'Other Backward Class (OBC)', 'Others'. THE
+      SHARPEST EQUITY CUT IN THIS TABLE. Out of school at ages 15-17: ST 25.1% (n 1,856), SC 17.4%
+      (n 2,163), OBC 14.4% (n 5,437), Others 7.5% (n 3,226) — a 17.6-point ST-to-Others gap in
+      whether a teenager is in school at all. For comparison, cmse_fact_student puts the ST-to-Others
+      gap in private-coaching participation among Classes IX–XII at 25 points. The two together are
+      the strongest equity statement this survey supports.
+  - name: mpce
+    type: INTEGER
+    mode: REQUIRED
+    description: >
+      Household monthly consumption expenditure in rupees, MoSPI's own short-form measure. THIS IS
+      NOT COMPARABLE TO HCES: five questions against HCES's ~400-item schedule, and roughly 29% LOWER
+      than published HCES 2023-24 means despite being a year later. Use it to RANK households
+      (deciles, quintiles, richer-vs-poorer) — that ordering is sound. Do NOT use it for consumption
+      LEVELS, poverty headcounts, or any threshold in rupees; for those use
+      hces_fact_household_master.
+  - name: mpce_per_capita
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      mpce / household_size. THE STEEPEST GRADIENT IN THIS TABLE. Out of school at ages 15-17 by
+      weighted per-capita decile, hostel households excluded: 28.8% in the poorest decile falling to
+      3.8% in the richest — a 7.5x gap, and near-monotone (the wobble at deciles 6 and 10 is sampling
+      noise at ~1,240 sampled per decile). Carries the same short-form caveat as mpce, plus one of its
+      own: households with a teenager are larger, so per-capita ranking mildly penalises exactly the
+      families this survey is about. Exclude is_student_hostel_household rows BEFORE ranking.
+  - name: is_student_hostel_household
+    type: BOOLEAN
+    mode: REQUIRED
+    description: >
+      DATA-QUALITY FLAG. TRUE where the sampled household is one or two people and carries the
+      hostel/mess marker — i.e. a student surveyed as their own household. Their "household
+      consumption" is one teenager's, so mpce_per_capita ranks them spuriously high while mpce ranks
+      them spuriously low, enough to invert the top decile. Exclude them from any per-capita
+      distribution work.
+
+  # ── Weight ──────────────────────────────────────────────────────────────────
+  - name: weight
+    type: FLOAT
+    mode: REQUIRED
+    description: >
+      Survey multiplier / 100, per MoSPI's README. MANDATORY for every rate: an out-of-school rate is
+      SUM(weight) over the not-enrolled divided by SUM(weight) over the cell, never a count ratio.
+      Identical to the weight cmse_fact_student carries for the same person. All rows in the same
+      second-stage stratum within an FSU share a weight, so effective sample size is well below the
+      row count — treat any cell with fewer than ~100 sampled rows as directional only. And note point
+      2: this weight is licensed to produce a rate, not a population total.
+
+# ── External validation: what is and is not anchored ─────────────────────────
+# The levels in this table have NO published MoSPI figure behind them. The
+# reconciliation the build enforces is internal (enrolled half == cmse_fact_student's
+# resident cut, as a row set and by weight), which proves the roster and the
+# published-reconciled student table agree — it does not prove the out-of-school
+# rate is right.
+#
+# The intended external check is the UDISE+ and MoE board data already loaded in
+# this warehouse: udise_* carries Class 10 and 12 enrolment by state and
+# moe_fact_board_exam_results carries appeared counts, and those two independently
+# agree within ~3% at Class 10. Neither is an out-of-school rate, but together they
+# bound one. Until that check is run, treat 14.6% at ages 15-17 as reproduced from
+# the microdata and NOT externally validated — and say which of the two you mean.

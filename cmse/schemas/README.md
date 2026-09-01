@@ -6,8 +6,17 @@
 |---|---|---|
 | [`cmse_fact_student`](cmse_fact_student.yaml) | one row per student | 59,417 |
 | [`cmse_fact_household`](cmse_fact_household.yaml) | one row per surveyed household | 52,085 |
+| [`cmse_fact_person`](cmse_fact_person.yaml) | one row per household member asked the enrolment question | 214,757 |
 
-Join on `household_id`.
+Join on `household_id`. `cmse_fact_person` joins to `cmse_fact_student` on
+`(household_id, person_serial_no)` — 1:1 against that table's `resident` cut, and not at all
+against its `away_from_home` rows, who are no longer household members.
+
+**Which table answers which question.** `cmse_fact_student` is the one to reach for by default: it
+holds the expenditure and it is the one MoSPI's fourteen published figures reconcile against.
+`cmse_fact_person` exists for the one question the student table cannot be asked — **who is not in
+school** — because it is a full household roster rather than a list of students. It carries no
+expenditure at all.
 
 ---
 
@@ -34,6 +43,15 @@ registration. No income; consumption is the only welfare variable.
 `COUNT(*)` is a sample size. Rows in the same second-stage stratum within an FSU
 share a weight, so the effective sample is well below the row count — a cut with
 fewer than ~100 sampled rows is directional at best.
+
+**Out of school is only defined up to age 17.** `cmse_fact_person` covers everyone aged 3 and up
+(MoSPI never asks the under-3s, so they are excluded and the denominator is correct by
+construction). But CMS-E is a *school*-education survey, so above 17 "not enrolled" cannot be
+separated from "in a degree programme" — the 18-24 band reads 95.8% not-enrolled, which measures the
+absence of higher education from the instrument and nothing about those people. Filter
+`is_school_age`. And note that the 3-5 band is not a compulsory-schooling gap: 46.2% of
+3-to-5-year-olds are not enrolled because pre-primary is optional, so a blended "3-17 rate" of 13.9%
+mixes two different things. Report by band, or restrict to 6-17.
 
 **The two cuts.** `cmse_fact_student.cut` separates students living in the
 sampled household (`'resident'`, 57,742, full itemised expenditure) from students

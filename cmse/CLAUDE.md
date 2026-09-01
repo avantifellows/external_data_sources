@@ -6,8 +6,9 @@ Orientation for Claude Code working in this source. Read the top-level
 ## What this is
 
 MoSPI's Comprehensive Modular Survey: Education (CMS-E), NSS 80th Round,
-April–June 2025. Household expenditure on **school education only**. Unit-level
-microdata: three CSVs in, two BigQuery tables out.
+April–June 2025. Household expenditure on **school education only**, plus the
+household roster that shows who is **not enrolled at all**. Unit-level microdata:
+three CSVs in, three BigQuery tables out.
 
 Shape: heavy local parse (like `plfs/`) + GCS staging (like `nirf/`).
 
@@ -50,6 +51,18 @@ each exists because the raw data is wrong or misleading without it:
    drifts.** This is the guard rail; do not weaken it. If a change is genuinely
    correct and moves a number, update the expected value *and say why in the
    commit message*.
+8. **Emits `cmse_fact_person` — the roster, enrolled or not.** `cmse_fact_student`
+   holds only enrolled students, so "who is not in school" cannot be asked of it.
+   The roster can. Two things make it safe, and both are asserted rather than
+   assumed: it is filtered on MoSPI's own enrolment gate (`currently_enrolled_school`),
+   whose blanks are exactly the under-3s the question was never put to — so the
+   denominator is right by construction — and its enrolled half must be *exactly, as
+   a row set*, the student table's `resident` cut. That second check is its whole
+   reconciliation, because MoSPI publishes no out-of-school figure for CMS-E.
+   `scripts/check_person_guards.py` breaks each of those guards on purpose and fails
+   if any of them waves it through — run it after touching the roster. Its second
+   case is the one to understand: an enrolled half with the *same row count* as the
+   student table but two different people in it, which a count check would pass.
 
 ## Non-obvious things you will get wrong
 
@@ -76,12 +89,22 @@ Full detail in `schemas/README.md`. The short list:
 - **Nothing on stream or aspiration.** Class XI/XII carry a bare class number —
   no science/commerce/arts. Zero hits in the manual. Do not invent a proxy
   without saying so.
+- **An out-of-school rate is only defined up to age 17.** Filter `is_school_age` on
+  `cmse_fact_person`. Above 17 this survey cannot separate "not in school" from "in
+  a degree programme": the 18-24 band reads 95.8% not-enrolled, which is a fact
+  about the instrument, not about those people. And 3-5 is not a compulsory-schooling
+  gap (46.2%, because pre-primary is optional), so a blended 3-17 rate mixes two
+  different things — report by band, or restrict to 6-17.
 
 ## Don'ts
 
 - Don't publish population totals, sex ratios, or religion/social-group
   distributions of Indian households from this survey. MoSPI's note to data users
   says the auxiliary variables exist to disaggregate education spend, full stop.
+  **`cmse_fact_person` makes this easy to get wrong** — a person-level roster turns
+  every one of those into a one-line query, and they stay wrong. It licenses a RATE
+  WITHIN A CELL ("what share of ST 15-17s in Bihar are out of school"), never a
+  count of people.
 - Don't add derived analysis columns to the fact tables. Rollups and segment
   definitions (the "integrated signature", spend tiers) are analysis SQL and
   belong in the data-assistant analysis-intent catalog, not here.
@@ -92,5 +115,6 @@ Full detail in `schemas/README.md`. The short list:
 
 ## Re-running
 
-Idempotent end to end. `load_bq.py` is WRITE_TRUNCATE. There is no schedule and
+Idempotent end to end. `load_bq.py` is WRITE_TRUNCATE and iterates `S.TABLES`, so
+adding a table means adding it there and nowhere else. There is no schedule and
 no successor round announced — this runs on demand.
