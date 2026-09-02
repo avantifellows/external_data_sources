@@ -85,7 +85,7 @@ OUT_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_outcome_mapping"
 # The per-stage name/father/mother/dob comparison columns served their purpose
 # (9 rounds of QA, see data-assistant-pr44.md findings #1-9) and are dropped
 # here; each stage's natural join key (roll/app/test_year) is kept so a consumer
-# can still reach the source row directly. 47 columns in total. The internal
+# can still reach the source row directly. 55 columns in total. The internal
 # `attempt_year` column is dropped from the OUTPUT (the grain is encoded via the
 # jee/neet _test_year columns); it is still used internally for sorting. The
 # outcome/marks payload (step 7, below the join keys) comes from
@@ -104,10 +104,12 @@ FINAL_COLS = [
     "ncst_source", "ncst_test_year", "ncst_roll_no",
     # 10th
     "board_10th_exam_year", "board_10th_roll_number",
+    "board_10th_school_code", "board_10th_school_name",
     "marks_10_obtained", "result_10",
     "marks_10_math", "marks_10_science", "marks_10_english",
     # 12th
     "board_12th_exam_year", "board_12th_roll_number",
+    "board_12th_school_code", "board_12th_school_name",
     "marks_12_obtained", "result_12",
     "marks_12_physics", "marks_12_chemistry", "marks_12_maths", "marks_12_biology",
     # JEE (incl. advanced)
@@ -1440,17 +1442,22 @@ _MARKS_YEAR_COLS = {"board_10th_exam_year", "board_12th_exam_year", "jee_test_ye
 
 def _read_marks(client) -> dict:
     """The result/marks frames merged onto the resolved spine to reach column-parity
-    with v1 (jnv_student_outcome_mapping). Ported verbatim from v1's _read_marks:
-    10th/12th subject marks + result, JEE mains+advanced scores/ranks/qualification,
-    NEET score/rank/qualification, and the student_program/product lookup. Each frame
-    is de-duplicated to ONE row per join key at query time (GROUP BY / QUALIFY
-    ROW_NUMBER=1), so the left-merges in _build_rows cannot fan out the
-    (student × attempt_year) grain. Only difference from v1: the year columns are
-    returned as Int64 (v1 kept them string) to match v2's spine keys — the roll/app
-    keys are `_S` strings on both sides, identical to how v2's nodes read them."""
+    with v1 (jnv_student_outcome_mapping). Ported from v1's _read_marks:
+    10th/12th school + subject marks + result, JEE mains+advanced scores/ranks/
+    qualification, NEET score/rank/qualification, and the student_program/product
+    lookup. Each frame is de-duplicated to ONE row per join key at query time
+    (GROUP BY / QUALIFY ROW_NUMBER=1), so the left-merges in _build_rows cannot fan
+    out the (student × attempt_year) grain. Two differences from v1: the year columns
+    are returned as Int64 (v1 kept them string) to match v2's spine keys — the
+    roll/app keys are `_S` strings on both sides, identical to how v2's nodes read
+    them — and the board school (`school_code` / `school_name`) is carried through.
+    ANY_VALUE is safe for the school: both board tables hold exactly one school_code
+    and one school_name per (exam_year, roll_number), and neither is ever null."""
     q = {
         "b10_marks": """
             SELECT exam_year AS board_10th_exam_year, roll_number AS board_10th_roll_number,
+                ANY_VALUE(school_code)                       AS board_10th_school_code,
+                ANY_VALUE(school_name)                       AS board_10th_school_name,
                 ANY_VALUE(SAFE_CAST(total_marks AS FLOAT64)) AS marks_10_obtained,
                 ANY_VALUE(result)                            AS result_10,
                 MAX(IF(UPPER(subject_name) LIKE '%MATH%',    SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_10_math,
@@ -1460,6 +1467,8 @@ def _read_marks(client) -> dict:
             WHERE roll_number IS NOT NULL AND exam_year IS NOT NULL GROUP BY 1, 2""",
         "b12_marks": """
             SELECT exam_year AS board_12th_exam_year, roll_number AS board_12th_roll_number,
+                ANY_VALUE(school_code)                       AS board_12th_school_code,
+                ANY_VALUE(school_name)                       AS board_12th_school_name,
                 ANY_VALUE(SAFE_CAST(total_marks AS FLOAT64)) AS marks_12_obtained,
                 ANY_VALUE(result)                            AS result_12,
                 MAX(IF(UPPER(subject_name) LIKE '%PHYSIC%', SAFE_CAST(final_marks AS FLOAT64), NULL)) AS marks_12_physics,
