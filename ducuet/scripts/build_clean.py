@@ -27,6 +27,13 @@ rather than dropped or fuzzy-matched onto a similarly-named-but-different
 combination, since a fuzzy match here would silently attribute one seat's
 cutoff to a different subject pairing.
 
+Any round PDF missing from raw/ is fetched from
+gs://avantifellows-external-data/ducuet/raw/ first (the canonical home for
+the raw PDFs — see sources.py), so this reproduces on a clean clone without
+anyone hand-copying files first. The very first run for a new admission
+cycle still needs someone to land the PDFs in raw/ (or upload them to that
+GCS prefix) before anything can be fetched from there.
+
 Usage:
   python3 scripts/build_clean.py --dry-run     # parse + validate, don't write
   python3 scripts/build_clean.py               # write clean/ducuet_fact_cutoffs.parquet
@@ -42,7 +49,7 @@ import pandas as pd
 import pdfplumber
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import CLEAN, ROUNDS, TABLES
+from sources import CLEAN, GCS_BUCKET, GCS_PREFIX, RAW, RAW_FILENAMES, ROUNDS, TABLES
 
 CATEGORIES = ["UR", "OBC", "SC", "ST", "EWS", "PwBD"]
 
@@ -146,13 +153,37 @@ def parse_round_2(path: Path) -> list[dict]:
 PARSERS = {1: parse_round_1_3, 2: parse_round_2, 3: parse_round_1_3}
 
 
+def fetch_raw() -> None:
+    """Pull any round PDF missing from raw/ down from GCS — the canonical
+    home for the raw PDFs, so the build is reproducible from a clean clone
+    without anyone hand-copying files first. Landing a PDF in raw/ locally
+    (e.g. right after downloading it from admission.uod.ac.in, before the
+    very first upload_to_gcs.py run) still works — this only reaches out to
+    GCS for whatever isn't already there."""
+    missing = [f for f in RAW_FILENAMES if not (RAW / f).exists()]
+    if not missing:
+        return
+    from google.cloud import storage
+
+    RAW.mkdir(parents=True, exist_ok=True)
+    bucket = storage.Client().bucket(GCS_BUCKET)
+    for f in missing:
+        bucket.blob(f"{GCS_PREFIX}/raw/{f}").download_to_filename(RAW / f)
+        print(f"  fetched raw/{f} from gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/{f}")
+
+
 def build_df() -> pd.DataFrame:
+    fetch_raw()
     merged: dict[tuple[str, str], dict] = {}
     order: list[tuple[str, str]] = []
 
     for round_no, path in sorted(ROUNDS.items()):
         if not path.exists():
-            raise SystemExit(f"missing raw PDF for round {round_no}: {path}")
+            raise SystemExit(
+                f"missing raw PDF for round {round_no}: {path}\n"
+                f"Not found locally or in gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/{path.name} — "
+                f"upload it there first, or drop it at that local path."
+            )
         for row in PARSERS[round_no](path):
             key = _normalize_key(row["college"], row["program"])
             if key not in merged:

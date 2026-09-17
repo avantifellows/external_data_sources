@@ -17,11 +17,11 @@ round; see *Raw data* below.
 ## Pipeline at a glance
 
 ```
-DU Admission Branch round-wise PDFs        (manually downloaded; no stable per-round URL)
+DU Admission Branch round-wise PDFs        (manually downloaded once; no stable per-round URL)
        │
        ▼
-raw/du_cuet_ug_2025_r{1,2,3}.pdf            (local; gitignored)
-       │ scripts/build_clean.py             (parse all 3, MIN per cell → one fact)
+gs://avantifellows-external-data/ducuet/raw/<pdf>   (canonical home, via upload_to_gcs.py)
+       │ scripts/build_clean.py   (fetches any PDF missing from raw/ from GCS, parses all 3, MIN per cell → one fact)
        ▼
 clean/ducuet_fact_cutoffs.parquet                          (local; gitignored)
        │ scripts/upload_to_gcs.py   (uploads raw PDFs + clean fact)
@@ -33,7 +33,11 @@ gs://avantifellows-external-data/ducuet/clean/ducuet_fact_cutoffs.parquet
 avantifellows.external_data_sources.ducuet_fact_cutoffs   (asia-south1)
 ```
 
-The single source of truth for filenames, GCS URIs, and BQ destinations is
+`build_clean.py` reads raw PDFs from local `raw/` if present, else fetches
+them from the GCS `raw/` prefix first — so the build reproduces from a
+clean clone without anyone hand-copying files, as long as the PDFs have
+been uploaded to GCS at least once. The single source of truth for
+filenames, GCS URIs, and BQ destinations is
 [`scripts/sources.py`](scripts/sources.py).
 
 ## Why MIN across rounds, not "latest round"
@@ -78,13 +82,21 @@ gs://avantifellows-external-data/
 
 ## Raw data
 
-The 3 round PDFs are gitignored (`raw/*.pdf`). DU's Admission Branch
-publishes each round's bulletin as a one-off PDF on the admission bulletin
-page with no stable, predictable URL per round (unlike, say, MoE's annual
-report), so there is no `fetch.py` here — download the current cycle's
-Round 1/2/3 "Minimum Allocation Score" PDFs manually from
-[admission.uod.ac.in](https://admission.uod.ac.in/) and drop them at the
-paths in `scripts/sources.py` → `ROUNDS`.
+The 3 round PDFs are gitignored (`raw/*.pdf`); their canonical home is
+`gs://avantifellows-external-data/ducuet/raw/`, not this machine.
+`build_clean.py` fetches any of them missing from local `raw/` straight
+from that GCS prefix, so a clean clone can reproduce the build without
+anyone hand-copying files — as long as they've been uploaded there at
+least once.
+
+DU's Admission Branch publishes each round's bulletin as a one-off PDF on
+the admission bulletin page with no stable, predictable URL per round
+(unlike, say, MoE's annual report), so there is no `fetch.py` pulling from
+DU directly — for a **new admission cycle**, download that cycle's Round
+1/2/3 "Minimum Allocation Score" PDFs manually from
+[admission.uod.ac.in](https://admission.uod.ac.in/), drop them at the paths
+in `scripts/sources.py` → `ROUNDS`, and run `upload_to_gcs.py --raw-only`
+once to seed GCS for everyone else.
 
 | File | Round |
 |---|---|
@@ -96,15 +108,14 @@ paths in `scripts/sources.py` → `ROUNDS`.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-gcloud auth application-default login   # for upload + load
+gcloud auth application-default login   # for the GCS fetch/upload + BQ load
 ```
 
 ## Running
 
 ```bash
-# 0. drop the 3 round PDFs into raw/ (manual — see Raw data above)
-
 # 1. parse the PDFs and merge → clean/ducuet_fact_cutoffs.parquet
+#    (pulls any round PDF missing from raw/ down from GCS automatically)
 .venv/bin/python scripts/build_clean.py --dry-run     # preview + validate
 .venv/bin/python scripts/build_clean.py
 

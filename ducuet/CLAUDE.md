@@ -7,23 +7,34 @@ Source-level orientation for the DU CUET cutoffs pipeline. Read the top-level
 
 University of Delhi undergraduate admission minimum-allocation-scores,
 CUET-based CSAS 2025-26 cycle. Upstream is 3 round-wise PDFs published by the
-DU Admission Branch (`raw/*.pdf`, gitignored, no stable per-round URL — manual
-download). Light PDF parsing (pdfplumber), single build step (no separate
-fetch step, unlike `moe/`), so this follows the `nmc/` "PDF parse" shape.
+DU Admission Branch (`raw/*.pdf`, gitignored, no stable per-round URL — a
+human downloads them once and uploads to GCS; after that `build_clean.py`
+fetches from GCS itself). Light PDF parsing (pdfplumber), single build step
+(no separate fetch script, unlike `moe/`), so this follows the `nmc/` "PDF
+parse" shape, with the `tnea/`-style fetch-from-GCS-if-missing-locally
+convention grafted into `build_clean.py` (see `fetch_raw()`).
 
 ## Layout
 
 ```
 ducuet/
 ├── scripts/
-│   ├── sources.py         # config + ROUNDS/Table/RawFile registries (single source of truth)
-│   ├── build_clean.py     # parse all 3 round PDFs, MIN per (college, program, category) -> clean/ducuet_fact_cutoffs.parquet
+│   ├── sources.py         # config + ROUNDS/RAW_FILENAMES/Table/RawFile registries (single source of truth)
+│   ├── build_clean.py     # fetch_raw() pulls missing PDFs from GCS, then parses all 3, MIN per (college, program, category) -> clean/ducuet_fact_cutoffs.parquet
 │   ├── upload_to_gcs.py   # raw PDFs (as-is) + clean fact -> gs://…/ducuet/{raw,clean}/
 │   └── load_bq.py         # GCS clean/ -> avantifellows.external_data_sources.ducuet_fact_cutoffs
 ├── schemas/                # ducuet_fact_cutoffs.yaml + README.md ("in 60 seconds")
-├── raw/                     # source round PDFs (gitignored)
+├── raw/                     # source round PDFs (gitignored; local cache — GCS is canonical)
 └── clean/                   # parsed parquet (gitignored)
 ```
+
+**GCS, not local `raw/`, is the canonical home for the 3 source PDFs.**
+`build_clean.py`'s `fetch_raw()` downloads whatever's missing from
+`raw/` from `gs://avantifellows-external-data/ducuet/raw/` before parsing —
+mirroring `tnea/scripts/build_clean.py`'s pattern — so the build reproduces
+from a clean clone. This only works once someone has run
+`upload_to_gcs.py --raw-only` at least once for the current cycle's PDFs;
+see "Refreshing for a new admission cycle" below.
 
 **One long/tidy fact**, `ducuet_fact_cutoffs` — grain
 `(college_name, program_name, category)`. `build_clean.py` parses each round
@@ -74,14 +85,16 @@ iterate over it.
 
 1. Download the new cycle's round PDFs from
    [admission.uod.ac.in](https://admission.uod.ac.in/) into `raw/`, matching
-   the filenames `ROUNDS` expects in `sources.py` (bump the year in the
-   filename and in `sources.py`'s docstring/comments).
+   the filenames `ROUNDS`/`RAW_FILENAMES` expect in `sources.py` (bump the
+   year in the filename and in `sources.py`'s docstring/comments).
 2. Re-check the column layout for each round PDF — confirm real-column
    indices haven't shifted (DU has changed the padding/column set between
    rounds within the same cycle before; re-verify against the header AND a
    few data rows, not just the header, per the gotcha above).
 3. `build_clean.py --dry-run` → inspect row/program counts → `build_clean.py`
-   → `upload_to_gcs.py` → `load_bq.py`. Loads are `WRITE_TRUNCATE`.
+   → `upload_to_gcs.py` (uploads the new PDFs to GCS — the step that makes
+   them fetchable for everyone else) → `load_bq.py`. Loads are
+   `WRITE_TRUNCATE`.
 
 ## Don't
 

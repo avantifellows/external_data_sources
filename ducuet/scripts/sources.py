@@ -100,3 +100,7 @@ class RawFile:
 
 
 RAW_FILES: list[RawFile] = [RawFile(r) for r in ROUNDS]
+
+# Flat filenames, for build_clean.py's fetch-from-GCS-if-missing-locally step
+# (the canonical home for the raw PDFs is GCS, not this machine's raw/).
+RAW_FILENAMES: list[str] = [p.name for p in ROUNDS.values()]
