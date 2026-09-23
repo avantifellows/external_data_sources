@@ -1,0 +1,37 @@
+# aiimsnursing_fact_cutoffs + aiimsnursing_fact_allotments
+#
+# Source: AIIMS New Delhi result notifications 117/2025 (Round 1) and
+# 132/2025 (Round 2), B.Sc. (Hons.) Nursing 2025, 18 AIIMS.
+#   raw:   gs://avantifellows-external-data/aiimsnursing/raw/aiims_bsc_nursing_2025_round{1,2}.pdf
+#   clean: gs://avantifellows-external-data/aiimsnursing/clean/<table>.parquet
+#   BQ:    avantifellows.external_data_sources.aiimsnursing_fact_{allotments,cutoffs}
+#
+# Ranks are AIIMS B.Sc. Nursing entrance OVERALL ranks for every category.
+# Checked at build time against each PDF's own last-rank-per-category table.
+
+tables:
+  aiimsnursing_fact_allotments:
+    description: One row per eligible candidate per round, in rank order. Roll numbers dropped.
+    rows: 27274
+    grain: (round, overall_rank)
+    columns:
+      - {name: year, type: INTEGER, mode: REQUIRED, description: Session (2025).}
+      - {name: round, type: INTEGER, mode: REQUIRED, description: "Allocation round, 1 or 2."}
+      - {name: overall_rank, type: INTEGER, mode: REQUIRED, description: Entrance overall rank.}
+      - {name: category, type: STRING, mode: REQUIRED, description: "Candidate category: UR, EWS, OBC (printed OBC-NCL in Round 1), SC, ST."}
+      - {name: pwbd, type: BOOLEAN, mode: REQUIRED, description: Candidate is PwBD.}
+      - {name: outcome, type: STRING, mode: REQUIRED, description: "'allotted', 'FCNA' (filled choices not available at that rank) or 'NR/NP' (did not register / fill choices; Round 1 only)."}
+      - {name: institute, type: STRING, mode: NULLABLE, description: "'AIIMS <CITY>' as printed (Mangalagiri is printed MANGLAGIRI). NULL unless allotted."}
+      - {name: seat_category, type: STRING, mode: NULLABLE, description: "Seat category allotted: UR, EWS, OBC, SC, ST, UR-PWBD, OBC-PWBD, SC-PWBD. A reserved candidate can take a UR seat."}
+  aiimsnursing_fact_cutoffs:
+    description: Opening / closing overall rank per round x institute x seat category, over allotted candidates.
+    rows: 188
+    grain: (round, institute, seat_category)
+    columns:
+      - {name: year, type: INTEGER, mode: REQUIRED, description: Session (2025).}
+      - {name: round, type: INTEGER, mode: REQUIRED, description: "1 or 2. The loosest closing is MAX over rounds."}
+      - {name: institute, type: STRING, mode: REQUIRED, description: "'AIIMS <CITY>'."}
+      - {name: seat_category, type: STRING, mode: REQUIRED, description: See aiimsnursing_fact_allotments.}
+      - {name: opening_rank, type: INTEGER, mode: REQUIRED, description: Best rank allotted that seat that round.}
+      - {name: closing_rank, type: INTEGER, mode: REQUIRED, description: Last rank allotted that seat that round.}
+      - {name: allotted, type: INTEGER, mode: REQUIRED, description: Seats allotted in that cell that round.}
