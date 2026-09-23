@@ -285,6 +285,14 @@ STAT_DATASETS = [
         ("ducuet/clean/ducuet_fact_cutoffs.parquet", "ducuet/extracted/ducuet_cutoffs_2025.csv", "DU CSAS 2025 — Minimum CUET score by college, programme and category", 2025),
      ]},
 
+    {"id": "jacchd", "category": "admissions",
+     "title": "JAC Chandigarh 2026 admissions (CCET, CCA, Panjab University)",
+     "blurb": "Opening and closing ranks for every round, institute, programme, quota and category at CCET, CCA, UIET Chandigarh, Dr. SSB UICET and UIET Hoshiarpur. Ranks are JEE Main ranks except the Defence and Sports lists, which print positions in their own merit list.",
+     "source": {"label": "jacchd.admissions.nic.in", "url": "https://jacchd.admissions.nic.in/"},
+     "parquet_as_extracted": [
+        ("jacchd/clean/jacchd_fact_cutoffs.parquet", "jacchd/extracted/jacchd_cutoffs_2026.csv", "JAC Chandigarh 2026 — Opening and closing ranks by round, institute, programme, quota and category", 2026),
+     ]},
+
     {"id": "iiser", "category": "admissions",
      "title": "IISER 2025 admissions (IAT)",
      "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",
