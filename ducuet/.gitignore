@@ -1,0 +1,7 @@
+# Source DU round PDFs — staged to GCS for traceability, not git.
+raw/*.pdf
+raw/*.PDF
+# Parsed parquet — regenerable via build_clean.py.
+clean/*.parquet
+.venv/
+__pycache__/
