@@ -201,6 +201,23 @@ def _build_dcs(table: Table) -> pd.DataFrame:
                 .agg({**{c: "sum" for c in measures},
                       **{c: "first" for c in others}}))[list(df.columns)]
         conflicts = df[df.duplicated(grain, keep=False)]
+    if len(conflicts) and table.bq_name == "nirf_dim_participants":
+        # Typos on NIRF's own participant pages, verified against the page:
+        # the 2018 College list prints Hindu College three times — Delhi/Delhi
+        # (right), Guntur/Andhra Pradesh (a different Hindu College, right)
+        # and Delhi/Andhra Pradesh (a typo). Drop only rows listed here; any
+        # new conflict still fails below.
+        KNOWN_SOURCE_TYPOS = [
+            (2018, "College", "Hindu College", "Delhi", "Andhra Pradesh"),
+        ]
+        for yr, disc, name, city, state in KNOWN_SOURCE_TYPOS:
+            bad = ((df.ranking_year == yr) & (df.discipline == disc)
+                   & (df.institute_name == name) & (df.city == city)
+                   & (df.state == state))
+            if bad.any():
+                print(f"    dropped NIRF page typo: {yr} {disc} {name}, {city}, {state}")
+            df = df[~bad]
+        conflicts = df[df.duplicated(grain, keep=False)]
     if len(conflicts):
         raise SystemExit(
             f"{table.bq_name}: {len(conflicts):,} rows share a grain key with "

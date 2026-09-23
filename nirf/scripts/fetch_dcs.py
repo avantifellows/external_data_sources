@@ -75,6 +75,16 @@ DISCIPLINES = {
         "page_years": range(2016, 2026),
         "cdn_years": range(2019, 2026),
     },
+    # Added Sep 2026: NIRF's College list (arts / science / commerce degree
+    # colleges — Hindu, Miranda, St. Stephen's…). The colleges tab had been
+    # reading its placements from the Dataful aggregate instead.
+    "College": {
+        "page": "CollegeRanking",
+        "cdn_dir": "College",
+        "prefix": "IR-C",
+        "page_years": range(2017, 2026),
+        "cdn_years": range(2019, 2026),
+    },
 }
 # band-page suffixes to try per year; absent ones 404 and are skipped
 BAND_SUFFIXES = ["100", "150", "200", "250", "300"]

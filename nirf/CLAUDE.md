@@ -14,11 +14,11 @@ across 9 disciplines, 2016 → 2025. Upstream publishes annually at
 
 Two provenances coexist here (see README → Data provenance):
 
-- **First-party (Engineering + Medical)**: `fetch_dcs.py` downloads NIRF's own
+- **First-party (Engineering, Medical, University, College)**: `fetch_dcs.py` downloads NIRF's own
   ranking/band pages and per-institute DCS PDFs (2019–2025 editions);
   `parse_dcs.py` turns them into `extracted/*.csv`. These feed the five
   `nirf_*dcs*`/`nirf_dim_participants` tables AND replace the Dataful rows
-  inside `nirf_fact_rankings` for those two categories
+  inside `nirf_fact_rankings` for those four categories
   (`record_source = 'nirfindia.org'`).
 - **Dataful vintage (everything else)**: `raw/*.parquet` is Dataful.in's
   scrape of NIRF's PDFs, further transformed by a `build_data.py` that no
@@ -35,6 +35,12 @@ DCS-table gotchas that bite queries:
   `median_salary = 0` — graduates proceed to internship, not "placement".
 - Band institutes exist in `nirf_fact_rankings` with NULL `institute_id`,
   NULL score, and `rank_band` like `'101-150'` — grain there is (name, city).
+- College PDFs exist only for the ranked top 100 per edition; band colleges
+  (101–300) have ranking rows but no DCS rows. College ids end in the AISHE
+  code (`IR-C-C-6355` = Miranda House, C-6355).
+- A NIRF page typo that breaks a grain goes in `KNOWN_SOURCE_TYPOS`
+  (`build_clean.py`), dropped by exact match and printed. Never relax the
+  conflict check instead.
 - 2016 Engineering `institute_id`s are the official `IR17-*` codes, which do
   NOT match Dataful-era 2016 ids (`NIRF-ENGG-*`) other tables may carry.
 
@@ -110,6 +116,9 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 | `clean/*.parquet` | No | Output of `build_clean.py` — the exact bytes that reach GCS + BQ. |
 | `schemas/nirf_fact_*.yaml` | Yes | Per-table column documentation + known limitations. |
 | `scripts/sources.py` | Yes | Bucket, prefix, BQ destination, table registry, grains, renames. |
+| `scripts/fetch_dcs.py` | Yes | First-party fetch: ranking/band/ALL pages + DCS PDFs (CDN probe, rate-limit canary). |
+| `scripts/parse_dcs.py` | Yes | `raw/dcs/` → `extracted/*.csv`. |
+| `raw/dcs/`, `extracted/` | No | First-party haul + parsed CSVs; staged to GCS via `--dcs-raw` / `--extracted`. |
 | `scripts/build_clean.py` | Yes | **The only transform.** Dedups, rebuilds aggregate, renames. |
 | `scripts/upload_to_gcs.py` | Yes | Uploads `clean/` byte-for-byte to GCS. No transform. |
 | `scripts/load_bq.py` | Yes | Reads from GCS, loads to BQ with WRITE_TRUNCATE. |
@@ -118,15 +127,21 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 
 ## BQ schema (what `load_bq.py` produces)
 
-Four tables in `avantifellows.external_data_sources`. Authoritative
-column-level docs in [`schemas/*.yaml`](schemas/).
+Nine tables in `avantifellows.external_data_sources`. Authoritative
+column-level docs in [`schemas/*.yaml`](schemas/) and the data-assistant
+repo's `docs/schemas/external/nirf_*.yaml`.
 
 | Table | Rows | Grain |
 |---|---:|---|
-| `nirf_fact_rankings` | 7,504 | (institute, year, category) |
+| `nirf_fact_rankings` | 10,707 | (institute, year, category); band rows (name, city) |
 | `nirf_fact_master` | 90,707 | (institute, year, category, type, academic_year, metric) |
 | `nirf_fact_strength` | 186,012 | (institute, year, category, programme, metric) |
-| `nirf_fact_aggregate` | 31,718 | (institute, year, category, academic_year, type) |
+| `nirf_fact_aggregate` | 31,717 | (institute, year, category, academic_year, type) |
+| `nirf_fact_dcs_placements` | 23,449 | (edition, discipline, institute, program level, graduating AY) |
+| `nirf_fact_dcs_intake` | 28,100 | (edition, discipline, institute, program level, AY) |
+| `nirf_fact_dcs_strength` | 8,394 | (edition, discipline, institute, program level) |
+| `nirf_fact_dcs_institution` | 3,119 | (edition, discipline, institute) |
+| `nirf_dim_participants` | 31,672 | (year, discipline, name, city) |
 
 Every grain is unique — `build_clean.py` enforces it and fails otherwise.
 
@@ -155,9 +170,7 @@ Every grain is unique — `build_clean.py` enforces it and fails otherwise.
   short rollbacks. No snapshot directories. ⚠️ But there is no supported path to
   refresh `raw/` — see README → Refreshing.
 - **`overall_score` and `nirf_rank` are nullable** on rankings + aggregate.
-  Today every row has them populated (NIRF only publishes ranked
-  institutes), but the schema is set up to accommodate unranked-submitter
-  rows once those get scraped from individual college websites.
+  First-party band rows (101–150 etc.) have both NULL, with `rank_band` set.
 - **Denormalized everything.** `state`, `city`, `institute_name` appear on
   every fact row. No `nirf_dim_institute` yet. If institute counts grow
   10× (e.g. by adding unranked submitters from PDFs), revisit.
@@ -188,7 +201,8 @@ Every grain is unique — `build_clean.py` enforces it and fails otherwise.
 - **`institute_name` has variations, and ours is synthetic** — the longest name
   per id across three source files, not what NIRF published. Use multi-keyword
   `LIKE` / `REGEXP`, not full-name equality.
-- **`nirf_rank` is recomputed by us**, not NIRF's published rank. It agrees on
+- **On Dataful rows `nirf_rank` is recomputed by us**, not NIRF's published rank
+  (first-party rows carry NIRF's own, verbatim in `rank_raw`). It agrees on
   spot-checks, but 165 rank values are shared by ≥2 institutes because ties use
   `method='min'`.
 - **District codes don't apply.** NIRF has state + city, no district code.
