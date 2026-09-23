@@ -20,7 +20,7 @@ columns:
   college_type:     "Govt (35) | Govt-Aided (3: PSG, CIT, Thiagarajar) | Private/SF (382). From the official DOTE code list, never from names"
 notes: |
   Two metrics per row, opposite directions — never mix them in one ORDER BY.
-  Provenance: portal pulls via scrape/scripts/tn_console_extract.js (sakshi1755);
+  Provenance: portal pulls via scrape/scripts/tn_console_extract.js;
   govt classification code sets live in scrape/scripts/state_TN.py and are lifted
   from there at build time (single copy). Raw + clean staged at
   gs://avantifellows-external-data/tnea/{raw,clean}/.

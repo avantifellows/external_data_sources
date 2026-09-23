@@ -1,6 +1,6 @@
 # branches/
 
-The branch taxonomy (Amogh's curated sheet) and the mapping that resolves
+The branch taxonomy (the curated branch sheet) and the mapping that resolves
 every branch/programme string in our 16 cutoff sources to it. This is the
 join that lets "CSE" mean one thing across JoSAA, KCET, WBJEE, OJEE,
 MHT-CET, the EAPCETs, GUJCET, TNEA, KEAM, CLAT, NEET, JAC Chandigarh, AIIMS B.Sc. Nursing, ICAR-UG and the fees sheet —
