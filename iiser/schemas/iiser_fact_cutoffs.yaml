@@ -1,0 +1,25 @@
+# iiser_fact_cutoffs
+#
+# Source: IISER Admissions "Round Wise Closing Ranks" page (9 counselling
+# rounds), captured as one PDF.
+#   raw:   gs://avantifellows-external-data/iiser/raw/iiser_round_wise_closing_ranks_2025.pdf
+#   clean: gs://avantifellows-external-data/iiser/clean/iiser_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.iiser_fact_cutoffs
+#
+# Closing ranks are IAT (IISER Aptitude Test) OVERALL ranks, as the page
+# states — not category ranks. "--" cells (no seat offered that round) are
+# dropped, never stored as 0; later rounds cover few programmes because
+# programmes close as they fill (Round 9 has 8 rows).
+
+description: IISER BS-MS / BS / B.Tech closing IAT overall rank per round x programme x category.
+rows: 495
+grain: (round, program_name, category)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: Admission cycle (2025).}
+  - {name: round, type: INTEGER, mode: REQUIRED, description: Counselling round 1-9.}
+  - {name: program_name, type: STRING, mode: REQUIRED, description: "Programme as printed, e.g. 'BS-MS IISER Pune', 'B.Tech. Chemical Engineering IISER Bhopal'."}
+  - {name: institute, type: STRING, mode: REQUIRED, description: "IISER campus parsed from the programme name, e.g. 'IISER Pune'."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "UR, UR-PwD, EWS, EWS-PwD, OBC-NCL, OBC-NCL-PwD, SC, SC-PwD, ST, ST-PwD."}
+  - {name: closing_rank, type: INTEGER, mode: REQUIRED, description: Closing IAT overall rank for the cell that round.}
+  - {name: rank_basis, type: STRING, mode: REQUIRED, description: "Always 'IAT overall rank'."}
