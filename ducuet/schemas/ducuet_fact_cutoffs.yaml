@@ -1,0 +1,69 @@
+# ducuet_fact_cutoffs
+#
+# Source: University of Delhi Admission Branch, "Undergraduate Admissions
+# 2025-26" minimum-allocation-score PDFs — one per CSAS/CUET allocation round
+# (Round 1, 2, 3). Long/tidy fact: one row per (college, program, category),
+# holding the MIN minimum-allocation-score seen for that cell across the 3
+# round PDFs actually published.
+#
+# WHY MIN AND NOT "LATEST ROUND": DU's rounds are not cumulative re-runs of
+# the same merit order — each round reallocates that round's vacant seats,
+# and a later round can quote a LOWER score than an earlier one for the same
+# seat as demand drops off. There is no single "final cutoff" column in the
+# source; this table records the most generous (lowest) score a category
+# ever cleared across the 3 rounds, which is the number relevant to "could a
+# student with score X have gotten this seat in some round".
+#
+# A missing category for a (college, program) across all 3 rounds means no
+# seat opened in that category in any of the 3 rounds — not a score of 0.
+# `rounds_published` records which of {1,2,3} actually carried a non-blank
+# score for that cell, for traceability back to the source PDF.
+#
+# Source PDFs: gs://avantifellows-external-data/ducuet/raw/du_cuet_ug_2025_r{1,2,3}.pdf
+# Clean parquet: gs://avantifellows-external-data/ducuet/clean/ducuet_fact_cutoffs.parquet
+# BQ table: avantifellows.external_data_sources.ducuet_fact_cutoffs
+#
+# Read schemas/README.md before analysing — covers why 124 program rows only
+# appear from Round 2 with no Round-1 counterpart.
+
+description: DU UG 2025-26 minimum allocation score per (college, program, category), MIN across the 3 published CSAS rounds.
+rows: 7547
+grain: (college_name, program_name, category)
+
+columns:
+  - name: college_name
+    type: STRING
+    mode: REQUIRED
+    description: Constituent college name, as printed in the source PDF (whitespace-normalized).
+
+  - name: program_name
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Program/course name as printed in Round 1 (or Round 2/3 if the program
+      has no Round 1 counterpart). Matching across rounds is done on a
+      normalized key (lowercased, periods stripped) because Round 2
+      consistently types "B.Sc." where Round 1/3 type "B.Sc" for the same
+      seat — this column keeps the original spelling for display.
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: >
+      One of UR, OBC, SC, ST, EWS, PwBD — the 6 categories common to all 3
+      round PDFs. Round 2 additionally publishes SIKH / KM / SGC / ORPHAN
+      (Female, Male) columns; those are out of scope for this table (see
+      schemas/README.md).
+
+  - name: min_allocation_score
+    type: FLOAT
+    mode: REQUIRED
+    description: Minimum allocation score (CUET composite), the lower of whatever the 3 round PDFs published for this cell. Higher score = harder to get in.
+
+  - name: rounds_published
+    type: STRING
+    mode: REQUIRED
+    description: >
+      Comma-joined subset of "1,2,3" — which round PDFs carried a non-blank
+      score for this (college, program, category), for traceability. The MIN
+      is taken only over these rounds.
