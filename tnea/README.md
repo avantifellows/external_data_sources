@@ -22,7 +22,7 @@ clean/tnea_fact_cutoffs.parquet
 ```
 
 Government classification is **code-based, never name-based** — the code sets live in
-`scrape/scripts/state_TN.py` (imported from futures-v2 #12, sakshi1755; +2 constituent
+`scrape/scripts/state_TN.py` (imported from futures-v2 #12; +2 constituent
 UCEs found in review) and `build_clean.py` lifts them from there so exactly one copy
 exists. TN's 7 communities (OC/BC/BCM/MBC/SC/SCA/ST — no EWS) are kept verbatim in
 `category_raw` with a canonical rollup in `category`.

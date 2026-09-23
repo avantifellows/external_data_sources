@@ -1,7 +1,7 @@
 # collegefees
 
 Tuition, total institute fees and hostel/mess charges per college × course ×
-seat-demographic — hand-collected (Amogh's team, Aug 2026) from each college's
+seat-demographic — hand-collected (by the team, Aug 2026) from each college's
 own published fee structure, cleaned into one BQ table.
 
 ```

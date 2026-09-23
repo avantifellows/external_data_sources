@@ -15,5 +15,5 @@ New cycle: save the page as a PDF, drop it in `raw/` under the name in
 `scripts/sources.py`, run all three. Needs `pdftotext` (poppler).
 
 Checks built in: no duplicate (round, programme, category); every programme
-name ends in an IISER campus. The 2025 load matched Amogh's hand-parsed CSV
+name ends in an IISER campus. The 2025 load matched the team's hand-parsed CSV
 cell for cell (495 rows).

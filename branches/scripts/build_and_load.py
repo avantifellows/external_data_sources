@@ -1,7 +1,7 @@
 """
 Branch taxonomy + exam-branch mapping -> BigQuery.
 
-SOURCE: the "branch" Google Sheet Amogh curates
+SOURCE: the curated "branch" Google Sheet
 (1PAMMolYuj5ThYVoRiJeMv_ByqwTk-cf_NDFN8kiIrL0). Two tabs — address them
 by TITLE, the gids rotate when he edits:
 
@@ -9,7 +9,7 @@ by TITLE, the gids rotate when he edits:
                    alias rows (raw spellings seen in sources, pointing at a
                    parent). 635 rows, ~100 parents, ids unique (the
                    CIVILENG020 duplicate was fixed in-sheet 2026-09-02).
-  branches_to_map  Amogh's mapping of the 564 cutoff-table strings the
+  branches_to_map  the curated mapping of the 564 cutoff-table strings the
                    taxonomy didn't cover (filled Sep 2026, all valid).
 
 exam_branch_mapping is the JOIN PRODUCT: every distinct branch/programme
@@ -17,7 +17,7 @@ string in our 13 cutoff sources (JoSAA, KCET, MHT-CET, TG/AP-EAPCET,
 GUJCET, TNEA, WBJEE, KEAM, OJEE, CLAT, NEET, college-fees, JAC Chandigarh, AIIMS B.Sc. Nursing, ICAR-UG),
 resolved to a
 PARENT branch id — via the taxonomy's alias rows where they existed, via
-Amogh's mapping otherwise. The per-exam evidence lives in
+the curated mapping otherwise. The per-exam evidence lives in
 evidence/branches_from_cutoff_tables.csv (regenerate with the snippet in
 the README if sources change).
 
@@ -89,9 +89,10 @@ def main() -> None:
         if r.status == "already in branch sheet":
             pid, pnm = parent_of.get(str(r.existing_branch_id).strip(), (None, None))
             via = "taxonomy alias row"
-        elif r.status in ("taxonomy parent by name", "provisional (for Amogh)"):
+        elif r.status in ("taxonomy parent by name", "nearest parent, needs review"):
             # ICAR-UG (Sep 2026): the course IS a taxonomy parent's name, or
-            # no parent fits and the nearest one is used until Amogh confirms
+            # no parent fits and the nearest one is used until the taxonomy
+            # gets a branch for it
             pid, pnm = parent_of.get(str(r.existing_branch_id).strip(), (None, None))
             via = r.status
         elif r.status == "same string mapped for another exam":
