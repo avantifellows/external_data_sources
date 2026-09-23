@@ -293,6 +293,19 @@ STAT_DATASETS = [
         ("jacchd/clean/jacchd_fact_cutoffs.parquet", "jacchd/extracted/jacchd_cutoffs_2026.csv", "JAC Chandigarh 2026 — Opening and closing ranks by round, institute, programme, quota and category", 2026),
      ]},
 
+    {"id": "aiimsnursing", "category": "admissions",
+     "title": "AIIMS B.Sc. (Hons.) Nursing 2025 admissions",
+     "blurb": "Seat allocation at 18 AIIMS, Rounds 1 and 2: the result notifications as published, every candidate's rank, category and allotment (roll numbers removed), and closing ranks per institute and seat category.",
+     "source": {"label": "aiimsexams.ac.in", "url": "https://www.aiimsexams.ac.in/"},
+     "files": [
+        ("aiimsnursing/raw/aiims_bsc_nursing_2025_round1.pdf", "AIIMS Nursing 2025 — Round 1 seat allocation (Notification 117/2025)", "raw", 2025),
+        ("aiimsnursing/raw/aiims_bsc_nursing_2025_round2.pdf", "AIIMS Nursing 2025 — Round 2 seat allocation (Notification 132/2025)", "raw", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("aiimsnursing/clean/aiimsnursing_fact_cutoffs.parquet", "aiimsnursing/extracted/aiimsnursing_cutoffs_2025.csv", "AIIMS Nursing 2025 — Opening and closing rank by round, institute and seat category", 2025),
+        ("aiimsnursing/clean/aiimsnursing_fact_allotments.parquet", "aiimsnursing/extracted/aiimsnursing_allotments_2025.csv", "AIIMS Nursing 2025 — Every candidate's rank, category and allotment, by round", 2025),
+     ]},
+
     {"id": "iiser", "category": "admissions",
      "title": "IISER 2025 admissions (IAT)",
      "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",
