@@ -4,11 +4,11 @@ NIRF (National Institutional Ranking Framework) data ingestion → BigQuery.
 
 Rankings, admissions/placements, and student-strength data for ~7,500
 institutes across 9 disciplines, 2016–2025 — plus a **first-party pipeline**
-(Aug 2026) that fetches NIRF's own ranking pages and per-institute
-"Data Submitted by Institution" (DCS) PDFs for **Engineering and Medical**,
-2019–2025 editions. For those two disciplines the rankings rows and the
-`nirf_fact_dcs_*` tables come straight from nirfindia.org; everything else
-still carries the Dataful vintage.
+(Aug–Sep 2026) that fetches NIRF's own ranking pages and per-institute
+"Data Submitted by Institution" (DCS) PDFs for **Engineering, Medical,
+University and College**, 2019–2025 editions. For those four lists the
+rankings rows and the `nirf_fact_dcs_*` tables come straight from
+nirfindia.org; every other category still carries the Dataful vintage.
 
 **⚠️ Read [Data provenance](#data-provenance) before using the Dataful-derived
 tables for analysis.** What that half ingests is not raw NIRF data, and it has
@@ -17,7 +17,7 @@ known coverage limits that are not visible in the tables themselves.
 ## Pipeline at a glance
 
 ```
-Dataful vintage                          First-party (Engineering + Medical)
+Dataful vintage                          First-party (Engg, Medical, Univ, College)
 nirf/raw/*.parquet                       nirfindia.org ranking pages + DCS PDFs
 (local; gitignored)                             │ scripts/fetch_dcs.py   → raw/dcs/
        │                                        │ scripts/parse_dcs.py   → extracted/*.csv
@@ -42,15 +42,15 @@ objects and the BQ tables are byte-identical.
 
 | Table | Rows | Grain | Built from |
 |---|---:|---|---|
-| `nirf_fact_rankings`  | 8,606   | (institute, year, category); band rows key on (name, city) | Dataful for most categories; **first-party pages for Engineering + Medical** (adds `rank_raw`, `rank_band`, `record_source`) |
+| `nirf_fact_rankings`  | 10,707  | (institute, year, category); band rows key on (name, city) | Dataful for most categories; **first-party pages for Engineering, Medical, University, College** (adds `rank_raw`, `rank_band`, `record_source`) |
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
-| `nirf_fact_aggregate` | 31,718  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
-| `nirf_fact_dcs_placements`  | 10,246 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
-| `nirf_fact_dcs_intake`      | 12,680 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
-| `nirf_fact_dcs_strength`    | 3,745  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
-| `nirf_fact_dcs_institution` | 1,702  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
-| `nirf_dim_participants`     | 12,888 | (year, discipline, name, city) | "ALL participants" pages — names only, NIRF publishes no ids for them |
+| `nirf_fact_aggregate` | 31,717  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
+| `nirf_fact_dcs_placements`  | 23,449 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
+| `nirf_fact_dcs_intake`      | 28,100 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
+| `nirf_fact_dcs_strength`    | 8,394  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
+| `nirf_fact_dcs_institution` | 3,119  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
+| `nirf_dim_participants`     | 31,672 | (year, discipline, name, city) | "ALL participants" pages (Engineering, Medical, College) — names only, NIRF publishes no ids for them |
 
 Every table's grain is unique — `build_clean.py` enforces it and fails if not.
 Schemas: [`schemas/*.yaml`](schemas/).
@@ -105,10 +105,12 @@ and identity, not correctness.
 Duplicate rows — which inflated every measure in `nirf_fact_aggregate` — **are
 fixed** by `build_clean.py`; see below.
 
-### The escape hatch — BUILT for Engineering + Medical (Aug 2026)
+### The escape hatch — BUILT for Engineering, Medical, University, College
 
-`fetch_dcs.py` + `parse_dcs.py` implement the first-party pipeline for the two
-disciplines the org actually serves. What the build established:
+`fetch_dcs.py` + `parse_dcs.py` implement the first-party pipeline for
+Engineering + Medical (Aug 2026), then University (Aug 2026) and College
+(Sep 2026, for DU and other degree colleges). Each list is one entry in
+`DISCIPLINES`. What the build established:
 
 - **Rankings**: `Rankings/<year>/<Category>Ranking.html` parsed for Engineering
   2016–2025 and Medical 2018–2025, plus the rank-band pages (101–150/151–200
@@ -121,7 +123,8 @@ disciplines the org actually serves. What the build established:
   rank-band and formerly-ranked institutes have live-but-unlinked PDFs (PEC,
   NIT Uttarakhand, NIT Sikkim 404 on every page yet serve 2025 PDFs). Discovery
   is probe-by-candidate-id: 4-byte range GETs (the CDN 404s on HEAD).
-  1,382 Engineering + 320 Medical PDFs, all parsed with zero warnings.
+  1,385 Engineering + 320 Medical + 714 University + 700 College PDFs, all
+  parsed with zero warnings.
 - **The CDN rate-limits**: hammer it and every URL starts 404ing for a few
   minutes — indistinguishable from "not on CDN". `fetch_dcs.py` probes a
   known-good canary URL before each year's sweep and sleeps until it passes.
@@ -130,6 +133,17 @@ disciplines the org actually serves. What the build established:
   `superseded = edition_year < max(edition reporting that key)` — filter
   `NOT superseded` for the canonical series. Stitching editions yields e.g. a
   9-year unbroken placement series for PEC (2015-16 → 2023-24).
+- **College list** (ids `IR-C-C-<AISHE code>`, e.g. Miranda House
+  `IR-C-C-6355` = AISHE C-6355): pages 2017–2025, bands 101–150/151–200 from
+  2017 and 201–300 from 2024. PDFs exist only for the ranked top 100 of each
+  edition — an AISHE-code sweep over band and participant colleges found
+  none, so band colleges have ranks but no DCS rows. Placements are mostly
+  `UG-3Y` (BA/BSc/BCom).
+- **Source typos are dropped by name, never silently.** NIRF's 2018 College
+  page lists Hindu College three times: Delhi (correct), Guntur, Andhra
+  Pradesh (a different college, correct) and Delhi, Andhra Pradesh (a typo).
+  `KNOWN_SOURCE_TYPOS` in `build_clean.py` drops exactly that row and prints
+  it; any other grain conflict still fails the build.
 - **Unranked participants are out of scope**: the ~1,585-name "ALL" page
   carries no ids and no PDF links, and their CDN URLs 404. Reaching them means
   crawling institute websites (~27% yield in the NIRF Extractor prototype this
@@ -231,7 +245,7 @@ to preview without side effects.
 leave half-loaded tables, and the old data is recoverable for 7 days via BQ
 time travel.
 
-For **Engineering and Medical** there is now a supported refresh: when NIRF
+For **Engineering, Medical, University and College** there is a supported refresh: when NIRF
 2026 lands, extend `page_years`/`cdn_years` in `fetch_dcs.py`, then
 
 ```bash
