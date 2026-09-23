@@ -18,7 +18,7 @@ GUJCET, TNEA, WBJEE, KEAM, OJEE, CLAT, NEET, college-fees, JAC Chandigarh, AIIMS
 resolved to a
 PARENT branch id — via the taxonomy's alias rows where they existed, via
 Amogh's mapping otherwise. The per-exam evidence lives in
-~/jan2023/branches_from_cutoff_tables.csv (regenerate with the snippet in
+evidence/branches_from_cutoff_tables.csv (regenerate with the snippet in
 the README if sources change).
 
 Sheets auth: google-sheets-api@avantifellows service account — key at
@@ -42,7 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SHEET_ID = "1PAMMolYuj5ThYVoRiJeMv_ByqwTk-cf_NDFN8kiIrL0"
 SHEETS_KEY = Path.home() / "may2022/avanti_code/etl-data-flow/flows/sessionCreator/google_secret.json"
 GCP_KEY = ROOT.parent / "avantifellows-61d1fc435ca2.json"
-EVIDENCE = Path.home() / "jan2023/branches_from_cutoff_tables.csv"
+EVIDENCE = ROOT / "evidence/branches_from_cutoff_tables.csv"
 
 BQ = "avantifellows.external_data_sources"
 GCS = "avantifellows-external-data"
