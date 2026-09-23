@@ -306,6 +306,17 @@ STAT_DATASETS = [
         ("aiimsnursing/clean/aiimsnursing_fact_allotments.parquet", "aiimsnursing/extracted/aiimsnursing_allotments_2025.csv", "AIIMS Nursing 2025 — Every candidate's rank, category and allotment, by round", 2025),
      ]},
 
+    {"id": "icarug", "category": "admissions",
+     "title": "ICAR-UG 2025 admissions (agricultural universities, through CUET)",
+     "blurb": "Cutoffs at 72 agricultural universities, five rounds: CUET marks and ICAR rank per course, category and the home state of the students who got each seat. ICAR's list as published, and the table checked against it.",
+     "source": {"label": "icar.org.in", "url": "https://icar.org.in/"},
+     "files": [
+        ("icarug/raw/icar_ug_cutoff_2025.pdf", "ICAR-UG 2025 — Cut-off list, as published", "raw", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("icarug/clean/icarug_fact_cutoffs.parquet", "icarug/extracted/icarug_cutoffs_2025.csv", "ICAR-UG 2025 — CUET marks and ICAR rank by round, home state, course, university and category", 2025),
+     ]},
+
     {"id": "iiser", "category": "admissions",
      "title": "IISER 2025 admissions (IAT)",
      "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",

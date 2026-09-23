@@ -14,7 +14,7 @@ by TITLE, the gids rotate when he edits:
 
 exam_branch_mapping is the JOIN PRODUCT: every distinct branch/programme
 string in our 13 cutoff sources (JoSAA, KCET, MHT-CET, TG/AP-EAPCET,
-GUJCET, TNEA, WBJEE, KEAM, OJEE, CLAT, NEET, college-fees, JAC Chandigarh, AIIMS B.Sc. Nursing),
+GUJCET, TNEA, WBJEE, KEAM, OJEE, CLAT, NEET, college-fees, JAC Chandigarh, AIIMS B.Sc. Nursing, ICAR-UG),
 resolved to a
 PARENT branch id — via the taxonomy's alias rows where they existed, via
 Amogh's mapping otherwise. The per-exam evidence lives in
@@ -89,6 +89,11 @@ def main() -> None:
         if r.status == "already in branch sheet":
             pid, pnm = parent_of.get(str(r.existing_branch_id).strip(), (None, None))
             via = "taxonomy alias row"
+        elif r.status in ("taxonomy parent by name", "provisional (for Amogh)"):
+            # ICAR-UG (Sep 2026): the course IS a taxonomy parent's name, or
+            # no parent fits and the nearest one is used until Amogh confirms
+            pid, pnm = parent_of.get(str(r.existing_branch_id).strip(), (None, None))
+            via = r.status
         elif r.status == "same string mapped for another exam":
             # a later source (JAC Chandigarh, AIIMS nursing; Sep 2026) whose cleaned strings
             # all match ones already mapped for other exams

@@ -1,0 +1,34 @@
+# icarug_fact_cutoffs
+#
+# Source: ICAR "Cut off - CUET (ICAR-UG) - 2025" (886-page PDF) and the
+# team's CSV extraction of it, checked number-for-number against the PDF.
+#   raw:   gs://avantifellows-external-data/icarug/raw/icar_ug_cutoff_2025.{pdf,csv}
+#   clean: gs://avantifellows-external-data/icarug/clean/icarug_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.icarug_fact_cutoffs
+#
+# Marks are CUET (UG) scores summed over the three subjects ICAR counts
+# (out of 750). Ranks are ICAR-UG ranks, but the same rank appears with
+# different marks, so they are not one list (ICAR ranks subject streams
+# separately) — compare seats on marks.
+
+description: ICAR-UG (CUET) 2025 counselling cutoffs per round x allottees' home state x course x university x category — CUET marks and ICAR rank, first and last allotted.
+rows: 10496
+grain: (round, home_state, course, university_raw, category)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: Counselling year (2025).}
+  - {name: round, type: STRING, mode: REQUIRED, description: "'First', 'Second', 'Third', 'Fourth', 'Mop-up'."}
+  - {name: round_order, type: INTEGER, mode: REQUIRED, description: "1-5 in that order."}
+  - {name: home_state_raw, type: STRING, mode: REQUIRED, description: "As printed ('Delhi (U.T.)')."}
+  - {name: home_state, type: STRING, mode: REQUIRED, description: "Allottees' domicile state, '(U.T.)' dropped. A seat's cutoff is the MIN of marks_start over home states."}
+  - {name: course_raw, type: STRING, mode: REQUIRED, description: "As printed (incl. 'Nutural Farming'). Join key to exam_branch_mapping (exam = 'ICAR-UG')."}
+  - {name: course, type: STRING, mode: REQUIRED, description: "Spelling fixed, e.g. 'B.Sc. (Hons.) Natural Farming'."}
+  - {name: university_raw, type: STRING, mode: REQUIRED, description: "Name and address as printed."}
+  - {name: university, type: STRING, mode: REQUIRED, description: "Display name with city, spelling fixed (Parmar, Junagadh, Chandra Shekhar, ...)."}
+  - {name: university_city, type: STRING, mode: REQUIRED, description: City from the address.}
+  - {name: university_state, type: STRING, mode: REQUIRED, description: State of the university.}
+  - {name: category, type: STRING, mode: REQUIRED, description: "UR, OBC, SC, ST, EWS, UPS (under-privileged states quota), PwD."}
+  - {name: marks_start, type: FLOAT, mode: REQUIRED, description: "Lowest CUET marks (three subjects, of 750) allotted in the cell. The cutoff."}
+  - {name: marks_end, type: FLOAT, mode: REQUIRED, description: "Highest CUET marks allotted in the cell."}
+  - {name: rank_start, type: INTEGER, mode: REQUIRED, description: "Best ICAR rank allotted in the cell (stream-wise; see header)."}
+  - {name: rank_end, type: INTEGER, mode: REQUIRED, description: "Last ICAR rank allotted in the cell (stream-wise; see header)."}
