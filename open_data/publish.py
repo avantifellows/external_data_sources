@@ -272,6 +272,30 @@ STAT_DATASETS = [
         ("clat/extracted/clat_cutoff_tables_2026.csv", "CLAT 2026 — Closing ranks by NLU, programme and category (final list)", "extracted", 2026),
      ]},
 
+    {"id": "ducuet", "category": "admissions",
+     "title": "DU CUET-UG 2025 admissions (Delhi University)",
+     "blurb": "Lowest CUET score that got a seat, per college, programme and category, across the three CSAS 2025 allocation rounds: the university's own round PDFs and the extracted table.",
+     "source": {"label": "admission.uod.ac.in", "url": "https://admission.uod.ac.in/"},
+     "files": [
+        ("ducuet/raw/du_cuet_ug_2025_r1.pdf", "DU CSAS 2025 — Round 1 allocation cut-offs", "raw", 2025),
+        ("ducuet/raw/du_cuet_ug_2025_r2.pdf", "DU CSAS 2025 — Round 2 allocation cut-offs", "raw", 2025),
+        ("ducuet/raw/du_cuet_ug_2025_r3.pdf", "DU CSAS 2025 — Round 3 allocation cut-offs", "raw", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("ducuet/clean/ducuet_fact_cutoffs.parquet", "ducuet/extracted/ducuet_cutoffs_2025.csv", "DU CSAS 2025 — Minimum CUET score by college, programme and category", 2025),
+     ]},
+
+    {"id": "iiser", "category": "admissions",
+     "title": "IISER 2025 admissions (IAT)",
+     "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",
+     "source": {"label": "iiseradmission.in", "url": "https://www.iiseradmission.in/"},
+     "files": [
+        ("iiser/raw/iiser_round_wise_closing_ranks_2025.pdf", "IISER 2025 — Round-wise closing ranks, as published", "raw", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("iiser/clean/iiser_fact_cutoffs.parquet", "iiser/extracted/iiser_cutoffs_2025.csv", "IISER 2025 — Closing IAT rank by institute, programme, category and round", 2025),
+     ]},
+
     {"id": "collegefees", "category": "admissions",
      "title": "College fees and hostel charges (JoSAA + KCET, 2025-26)",
      "blurb": "Tuition, total institute fees and hostel/mess charges per college, course and seat category, hand-collected from each college's own published fee structure — the source link travels on every row. JoSAA colleges effectively complete; KCET partial (25 colleges); entry-year figures.",
@@ -298,13 +322,18 @@ STAT_DATASETS = [
      ]},
     {"id": "nirf", "category": "education-statistics",
      "title": "NIRF rankings and institute metrics",
-     "blurb": "National Institutional Ranking Framework: ranks, bands and scores by category and year, plus the placement, salary, intake and student-strength figures institutes file — parsed first-party from NIRF's own pages and per-institute PDFs for Engineering and Medical.",
+     "blurb": "National Institutional Ranking Framework: ranks, bands and scores by category and year, plus the placement, salary, intake and student-strength figures institutes file — parsed first-party from NIRF's own pages and per-institute PDFs for Engineering, Medical, University and College.",
      "source": {"label": "nirfindia.org", "url": "https://www.nirfindia.org/"},
      "files": [
         ("nirf/raw/dcs/ranking_pages.zip", "NIRF — Ranking, band and participant pages, as published", "raw", "2016-2025"),
-        ("nirf/raw/dcs/dcs_pdfs_engineering_2019-2025.zip", "NIRF — Institute data-submission PDFs, Engineering", "raw", "2019-2025"),
-        ("nirf/raw/dcs/dcs_pdfs_medical_2019-2025.zip", "NIRF — Institute data-submission PDFs, Medical", "raw", "2019-2025"),
-        ("nirf/raw/dcs/dcs_pdfs_university_2019-2025.zip", "NIRF — Institute data-submission PDFs, University track", "raw", "2019-2025"),
+     ],
+     # upload_to_gcs.py --dcs-raw stages one zip per (list, edition); publish
+     # one download per list, a folder per edition inside
+     "merge_zips": [
+        (f"nirf/raw/dcs/dcs_pdfs_{d.lower()}_", f"nirf/raw/dcs/dcs_pdfs_{d.lower()}_2019-2025.zip",
+         f"NIRF — Institute data-submission PDFs, {label}", "2019-2025")
+        for d, label in [("Engineering", "Engineering"), ("Medical", "Medical"),
+                         ("University", "University track"), ("College", "College (degree colleges)")]
      ],
      # NOT published: nirf_aggregate (a derived pivot of master — policy says
      # derived artifacts stay out) and the Dataful strength extract for the
@@ -314,11 +343,11 @@ STAT_DATASETS = [
         ("nirf/clean/nirf_rankings.parquet", "nirf/extracted/nirf_rankings.csv", "NIRF — Rankings and bands by category and year", "2016-2025"),
         ("nirf/clean/nirf_master.parquet", "nirf/extracted/nirf_master.csv", "NIRF — All submitted metrics, 9 categories (third-party extract)", "2019-2025"),
         ("nirf/clean/nirf_strength.parquet", "nirf/extracted/nirf_strength.csv", "NIRF — Student strength, 9 categories (third-party extract)", "2016-2025"),
-        ("nirf/clean/nirf_dcs_placements.parquet", "nirf/extracted/nirf_dcs_placements.csv", "NIRF — Placements and median salary, institute-filed (Engineering, Medical, University)", "2019-2025"),
-        ("nirf/clean/nirf_dcs_intake.parquet", "nirf/extracted/nirf_dcs_intake.csv", "NIRF — Sanctioned intake by program level (Engineering, Medical, University)", "2019-2025"),
-        ("nirf/clean/nirf_dcs_strength.parquet", "nirf/extracted/nirf_dcs_strength.csv", "NIRF — Student strength and demographics, institute-filed (all three tracks)", "2019-2025"),
-        ("nirf/clean/nirf_dcs_institution.parquet", "nirf/extracted/nirf_dcs_institution.csv", "NIRF — PhD and faculty counts, institute-filed (all three tracks)", "2019-2025"),
-        ("nirf/clean/nirf_participants.parquet", "nirf/extracted/nirf_participants.csv", "NIRF — All participating institutes (Engineering + Medical)", "2016-2025"),
+        ("nirf/clean/nirf_dcs_placements.parquet", "nirf/extracted/nirf_dcs_placements.csv", "NIRF — Placements and median salary, institute-filed (Engineering, Medical, University, College)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_intake.parquet", "nirf/extracted/nirf_dcs_intake.csv", "NIRF — Sanctioned intake by program level (Engineering, Medical, University, College)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_strength.parquet", "nirf/extracted/nirf_dcs_strength.csv", "NIRF — Student strength and demographics, institute-filed (all four tracks)", "2019-2025"),
+        ("nirf/clean/nirf_dcs_institution.parquet", "nirf/extracted/nirf_dcs_institution.csv", "NIRF — PhD and faculty counts, institute-filed (all four tracks)", "2019-2025"),
+        ("nirf/clean/nirf_participants.parquet", "nirf/extracted/nirf_participants.csv", "NIRF — All participating institutes (Engineering, Medical, College)", "2016-2025"),
      ]},
     {"id": "naac", "category": "education-statistics",
      "title": "NAAC accreditation",
@@ -479,6 +508,18 @@ def main():
                 for b in src.list_blobs(prefix=prefix):
                     z.writestr(b.name.split("/")[-1], b.download_as_bytes())
             add2(dest.replace("raw/", "raw/", 1), buf.getvalue(), title, "raw", 2025, "zip")
+
+        for prefix, dest, title, year in spec.get("merge_zips", []):
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for b in src.list_blobs(prefix=prefix):
+                    edition = b.name[len(prefix):].removesuffix(".zip")
+                    if not edition.isdigit():   # skip older multi-year bundles
+                        continue
+                    with zipfile.ZipFile(io.BytesIO(b.download_as_bytes())) as part:
+                        for n in part.namelist():
+                            z.writestr(f"{edition}/{n.split('/')[-1]}", part.read(n))
+            add2(dest, buf.getvalue(), title, "raw", year, "zip")
 
         for src_path, title, kind, year in spec.get("files", []):
             data = src.blob(src_path).download_as_bytes()
