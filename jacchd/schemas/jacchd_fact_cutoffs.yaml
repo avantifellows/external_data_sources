@@ -1,0 +1,34 @@
+# jacchd_fact_cutoffs
+#
+# Source: JAC Chandigarh (jacchd.admissions.nic.in) round-wise opening and
+# closing ranks, 2026 cycle, transcribed by the team into one Google Sheet.
+#   raw:   gs://avantifellows-external-data/jacchd/raw/jacchd_2026_cutoffs_sheet.csv
+#   clean: gs://avantifellows-external-data/jacchd/clean/jacchd_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.jacchd_fact_cutoffs
+#
+# Ranks are on three scales — filter rank_basis before comparing anything:
+# JEE Main Paper 1 (B.E.), JEE Main Paper 2 (CCA's B.Arch), and the Defence /
+# Sports lists' own merit positions (1-318, some decimal).
+
+description: JAC Chandigarh first-year B.E. / B.Arch opening and closing ranks per round x institute x programme x quota x category, 2026.
+rows: 787
+grain: (round, institute, programme_raw, quota, category_raw)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: Admission cycle (2026).}
+  - {name: round, type: STRING, mode: REQUIRED, description: "'Round 1', 'Round 2', 'Round 3', 'Special Round', 'SPOT Round'."}
+  - {name: round_order, type: INTEGER, mode: REQUIRED, description: "1-5 in that order."}
+  - {name: institute, type: STRING, mode: REQUIRED, description: Institute as printed.}
+  - {name: institute_short, type: STRING, mode: REQUIRED, description: "CCET, CCA, UIET Chandigarh, Dr. SSB UICET, UIET Hoshiarpur."}
+  - {name: city, type: STRING, mode: REQUIRED, description: Chandigarh or Hoshiarpur.}
+  - {name: state, type: STRING, mode: REQUIRED, description: "Chandigarh, or Punjab for UIET Hoshiarpur."}
+  - {name: programme_raw, type: STRING, mode: REQUIRED, description: "Programme as printed, e.g. 'B.E. in Civil Engineering - TFW'."}
+  - {name: programme, type: STRING, mode: REQUIRED, description: "Programme without the ' - TFW' seat-pool suffix."}
+  - {name: tfw, type: BOOLEAN, mode: REQUIRED, description: "Tuition-fee-waiver seat pool. Only the EWS fee-waiver category sits on these."}
+  - {name: degree, type: STRING, mode: REQUIRED, description: "B.E., B.Arch, or Integrated B.E.-MBA (Dr. SSB UICET chemical)."}
+  - {name: quota, type: STRING, mode: REQUIRED, description: "'All India' (the three Panjab University institutes), 'Home State' / 'Other State' (CCET and CCA: Chandigarh domicile or not)."}
+  - {name: category_raw, type: STRING, mode: REQUIRED, description: "Category as printed, incl. which institutes it applies to ('OBC for CCET/CCA')."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "Canonical code: GEN, EWS, EWS-TFW, OBC, SC, ST, PWD, OBC-PWD, DEFENCE (PU list), GEN/EWS/OBC/SC-DEFENCE (CCET/CCA lists), SPORTS, RURAL, BORDER, GIRL-CHILD, KM, PU-WARD, ORPHAN, FREEDOM-FIGHTER, THALASSEMIA, CANCER."}
+  - {name: opening_rank, type: FLOAT, mode: REQUIRED, description: "Opening rank on the rank_basis scale."}
+  - {name: closing_rank, type: FLOAT, mode: REQUIRED, description: "Closing rank on the rank_basis scale. Decimals only occur on merit-list rows."}
+  - {name: rank_basis, type: STRING, mode: REQUIRED, description: "'JEE Main Paper 1', 'JEE Main Paper 2', or 'category merit list' (Defence / Sports positions, not JEE ranks)."}
