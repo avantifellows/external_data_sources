@@ -46,7 +46,7 @@ objects and the BQ tables are byte-identical.
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
 | `nirf_fact_aggregate` | 31,717  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
-| `nirf_fact_dcs_placements`  | 23,449 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
+| `nirf_fact_dcs_placements`  | 26,670 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
 | `nirf_fact_dcs_intake`      | 28,100 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
 | `nirf_fact_dcs_strength`    | 8,394  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
 | `nirf_fact_dcs_institution` | 3,119  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
@@ -139,6 +139,12 @@ Engineering + Medical (Aug 2026), then University (Aug 2026) and College
   edition — an AISHE-code sweep over band and participant colleges found
   none, so band colleges have ranks but no DCS rows. Placements are mostly
   `UG-3Y` (BA/BSc/BCom).
+- **Tables split across a page break** lost their continuation until
+  2026-09-24: the rows on the next page carry no header, and the parser
+  dropped them as an unknown table. `parse_dcs.py` now joins them to the
+  table before; the re-parse recovered 3,221 placement rows (509
+  institutes, every edition — e.g. IIT Bombay's whole UG 5-year series)
+  and changed no existing row.
 - **Source typos are dropped by name, never silently.** NIRF's 2018 College
   page lists Hindu College three times: Delhi (correct), Guntur, Andhra
   Pradesh (a different college, correct) and Delhi, Andhra Pradesh (a typo).
