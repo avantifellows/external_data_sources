@@ -1,0 +1,31 @@
+# bhuug_fact_cutoffs
+#
+# Source: BHU UG admission 2025 allocation summaries — Round 1 and Spot
+# Round 2 (PDFs printed from spreadsheets) — and the team's combined CSV,
+# checked row-for-row against both PDFs.
+#   raw:   gs://avantifellows-external-data/bhuug/raw/bhu_ug_2025_{round1,spot2}.pdf, bhu_ug_2025_combined.csv
+#   clean: gs://avantifellows-external-data/bhuug/clean/bhuug_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.bhuug_fact_cutoffs
+#
+# Scores are BHU's CUET-based merit score for the programme; the scale
+# differs by programme (B.A. up to ~374, B.Com ~549, B.Sc. ~637), so compare
+# scores only within one programme.
+
+description: BHU UG (CUET) 2025 minimum score allotted per round x programme x faculty/college x category, Round 1 and Spot Round 2.
+rows: 4629
+grain: (round, program_raw, college_raw, category)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: Admission year (2025).}
+  - {name: round, type: STRING, mode: REQUIRED, description: "'Round 1' or 'Spot Round 2' (the two rounds in the source)."}
+  - {name: round_order, type: INTEGER, mode: REQUIRED, description: "1 or 2."}
+  - {name: program_raw, type: STRING, mode: REQUIRED, description: Programme as printed.}
+  - {name: program, type: STRING, mode: REQUIRED, description: "Spelling made consistent ('Science (Honours)', '(Honours)', 'Earth Science')."}
+  - {name: college_raw, type: STRING, mode: REQUIRED, description: "Faculty/college as printed, incl. '(Paid Fee Course)'."}
+  - {name: unit, type: STRING, mode: REQUIRED, description: "Faculty/college without the fee-course suffix, as printed ('Faculty of Arts')."}
+  - {name: fee_type, type: STRING, mode: REQUIRED, description: "'regular', 'paid' (Paid Fee Course) or 'special' (Special Fee Course): separate seat pools."}
+  - {name: college, type: STRING, mode: REQUIRED, description: "Display name with the university: 'Faculty of Arts, Banaras Hindu University', 'Arya Mahila PG College, Varanasi (BHU)'."}
+  - {name: kind, type: STRING, mode: REQUIRED, description: "'BHU faculty' (BHU's own faculties, departments, Mahila Maha Vidyalaya, South Campus) or 'BHU admitted college'."}
+  - {name: city, type: STRING, mode: REQUIRED, description: "Varanasi, or Mirzapur for Rajiv Gandhi South Campus."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "UR, OBC, SC, ST, EWS, PWD, WARD (wards of BHU employees)."}
+  - {name: min_score, type: FLOAT, mode: REQUIRED, description: "Lowest merit score allotted in the cell (programme-specific scale)."}

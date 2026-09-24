@@ -1,0 +1,7 @@
+# Source PDFs + their CSV extraction — staged to GCS, not git.
+raw/*.pdf
+raw/*.csv
+# Parsed parquet — regenerable via build_clean.py.
+clean/*.parquet
+.venv/
+__pycache__/

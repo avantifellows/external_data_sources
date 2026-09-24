@@ -317,6 +317,18 @@ STAT_DATASETS = [
         ("icarug/clean/icarug_fact_cutoffs.parquet", "icarug/extracted/icarug_cutoffs_2025.csv", "ICAR-UG 2025 — CUET marks and ICAR rank by round, home state, course, university and category", 2025),
      ]},
 
+    {"id": "bhuug", "category": "admissions",
+     "title": "BHU UG 2025 admissions (Banaras Hindu University, through CUET)",
+     "blurb": "Minimum merit score per programme, faculty or college and category, Round 1 and Spot Round 2: BHU's allocation summaries as published, and the table checked against them. Scores are on each programme's own scale.",
+     "source": {"label": "bhuonline.in", "url": "https://bhuonline.in/"},
+     "files": [
+        ("bhuug/raw/bhu_ug_2025_round1.pdf", "BHU UG 2025 — Round 1 allocation summary", "raw", 2025),
+        ("bhuug/raw/bhu_ug_2025_spot2.pdf", "BHU UG 2025 — Spot Round 2 allotment", "raw", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("bhuug/clean/bhuug_fact_cutoffs.parquet", "bhuug/extracted/bhuug_cutoffs_2025.csv", "BHU UG 2025 — Minimum score by round, programme, faculty/college and category", 2025),
+     ]},
+
     {"id": "iiser", "category": "admissions",
      "title": "IISER 2025 admissions (IAT)",
      "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",
@@ -470,7 +482,7 @@ def main():
     def add(dest, data, title, kind, year, fmt, removed=None):
         blob = dst.blob(dest)
         ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip"}.get(fmt, "application/octet-stream")
-        blob.upload_from_string(data, content_type=ctype)
+        blob.upload_from_string(data, content_type=ctype, timeout=900)
         e = {"title": title, "path": dest, "kind": kind, "year": year,
              "format": fmt.upper(), "bytes": len(data), "sha256": sha(data),
              "url": f"https://storage.googleapis.com/{DST_BUCKET}/{dest}"}
@@ -525,7 +537,7 @@ def main():
         def add2(dest, data, title, kind, year, fmt, removed=None):
             blob = dst.blob(dest)
             ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip"}.get(fmt, "application/octet-stream")
-            blob.upload_from_string(data, content_type=ctype)
+            blob.upload_from_string(data, content_type=ctype, timeout=900)
             e = {"title": title, "path": dest, "kind": kind, "year": year,
                  "format": fmt.upper(), "bytes": len(data), "sha256": sha(data),
                  "url": f"https://storage.googleapis.com/{DST_BUCKET}/{dest}"}
