@@ -20,6 +20,11 @@ Parse notes (the ways this goes wrong):
     page text ("UG [4 Years Program(s)]: Placement & higher studies…"), so
     headers and tables are zipped in page order and a count mismatch is a
     loud warning, not a guess.
+  - A placement table that starts at the foot of a page continues at the
+    top of the next one WITHOUT its header row (IIT Bombay 2025: the UG-5Y
+    table's header on page 1, its three rows on page 2). The continuation
+    is joined to the table before it — same column count, rows starting
+    with an academic year — instead of being dropped as an unknown table.
   - Median salary prints as '1300000(Thirteen Lakh )' — the leading integer
     is the value; the words are decoration.
   - '-' means "no such program that year", not zero. Kept as NULL.
@@ -161,6 +166,27 @@ def parse_pdf(path: Path, edition: int, disc: str,
 
     phd_ft = phd_pt = faculty = None
     placement_hdrs: list[str] = []
+    # the placement table a page ended on: (level_raw, level, wide)
+    carry: tuple | None = None
+
+    def add_placement_rows(rows, level_raw, level, wide):
+        for row in rows:
+            if not row[0] or not AY_RE.search(row[0]):
+                continue
+            if wide:
+                (ay_in, fy_intake, fy_adm, ay_lat, lat_adm,
+                 ay_grad, grad, placed, salary, higher) = row[:10]
+            else:
+                (ay_in, fy_intake, fy_adm,
+                 ay_grad, grad, placed, salary, higher) = row[:8]
+                ay_lat = lat_adm = None
+            placements.append([
+                edition, disc, inst_id, inst_name, level,
+                re.sub(r"\s+", " ", level_raw).strip(),
+                ay_in, to_int(fy_intake), to_int(fy_adm),
+                ay_lat, to_int(lat_adm),
+                ay_grad, to_int(grad), to_int(placed),
+                to_int(salary), to_int(higher)])
 
     for page in pdf.pages:
         text = page.extract_text() or ""
@@ -181,10 +207,17 @@ def parse_pdf(path: Path, edition: int, disc: str,
             if mm and phd_pt is None:
                 phd_pt = int(mm.group(1))
 
-        for table in page.extract_tables():
-            if not table or not table[0]:
-                continue
+        tables = [t for t in page.extract_tables() if t and t[0]]
+        last_placement = None
+        for ti, table in enumerate(tables):
             kind = classify(table)
+            # a headerless continuation of the last page's placement table
+            if (ti == 0 and carry and kind == "other"
+                    and len(table[0]) == (10 if carry[2] else 8)
+                    and AY_RE.search(table[0][0] or "")):
+                add_placement_rows(table, *carry)
+                carry = None
+                continue
             if kind == "intake":
                 ays = [c.strip() for c in table[0][1:] if c]
                 for row in table[1:]:
@@ -212,23 +245,11 @@ def parse_pdf(path: Path, edition: int, disc: str,
                           f"section header on page {page.page_number}")
                 level = norm_level(level_raw)
                 wide = len(table[0]) == 10  # has the lateral-entry AY pair
-                for row in table[1:]:
-                    if not row[0] or not AY_RE.search(row[0]):
-                        continue
-                    if wide:
-                        (ay_in, fy_intake, fy_adm, ay_lat, lat_adm,
-                         ay_grad, grad, placed, salary, higher) = row[:10]
-                    else:
-                        (ay_in, fy_intake, fy_adm,
-                         ay_grad, grad, placed, salary, higher) = row[:8]
-                        ay_lat = lat_adm = None
-                    placements.append([
-                        edition, disc, inst_id, inst_name, level,
-                        re.sub(r"\s+", " ", level_raw).strip(),
-                        ay_in, to_int(fy_intake), to_int(fy_adm),
-                        ay_lat, to_int(lat_adm),
-                        ay_grad, to_int(grad), to_int(placed),
-                        to_int(salary), to_int(higher)])
+                add_placement_rows(table[1:], level_raw, level, wide)
+                if ti == len(tables) - 1:
+                    last_placement = (level_raw, level, wide)
+        # only a placement table that ENDS the page can continue on the next
+        carry = last_placement
     if placement_hdrs:
         print(f"  WARN {path.name}: {len(placement_hdrs)} placement header(s) "
               f"had no matching table")

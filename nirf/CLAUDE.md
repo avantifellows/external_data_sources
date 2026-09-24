@@ -137,7 +137,7 @@ repo's `docs/schemas/external/nirf_*.yaml`.
 | `nirf_fact_master` | 90,707 | (institute, year, category, type, academic_year, metric) |
 | `nirf_fact_strength` | 186,012 | (institute, year, category, programme, metric) |
 | `nirf_fact_aggregate` | 31,717 | (institute, year, category, academic_year, type) |
-| `nirf_fact_dcs_placements` | 23,449 | (edition, discipline, institute, program level, graduating AY) |
+| `nirf_fact_dcs_placements` | 26,670 | (edition, discipline, institute, program level, graduating AY) |
 | `nirf_fact_dcs_intake` | 28,100 | (edition, discipline, institute, program level, AY) |
 | `nirf_fact_dcs_strength` | 8,394 | (edition, discipline, institute, program level) |
 | `nirf_fact_dcs_institution` | 3,119 | (edition, discipline, institute) |
