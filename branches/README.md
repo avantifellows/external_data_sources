@@ -1,9 +1,9 @@
 # branches/
 
 The branch taxonomy (the curated branch sheet) and the mapping that resolves
-every branch/programme string in our 17 cutoff sources to it. This is the
+every branch/programme string in our 18 cutoff sources to it. This is the
 join that lets "CSE" mean one thing across JoSAA, KCET, WBJEE, OJEE,
-MHT-CET, the EAPCETs, GUJCET, TNEA, KEAM, CLAT, NEET, JAC Chandigarh, AIIMS B.Sc. Nursing, ICAR-UG, UPTAC and the fees sheet —
+MHT-CET, the EAPCETs, GUJCET, TNEA, KEAM, CLAT, NEET, JAC Chandigarh, AIIMS B.Sc. Nursing, ICAR-UG, UPTAC, HBTU and the fees sheet —
 and the staging form of AFDB's `branch` dimension.
 
 ## Tables
@@ -12,7 +12,7 @@ and the staging form of AFDB's `branch` dimension.
   verbatim: ~103 parent branches (`is_parent`, `primary_branch_id` NULL)
   plus alias rows carrying raw spellings seen in sources. `vertical`
   groups parents (Engineering / Medical / …).
-- **`external_data_sources.exam_branch_mapping`** (1,695 rows) — one row
+- **`external_data_sources.exam_branch_mapping`** (1,715 rows) — one row
   per (exam, raw branch string): the string as printed, its cleaned form,
   and the PARENT `branch_id` it resolves to, with row/college counts as
   weight. 100% coverage — the build asserts it. `mapped_via` says whether

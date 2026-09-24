@@ -1,0 +1,5 @@
+# Raw report HTML — staged to GCS, not git.
+raw/
+clean/*.parquet
+.venv/
+__pycache__/
