@@ -340,6 +340,19 @@ STAT_DATASETS = [
         ("uptac/clean/uptac_fact_cutoffs.parquet", "uptac/extracted/uptac_cutoffs_2026.csv", "UPTAC 2026 — Opening and closing ranks by round, institute, branch and category", 2026),
      ]},
 
+    {"id": "nicorcr", "category": "admissions",
+     "title": "HBTU Kanpur B.Tech admissions (2024-2026)",
+     "blurb": "Opening and closing JEE Main ranks for every round, branch, quota and category of HBTU's own counselling: the reports as published, and the table parsed from them.",
+     "source": {"label": "hbtu.admissions.nic.in", "url": "https://hbtu.admissions.nic.in/or-cr/"},
+     "files": [
+        ("nicorcr/raw/hbtu_btech_2026.html", "HBTU 2026 — B.Tech opening and closing ranks, as published", "raw", 2026),
+        ("nicorcr/raw/hbtu_btech_2025.html", "HBTU 2025 — B.Tech opening and closing ranks, as published", "raw", 2025),
+        ("nicorcr/raw/hbtu_btech_2024.html", "HBTU 2024 — B.Tech opening and closing ranks, as published", "raw", 2024),
+     ],
+     "parquet_as_extracted": [
+        ("nicorcr/clean/nicorcr_fact_cutoffs.parquet", "nicorcr/extracted/hbtu_cutoffs_2024_2026.csv", "HBTU 2024-2026 — Opening and closing ranks by round, branch, quota and category", "2024-2026"),
+     ]},
+
     {"id": "iiser", "category": "admissions",
      "title": "IISER 2025 admissions (IAT)",
      "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",
@@ -492,7 +505,7 @@ def main():
 
     def add(dest, data, title, kind, year, fmt, removed=None):
         blob = dst.blob(dest)
-        ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip"}.get(fmt, "application/octet-stream")
+        ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip", "html": "text/html"}.get(fmt, "application/octet-stream")
         blob.upload_from_string(data, content_type=ctype, timeout=900)
         e = {"title": title, "path": dest, "kind": kind, "year": year,
              "format": fmt.upper(), "bytes": len(data), "sha256": sha(data),
@@ -547,7 +560,7 @@ def main():
 
         def add2(dest, data, title, kind, year, fmt, removed=None):
             blob = dst.blob(dest)
-            ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip"}.get(fmt, "application/octet-stream")
+            ctype = {"pdf": "application/pdf", "csv": "text/csv", "zip": "application/zip", "html": "text/html"}.get(fmt, "application/octet-stream")
             blob.upload_from_string(data, content_type=ctype, timeout=900)
             e = {"title": title, "path": dest, "kind": kind, "year": year,
                  "format": fmt.upper(), "bytes": len(data), "sha256": sha(data),

@@ -1,0 +1,30 @@
+# nicorcr_fact_cutoffs
+#
+# Source: NIC "Online Counselling System" OR-CR reports (admissions.nic.in),
+# one HTML report per board x programme x year, reached from the board's
+# own portal. Boards: HBTU Kanpur (B.Tech 2024-2026). MMMUT Gorakhpur uses
+# the same system but its reports returned HTTP 500 on 2026-09-25.
+#   raw:   gs://avantifellows-external-data/nicorcr/raw/<board>_<programme>_<year>.html
+#   clean: gs://avantifellows-external-data/nicorcr/clean/nicorcr_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.nicorcr_fact_cutoffs
+
+description: Opening / closing JEE Main CRL rank per board x year x round x programme x quota x category, from NIC-hosted university counsellings (HBTU).
+rows: 2183
+grain: (board, year, round, institute, programme_raw, quota, category_raw)
+
+columns:
+  - {name: board, type: STRING, mode: REQUIRED, description: "'HBTU'."}
+  - {name: year, type: INTEGER, mode: REQUIRED, description: "Counselling year (2024-2026)."}
+  - {name: programme_level, type: STRING, mode: REQUIRED, description: "'B.Tech'."}
+  - {name: round, type: STRING, mode: REQUIRED, description: "As printed: 'Round 1'…'Round 3', 'Additional Round 1/2' (2026), '2nd Phase Round 1' (2025), 'Additional Round' (2024)."}
+  - {name: institute, type: STRING, mode: REQUIRED, description: Institute as printed.}
+  - {name: programme_raw, type: STRING, mode: REQUIRED, description: "As printed ('COMPUTER SC. & ENGG. (TFW)')."}
+  - {name: programme, type: STRING, mode: REQUIRED, description: "Readable, seat-pool suffix removed ('Computer Science & Engineering')."}
+  - {name: tfw, type: BOOLEAN, mode: REQUIRED, description: "Tuition-fee-waiver seat ('(TFW)' / '(FW)' programme or TF category)."}
+  - {name: quota, type: STRING, mode: REQUIRED, description: "'Home State' (U.P. domicile) or 'All India'."}
+  - {name: category_raw, type: STRING, mode: REQUIRED, description: "As printed ('OPEN', 'BC(GIRL)', 'OPEN (TF)' …)."}
+  - {name: parent_category, type: STRING, mode: REQUIRED, description: "GEN, OBC, SC, ST, EWS, TFW."}
+  - {name: sub_category, type: STRING, mode: NULLABLE, description: "NULL, 'Female (UP)', 'Defence personnel ward', 'Freedom fighter dependant', 'Divyangjan' (same scheme as uptac_fact_cutoffs)."}
+  - {name: opening_rank, type: FLOAT, mode: REQUIRED, description: JEE Main CRL rank.}
+  - {name: closing_rank, type: FLOAT, mode: REQUIRED, description: JEE Main CRL rank.}
+  - {name: rank_basis, type: STRING, mode: REQUIRED, description: "Always 'JEE Main CRL rank'."}
