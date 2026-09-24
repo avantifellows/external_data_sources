@@ -27,6 +27,8 @@ BASE_URL = ("https://uptac.samarth.edu.in/index.php/cut-off-matrix/index?"
             "&PrgAdmissionCutOffSeatsSearch%5Bparent_programme_id%5D=&PrgAdmissionCutOffSeatsSearch%5Bprogramme_id%5D="
             "&PrgAdmissionCutOffSeatsSearch%5Bcategory_id%5D=")
 
+YEAR = 2026  # the counselling session the grid publishes
+
 GCS_BUCKET = "avantifellows-external-data"
 GCS_PREFIX = "uptac"
 

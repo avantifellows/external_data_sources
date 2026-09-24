@@ -49,7 +49,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import CLEAN, GCS_BUCKET, GCS_PREFIX, PAGES, RAW, TABLES
+from sources import CLEAN, GCS_BUCKET, GCS_PREFIX, PAGES, RAW, TABLES, YEAR
 
 COLS = ["sr_no", "round_label", "institute", "programme", "branch_raw", "category_raw",
         "seat_gender", "exam", "opening_rank", "closing_rank", "min_score", "max_score", "remark"]
@@ -176,6 +176,7 @@ def build(df: pd.DataFrame) -> pd.DataFrame:
     assert not bad, f"unknown category codes: {bad}"
     shift = df.branch_raw.str.extract(SHIFT)[0]
     out = pd.DataFrame({
+        "year": YEAR,
         "round_label": df.round_label,
         "round_no": df.round_label.str.extract(r"^R(\d+)")[0].astype("Int64"),
         "institute_raw": df.institute.str.replace(r"\s+", " ", regex=True).str.strip(),

@@ -17,6 +17,7 @@ rows: 27047
 grain: (round_label, institute_raw, programme, branch_raw, category_raw, seat_gender, exam)
 
 columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: Counselling session (2026).}
   - {name: round_label, type: STRING, mode: REQUIRED, description: "As printed: 'R1: First Round' … 'R4: Fourth Round', 'R6: Special Round'."}
   - {name: round_no, type: INTEGER, mode: NULLABLE, description: "Number from the label (6 = special round)."}
   - {name: institute_raw, type: STRING, mode: REQUIRED, description: Institute as printed (mostly capitals).}
