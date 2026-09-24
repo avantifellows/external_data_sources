@@ -1,0 +1,6 @@
+# Raw HTML pages + their zip — staged to GCS, not git.
+raw/
+# Parsed parquet — regenerable via build_clean.py.
+clean/*.parquet
+.venv/
+__pycache__/

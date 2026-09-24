@@ -1,0 +1,42 @@
+# uptac_fact_cutoffs
+#
+# Source: UPTAC (Uttar Pradesh Technical Admission Counselling, run by
+# AKTU) public OR-CR "cut-off matrix", uptac.samarth.edu.in, all rounds and
+# programmes, fetched as HTML pages (raw zip in GCS). 2026 counselling.
+#   raw:   gs://avantifellows-external-data/uptac/raw/uptac_orcr_pages_<date>.zip
+#   clean: gs://avantifellows-external-data/uptac/clean/uptac_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.uptac_fact_cutoffs
+#
+# Category codes per the UPTAC 2025-26 Information Brochure §5. Domicile per
+# the counselling procedure: regular rounds are for U.P. candidates (passed
+# 12th in U.P. or parents domiciled in U.P.); special rounds open the open-
+# category seats to all.
+
+description: UPTAC 2026 opening / closing rank (and score where applicable) per round x institute x programme x branch x category x seat gender x exam.
+rows: 27047
+grain: (round_label, institute_raw, programme, branch_raw, category_raw, seat_gender, exam)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: Counselling session (2026).}
+  - {name: round_label, type: STRING, mode: REQUIRED, description: "As printed: 'R1: First Round' … 'R4: Fourth Round', 'R6: Special Round'."}
+  - {name: round_no, type: INTEGER, mode: NULLABLE, description: "Number from the label (6 = special round)."}
+  - {name: institute_raw, type: STRING, mode: REQUIRED, description: Institute as printed (mostly capitals).}
+  - {name: institute, type: STRING, mode: REQUIRED, description: "Readable display name ('Kamla Nehru Institute of Technology, Sultanpur')."}
+  - {name: programme, type: STRING, mode: REQUIRED, description: "'B.Tech (All Branches)/M.Tech (Integrated)', 'Bachelor of Architecture(B.Arch)', 'Master of Computer Application(MCA)', …"}
+  - {name: branch_raw, type: STRING, mode: REQUIRED, description: "As printed, incl. '(Shift I)', '(FW)', '(Self Finance)'."}
+  - {name: branch, type: STRING, mode: REQUIRED, description: "Without seat-pool suffixes; specialisations kept ('Computer Science and Engineering (Data Science)')."}
+  - {name: shift, type: STRING, mode: NULLABLE, description: "'Shift I' where printed (the regular intake)."}
+  - {name: tfw, type: BOOLEAN, mode: REQUIRED, description: "Tuition-fee-waiver seat ((FW) branch or TFW category)."}
+  - {name: seat_pool, type: STRING, mode: NULLABLE, description: "'Self finance' or 'Collaboration / twinning' where the branch name says so."}
+  - {name: category_raw, type: STRING, mode: REQUIRED, description: "Code as printed: parent (OP, BC, SC, ST, EWS) + sub-category (NO, GL, FF, AF, PH), or TFW."}
+  - {name: parent_category, type: STRING, mode: REQUIRED, description: "GEN (OP), OBC (BC), SC, ST, EWS, TFW."}
+  - {name: sub_category, type: STRING, mode: NULLABLE, description: "NULL (NO), 'Female (UP)' (GL, up to 20%), 'Freedom fighter dependant' (FF, 2%), 'Defence personnel ward' (AF, 5%), 'Divyangjan' (PH, 5%)."}
+  - {name: seat_gender, type: STRING, mode: REQUIRED, description: "'Co-Education', 'WOMEN', or '(not set)' (non-B.Tech programmes)."}
+  - {name: exam, type: STRING, mode: REQUIRED, description: "As printed: 'JEE-MAIN', 'jee-main', 'BOARD', 'cuet-ug', 'cuet-pg', 'NATA', 'JEE-PAPER-II', 'UCEED', '-'."}
+  - {name: rank_basis, type: STRING, mode: REQUIRED, description: "'JEE Main rank' | 'UPTAC round merit rank' (remark 'UPTAC ROUND III/VI RANK': seats filled on Class 12 marks, CUET, NATA, JEE Paper 2 — UPTAC's own list) | 'unspecified'. Never compare ranks across bases."}
+  - {name: opening_rank, type: FLOAT, mode: NULLABLE, description: "NULL when no one was allotted ('-')."}
+  - {name: closing_rank, type: FLOAT, mode: NULLABLE, description: "NULL when no one was allotted."}
+  - {name: min_score, type: FLOAT, mode: NULLABLE, description: "Where the seat was filled on a score (Class 12 %, CUET, NATA …)."}
+  - {name: max_score, type: FLOAT, mode: NULLABLE, description: "As above."}
+  - {name: remark, type: STRING, mode: NULLABLE, description: "As printed ('JEE MAIN RANK', 'UPTAC ROUND VI RANK', …)."}
+  - {name: allotted, type: BOOLEAN, mode: REQUIRED, description: "Someone was allotted this cell this round."}
