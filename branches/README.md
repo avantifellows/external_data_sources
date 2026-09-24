@@ -8,8 +8,8 @@ and the staging form of AFDB's `branch` dimension.
 
 ## Tables
 
-- **`external_data_sources.branch_dim`** (635 rows) — the taxonomy
-  verbatim: ~100 parent branches (`is_parent`, `primary_branch_id` NULL)
+- **`external_data_sources.branch_dim`** (641 rows) — the taxonomy
+  verbatim: ~103 parent branches (`is_parent`, `primary_branch_id` NULL)
   plus alias rows carrying raw spellings seen in sources. `vertical`
   groups parents (Engineering / Medical / …).
 - **`external_data_sources.exam_branch_mapping`** (1,627 rows) — one row
@@ -24,7 +24,7 @@ across exams.
 
 ## Source & refresh
 
-Everything derives from the "branch" Google Sheet
+The taxonomy comes live from the "Branch" tab of the curated "branch" Google Sheet; the one-off curated mapping of 564 strings is the committed snapshot `evidence/branches_to_map_filled.csv` (the tab has left the sheet). Originally everything derived from the "branch" Google Sheet
 (`1PAMMolYuj5ThYVoRiJeMv_ByqwTk-cf_NDFN8kiIrL0`, tabs addressed by title —
 gids rotate). `scripts/build_and_load.py` snapshots the sheet to `raw/`,
 rebuilds both tables, uploads to GCS and WRITE_TRUNCATEs BigQuery. The
@@ -35,4 +35,5 @@ branch-mapping notes in `evidence/branches_to_map_notes.md` for the
 column-per-table list.
 
 Known history: the sheet's CIVILENG020 was assigned twice; fixed in-sheet
-(Structural Engineering → CIVILENG025, 2026-09-02).
+(Structural Engineering → CIVILENG025, 2026-09-02). A later edit of the sheet brought the old id back;
+`build_and_load.py` re-applies that one fix (KNOWN_SHEET_FIXES) and prints it.
