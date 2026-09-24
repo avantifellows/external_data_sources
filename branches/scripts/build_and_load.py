@@ -10,7 +10,9 @@ by TITLE, the gids rotate when he edits:
                    parent). 635 rows, ~100 parents, ids unique (the
                    CIVILENG020 duplicate was fixed in-sheet 2026-09-02).
   branches_to_map  the curated mapping of the 564 cutoff-table strings the
-                   taxonomy didn't cover (filled Sep 2026, all valid).
+                   taxonomy didn't cover (filled Sep 2026, all valid). The
+                   tab has since left the sheet; its snapshot is committed
+                   as evidence/branches_to_map_filled.csv and read from there.
 
 exam_branch_mapping is the JOIN PRODUCT: every distinct branch/programme
 string in our 13 cutoff sources (JoSAA, KCET, MHT-CET, TG/AP-EAPCET,
@@ -59,13 +61,25 @@ def fetch_sheet():
         df = pd.DataFrame(vals[1:], columns=vals[0]).replace("", pd.NA)
         return df.dropna(how="all")
 
-    return tab("Branch"), tab("branches_to_map")
+    # the curated mapping was a one-off, finished job: read its committed
+    # snapshot, not a tab that can move (it left the sheet in Sep 2026)
+    return tab("Branch"), pd.read_csv(ROOT / "evidence/branches_to_map_filled.csv")
 
 
 def main() -> None:
     stamp = datetime.date.today().isoformat()
     branch, to_map = fetch_sheet()
     branch = branch[[c for c in branch.columns if c]]  # drop unnamed spill cols
+    # Known sheet slips, corrected here by exact match and printed; any other
+    # duplicate id still fails below. Structural Engineering was re-id'd
+    # CIVILENG020 -> CIVILENG025 on 2026-09-02 (CIVILENG020 is Transportation
+    # Engineering); a later edit of the sheet brought the old id back.
+    KNOWN_SHEET_FIXES = [("CIVILENG020", "Structural Engineering", "CIVILENG025")]
+    for bid, name, fixed in KNOWN_SHEET_FIXES:
+        hit = (branch.branch_id == bid) & (branch.branch_name == name)
+        if hit.any() and not (branch.branch_id == fixed).any():
+            branch.loc[hit, "branch_id"] = fixed
+            print(f"  sheet fix: {name} {bid} -> {fixed}")
     assert branch.branch_id.is_unique, "duplicate branch_id in the sheet"
 
     dim = branch.assign(
