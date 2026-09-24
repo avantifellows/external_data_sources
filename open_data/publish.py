@@ -329,6 +329,17 @@ STAT_DATASETS = [
         ("bhuug/clean/bhuug_fact_cutoffs.parquet", "bhuug/extracted/bhuug_cutoffs_2025.csv", "BHU UG 2025 — Minimum score by round, programme, faculty/college and category", 2025),
      ]},
 
+    {"id": "uptac", "category": "admissions",
+     "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
+     "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",
+     "source": {"label": "uptac.samarth.edu.in", "url": "https://uptac.samarth.edu.in/index.php/cut-off-matrix/index"},
+     "files": [
+        ("uptac/raw/uptac_orcr_pages_2026-09-25.zip", "UPTAC 2026 — OR-CR pages, as published", "raw", 2026),
+     ],
+     "parquet_as_extracted": [
+        ("uptac/clean/uptac_fact_cutoffs.parquet", "uptac/extracted/uptac_cutoffs_2026.csv", "UPTAC 2026 — Opening and closing ranks by round, institute, branch and category", 2026),
+     ]},
+
     {"id": "iiser", "category": "admissions",
      "title": "IISER 2025 admissions (IAT)",
      "blurb": "Round-wise closing ranks for BS-MS, BS and B.Tech at the seven IISERs: the admissions site's closing-rank page and the extracted table.",
