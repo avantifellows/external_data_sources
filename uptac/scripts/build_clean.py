@@ -80,6 +80,7 @@ def display_name(raw: str) -> str:
     s = re.sub(r"\s*,\s*", ", ", s)
     s = re.sub(r"(, ([A-Z][A-Z .]+))(, \2)+$", r"\1", s)  # "…, MEERUT, MEERUT"
     s = re.sub(r"\b((?:[A-Z]\.)+)(?=[A-Z]{2,})", r"\1 ", s)  # "S.R.INSTITUTE"
+    s = re.sub(r"\b(ENGG|INSTT|INST|TECH|MGMT|MGT)\.(?=[A-Za-z])", r"\1. ", s)  # "ENGG.COLLEGE"
     # case is decided per comma part: "LUCKNOW PUBLIC COLLEGE…, Lucknow"
     return ", ".join(_caps_part(part) if part.upper() == part else part
                      for part in s.split(", "))
