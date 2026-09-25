@@ -390,7 +390,7 @@ STAT_DATASETS = [
      ]},
     {"id": "nirf", "category": "education-statistics",
      "title": "NIRF rankings and institute metrics",
-     "blurb": "National Institutional Ranking Framework: ranks, bands and scores by category and year, plus the placement, salary, intake and student-strength figures institutes file — parsed first-party from NIRF's own pages and per-institute PDFs for Engineering, Medical, University and College.",
+     "blurb": "National Institutional Ranking Framework: ranks, bands and scores by category and year, plus the placement, salary, intake and student-strength figures institutes file — parsed first-party from NIRF's own pages and per-institute PDFs for Engineering, Medical, University, College and Law.",
      "source": {"label": "nirfindia.org", "url": "https://www.nirfindia.org/"},
      "files": [
         ("nirf/raw/dcs/ranking_pages.zip", "NIRF — Ranking, band and participant pages, as published", "raw", "2016-2025"),
@@ -401,7 +401,8 @@ STAT_DATASETS = [
         (f"nirf/raw/dcs/dcs_pdfs_{d.lower()}_", f"nirf/raw/dcs/dcs_pdfs_{d.lower()}_2019-2025.zip",
          f"NIRF — Institute data-submission PDFs, {label}", "2019-2025")
         for d, label in [("Engineering", "Engineering"), ("Medical", "Medical"),
-                         ("University", "University track"), ("College", "College (degree colleges)")]
+                         ("University", "University track"), ("College", "College (degree colleges)"),
+                         ("Law", "Law")]
      ],
      # NOT published: nirf_aggregate (a derived pivot of master — policy says
      # derived artifacts stay out) and the Dataful strength extract for the
