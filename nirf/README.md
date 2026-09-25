@@ -6,7 +6,7 @@ Rankings, admissions/placements, and student-strength data for ~7,500
 institutes across 9 disciplines, 2016–2025 — plus a **first-party pipeline**
 (Aug–Sep 2026) that fetches NIRF's own ranking pages and per-institute
 "Data Submitted by Institution" (DCS) PDFs for **Engineering, Medical,
-University and College**, 2019–2025 editions. For those four lists the
+University, College and Law**, 2019–2025 editions. For those five lists the
 rankings rows and the `nirf_fact_dcs_*` tables come straight from
 nirfindia.org; every other category still carries the Dataful vintage.
 
@@ -17,7 +17,7 @@ known coverage limits that are not visible in the tables themselves.
 ## Pipeline at a glance
 
 ```
-Dataful vintage                          First-party (Engg, Medical, Univ, College)
+Dataful vintage                          First-party (Engg, Med, Univ, College, Law)
 nirf/raw/*.parquet                       nirfindia.org ranking pages + DCS PDFs
 (local; gitignored)                             │ scripts/fetch_dcs.py   → raw/dcs/
        │                                        │ scripts/parse_dcs.py   → extracted/*.csv
@@ -42,7 +42,7 @@ objects and the BQ tables are byte-identical.
 
 | Table | Rows | Grain | Built from |
 |---|---:|---|---|
-| `nirf_fact_rankings`  | 10,707  | (institute, year, category); band rows key on (name, city) | Dataful for most categories; **first-party pages for Engineering, Medical, University, College** (adds `rank_raw`, `rank_band`, `record_source`) |
+| `nirf_fact_rankings`  | 10,707  | (institute, year, category); band rows key on (name, city) | Dataful for most categories; **first-party pages for Engineering, Medical, University, College, Law** (adds `rank_raw`, `rank_band`, `record_source`) |
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
 | `nirf_fact_aggregate` | 31,717  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
@@ -105,11 +105,12 @@ and identity, not correctness.
 Duplicate rows — which inflated every measure in `nirf_fact_aggregate` — **are
 fixed** by `build_clean.py`; see below.
 
-### The escape hatch — BUILT for Engineering, Medical, University, College
+### The escape hatch — BUILT for Engineering, Medical, University, College, Law
 
 `fetch_dcs.py` + `parse_dcs.py` implement the first-party pipeline for
 Engineering + Medical (Aug 2026), then University (Aug 2026) and College
-(Sep 2026, for DU and other degree colleges). Each list is one entry in
+(Sep 2026, for DU and other degree colleges), then Law (Sep 2026, so the
+NLU cards get placements). Each list is one entry in
 `DISCIPLINES`. What the build established:
 
 - **Rankings**: `Rankings/<year>/<Category>Ranking.html` parsed for Engineering
@@ -123,7 +124,7 @@ Engineering + Medical (Aug 2026), then University (Aug 2026) and College
   rank-band and formerly-ranked institutes have live-but-unlinked PDFs (PEC,
   NIT Uttarakhand, NIT Sikkim 404 on every page yet serve 2025 PDFs). Discovery
   is probe-by-candidate-id: 4-byte range GETs (the CDN 404s on HEAD).
-  1,385 Engineering + 320 Medical + 714 University + 700 College PDFs, all
+  1,385 Engineering + 320 Medical + 714 University + 700 College + 205 Law PDFs, all
   parsed with zero warnings.
 - **The CDN rate-limits**: hammer it and every URL starts 404ing for a few
   minutes — indistinguishable from "not on CDN". `fetch_dcs.py` probes a
@@ -251,7 +252,7 @@ to preview without side effects.
 leave half-loaded tables, and the old data is recoverable for 7 days via BQ
 time travel.
 
-For **Engineering, Medical, University and College** there is a supported refresh: when NIRF
+For **Engineering, Medical, University, College and Law** there is a supported refresh: when NIRF
 2026 lands, extend `page_years`/`cdn_years` in `fetch_dcs.py`, then
 
 ```bash

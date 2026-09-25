@@ -14,11 +14,11 @@ across 9 disciplines, 2016 → 2025. Upstream publishes annually at
 
 Two provenances coexist here (see README → Data provenance):
 
-- **First-party (Engineering, Medical, University, College)**: `fetch_dcs.py` downloads NIRF's own
+- **First-party (Engineering, Medical, University, College, Law)**: `fetch_dcs.py` downloads NIRF's own
   ranking/band pages and per-institute DCS PDFs (2019–2025 editions);
   `parse_dcs.py` turns them into `extracted/*.csv`. These feed the five
   `nirf_*dcs*`/`nirf_dim_participants` tables AND replace the Dataful rows
-  inside `nirf_fact_rankings` for those four categories
+  inside `nirf_fact_rankings` for those five categories
   (`record_source = 'nirfindia.org'`).
 - **Dataful vintage (everything else)**: `raw/*.parquet` is Dataful.in's
   scrape of NIRF's PDFs, further transformed by a `build_data.py` that no
@@ -38,6 +38,8 @@ DCS-table gotchas that bite queries:
 - College PDFs exist only for the ranked top 100 per edition; band colleges
   (101–300) have ranking rows but no DCS rows. College ids end in the AISHE
   code (`IR-C-C-6355` = Miranda House, C-6355).
+- Law ranks only a short top list (15–40 per edition) with no band
+  pages; its placements are `program_level = 'UG-5Y'` (the integrated LLB).
 - A NIRF page typo that breaks a grain goes in `KNOWN_SOURCE_TYPOS`
   (`build_clean.py`), dropped by exact match and printed. Never relax the
   conflict check instead.
