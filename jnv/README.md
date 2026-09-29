@@ -125,7 +125,12 @@ explodes to one row per (student, attempt_year). The Avanti fk is a **tiered
 name+DOB(+father) match against `dim_student`** (direct-id → name+dob →
 name+dob-swapped → name+father → strong-name → fuzzy-name → 10th-roll fill), with
 a name gate on the direct-id crosswalks and ambiguous matches withheld
-(precision-first). **It runs entirely in pandas**: the sources are read from BQ
+(precision-first). Ambiguity is checked in **both directions**: after matching,
+an Avanti id claimed by more than one component either merges them (complementary
+stages, one consistent journey — e.g. a 10th-board component and a JEE component
+no roll bridge joined) or stays only with the best-tier claimant, the rest marked
+`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). So an
+fk sits on exactly one `student_key`, and the build asserts it. **It runs entirely in pandas**: the sources are read from BQ
 already aggregated, resolution happens as DataFrame merges, and the finished
 table is uploaded (no server-side CTE graph → no planner-complexity errors). One
 in-memory pass builds **all cohorts** (2021–2028); there is no per-year flag.
