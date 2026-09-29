@@ -1434,6 +1434,104 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     return out
 
 
+# Tier order of _match_fk_v2's match_confidence values, best first — used to rank
+# the claimants of one Avanti id in _reconcile_shared_fk.
+_CONF_PRI = {"direct_student_id": 1, "name_dob": 2, "name_dob_swapped": 3, "name_father": 4,
+             "name_dob_strong": 5, "name_dob_fuzzy": 6, "roll10_crosswalk": 7,
+             "prod_nta_crosswalk": _PROD_NTA_PRI}
+
+
+def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) -> tuple:
+    """STEP 6b — enforce ONE student_key per Avanti id.
+
+    _match_fk_v2 withholds an fk when one student matches >1 Avanti id, but never
+    checked the reverse: one Avanti id claimed by >1 student_key. Measured on the
+    live table 2026-09-29, 2,968 ids were claimed twice or more, in two shapes:
+
+      • COMPLEMENTARY — e.g. a b10 component and a jee component that no roll/app
+        bridge joined (JEE-2025 nameless rows reached only by prod_nta_crosswalk).
+        Same person, split by the over-split posture. Left alone, every consumer
+        counting student_key counts them twice. → MERGED into one student_key.
+      • CONFLICTING — two records of the SAME stage (two 10th-board rolls, often at
+        different schools) each matched to the one id, e.g. two "KAJAL, 2008-07-16".
+        At most one is the Avanti student. → the id stays with the claimant of the
+        strictly best tier; the others lose it (match_confidence='shared_fk_conflict').
+        If the best tier is itself a tie between conflicting claimants, nobody keeps
+        it — precision-first, as for forward ambiguity.
+
+    Claimants are taken best tier first. Each is merged in only if it adds stages the
+    accepted set does not already have AND its years fit one journey (every pre-entrance
+    stage implies the same cohort_year; no entrance sitting before that cohort).
+
+    Returns (key, fk_df) with merged student_keys remapped (root = smallest key, as in
+    _cluster) and fk_df re-keyed to one row per surviving student_key."""
+    n2k = key.set_index("node_id")["student_key"]
+    prof = {}   # student_key -> {"stages": set, "cohort": set, "entrance": set}
+    for st in STAGES:
+        df = nodes[st]
+        yr = pd.to_numeric(df.yr, errors="coerce")
+        for sk, y in zip(df.node_id.map(n2k), yr):
+            p = prof.setdefault(sk, {"stages": set(), "cohort": set(), "entrance": set()})
+            p["stages"].add(st)
+            if pd.isna(y):
+                continue
+            if st in ("jee", "neet"):
+                p["entrance"].add(int(y))
+            else:
+                p["cohort"].add(int(y) + (0 if st == "b12" else 2))
+
+    def fits(acc, p):
+        if acc["stages"] & p["stages"]:
+            return False
+        cohort = acc["cohort"] | p["cohort"]
+        if len(cohort) > 1:
+            return False
+        ent = acc["entrance"] | p["entrance"]
+        return not (cohort and ent and min(ent) < min(cohort))
+
+    has = fk_df[fk_df.fk_avanti_student_id.notna()].copy()
+    has["pri"] = has.match_confidence.map(_CONF_PRI).fillna(99)
+    shared = has[has.duplicated("fk_avanti_student_id", keep=False)]
+
+    remap, conflict = {}, set()
+    for _, g in shared.sort_values(["pri", "student_key"]).groupby("fk_avanti_student_id"):
+        keys, pris = g.student_key.tolist(), g.pri.tolist()
+        acc = {f: set(v) for f, v in prof[keys[0]].items()}
+        accepted, rejected = [keys[0]], []
+        for k, pr in zip(keys[1:], pris[1:]):
+            if fits(acc, prof[k]):
+                accepted.append(k)
+                for f in acc:
+                    acc[f] |= prof[k][f]
+            else:
+                rejected.append((k, pr))
+        if any(pr == pris[0] for _, pr in rejected):
+            conflict.update(keys)                    # tie at the best tier → nobody keeps it
+            continue
+        conflict.update(k for k, _ in rejected)
+        root = min(accepted)
+        remap.update({k: root for k in accepted if k != root})
+
+    key = key.assign(student_key=key.student_key.replace(remap))
+    fk_df = fk_df.copy()
+    lost = fk_df.student_key.isin(conflict)
+    fk_df.loc[lost, "fk_avanti_student_id"] = pd.NA
+    fk_df.loc[lost, "match_confidence"] = "shared_fk_conflict"
+    fk_df["student_key"] = fk_df.student_key.replace(remap)
+    # a merged student keeps its best-tier match (the root's own row may not be the best)
+    fk_df["pri"] = fk_df.match_confidence.map(_CONF_PRI).fillna(99)
+    fk_df = (fk_df.sort_values(["student_key", "pri"]).drop_duplicates("student_key")
+                  .drop(columns="pri"))
+
+    print(f"  step 6b — Avanti ids claimed by >1 student_key: "
+          f"{shared.fk_avanti_student_id.nunique():,}; merged {len(remap):,} components into "
+          f"their id's student; withheld the id from {len(conflict):,} conflicting claimants")
+    left = fk_df.loc[fk_df.fk_avanti_student_id.notna(), "fk_avanti_student_id"]
+    if left.duplicated().any():
+        raise AssertionError(f"{int(left.duplicated().sum())} Avanti ids still sit on >1 student_key")
+    return key, fk_df
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 7 — outcome / marks payload (ported from v1's _read_marks + _enrich)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1541,7 +1639,15 @@ def _one_per_student(assigned: pd.DataFrame, val_cols: list[str]) -> pd.DataFram
 def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataFrame,
                 avanti_all: pd.DataFrame, all_ids: set, ncst24: pd.DataFrame,
                 marks: dict, dim_pt: pd.DataFrame, prod_nta: dict) -> pd.DataFrame:
+    # ── STEP 6 — Avanti fk via v2's own tiered matcher (not the source-table passthrough),
+    # then 6b: one student_key per Avanti id. 6b can MERGE components, so it runs before
+    # anything below is keyed on student_key, and `sid` is rebuilt on the merged keys.
     n2k = key.set_index("node_id")["student_key"]
+    sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
+    fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids)
+    key, fk_df = _reconcile_shared_fk(nodes, key, fk_df)
+    n2k = key.set_index("node_id")["student_key"]
+    sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
 
     def assign(stage):
         df = nodes[stage].copy()
@@ -1574,10 +1680,6 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     jee_a = pick_entrance(jee, "jee")
     neet_a = pick_entrance(neet, "neet")
     attempts = jee_a.merge(neet_a, on=["student_key", "attempt_year"], how="outer")
-
-    # ── STEP 6 — Avanti fk via v2's own tiered matcher (not the source-table passthrough) ──
-    sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
-    fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids)
 
     # resolved per-student identity (name / parents / dob) for the output — the
     # SAME source-coalesced values the STEP-6 matcher used (see _build_sid), so
