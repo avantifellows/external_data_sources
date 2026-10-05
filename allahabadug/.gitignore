@@ -1,0 +1,8 @@
+# Notices, guideline and the reviewed transcription: staged to GCS, not git.
+raw/*.pdf
+extracted/*.csv
+extracted/*.txt
+# Parsed parquet: regenerable via build_clean.py.
+clean/*.parquet
+.venv/
+__pycache__/
