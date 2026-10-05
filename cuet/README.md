@@ -16,12 +16,13 @@ python3 scripts/load_bq.py          # WRITE_TRUNCATE into BigQuery
 
 ## Tables
 
-- **`cuet_dim_merit_rules`** (40 rows: DU 25, BHU 8, Allahabad 7) — per rule: the papers
+- **`cuet_dim_merit_rules`** (53 rows: DU 25, CUSB 13, BHU 8, Allahabad 7) — per rule: the papers
   as text and as JSON combinations, `max_score`, `prorated`,
   `needs_language`, and where the bulletin prints it (`source_ref`).
-- **`cuet_dim_program_rules`** (694 rows: DU 334, BHU 351, Allahabad 9) —
-  every course string of `ducuet_fact_cutoffs.program_name` /
-  `bhuug_fact_cutoffs.program` / `allahabadug_fact_cutoffs.program` → `rule_id`.
+- **`cuet_dim_program_rules`** (717 rows: DU 334, BHU 351, CUSB 23,
+  Allahabad 9) — every course string of `ducuet_fact_cutoffs.program_name` /
+  `bhuug_fact_cutoffs.program` / `allahabadug_fact_cutoffs.program` /
+  `cusbug_fact_cutoffs.program` → `rule_id`.
 
 ## Sources
 
@@ -29,6 +30,7 @@ python3 scripts/load_bq.py          # WRITE_TRUNCATE into BigQuery
 |---|---|---|
 | `du_ug_bulletin_2025.pdf` | DU | Bulletin of Information, UG 2025-26: a "Program Specific Eligibility" box per course — https://www.du.ac.in/uploads/07032025_UG-BOI_compressed.pdf |
 | `allahabad_ug_guidelines_2025.pdf` | ALD | University of Allahabad, guidelines and eligibility criteria for UG programmes (merit papers per programme) — https://allduniv.ac.in/upload/file_collection/GuidelinesEligibilityRevised.pdf |
+| `cusb_ug_eligibility_2025.pdf` | CUSB | Central University of South Bihar, Annexure I: CUET papers per UG programme — https://www.cusb.ac.in/images/2025/admission_25/ug/rev_intake.pdf |
 | `bhu_ug_cuet_eligibility_2025.pdf` | BHU | UG programmes and CUET subjects 2025 (19 numbered entries) — https://www.bhu.ac.in/Images/files/BHU_UG_CUET_Program_Course_Eligibility_Criteria_2025.pdf |
 
 The rules themselves are code (`scripts/rules.py`), transcribed by hand from
