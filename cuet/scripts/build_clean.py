@@ -36,7 +36,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from rules import (LANGUAGES, PAPER_LABEL, PAPER_SCORE_MAX, RULE_OF, RULES,
-                   SUBJECTS, ZERO_IF_MISSING)
+                   SCALE_TO, SUBJECTS, ZERO_IF_MISSING)
 from sources import (BULLETIN, CLEAN, CUTOFF_SOURCES, GCS_BUCKET, RAW,
                      RAW_FILES, TABLES, YEAR)
 
@@ -108,7 +108,10 @@ def build_rules() -> pd.DataFrame:
             "papers": text[0].upper() + text[1:],
             "combinations_json": json.dumps([[slot_json(s) for s in c] for c in combos]),
             "n_combinations": len(combos),
-            "max_score": max(sizes) * PAPER_SCORE_MAX,
+            # the scale the printed cut-offs use: the paper total, or that
+            # total rescaled (JNU: of 500 -> of 100)
+            "max_score": SCALE_TO.get(rid, max(sizes) * PAPER_SCORE_MAX),
+            "papers_max": max(sizes) * PAPER_SCORE_MAX,
             "prorated": len(sizes) > 1,
             "needs_language": needs_lang,
             "missing_counts_zero": rid in ZERO_IF_MISSING,

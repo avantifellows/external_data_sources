@@ -2431,3 +2431,22 @@ CUSB-CUET,5 Year Integrated UG-PG in Political Science and International Relatio
 CUSB-CUET,5 Year Integrated UG-PG in Psychology,5 Year Integrated UG-PG in Psychology,12,1,taxonomy parent by name,PSYCH,,
 CUSB-CUET,5 Year Integrated UG-PG in Sociology,5 Year Integrated UG-PG in Sociology,7,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
 CUSB-CUET,5 Year Integrated UG-PG in Statistics,5 Year Integrated UG-PG in Statistics,10,1,taxonomy parent by name,MATH,,
+JNU-CUET,B.A. (Hons.) Arabic,B.A. (Hons.) Arabic,23,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Chinese,B.A. (Hons.) Chinese,32,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) French,B.A. (Hons.) French,30,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) German,B.A. (Hons.) German,34,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Japanese,B.A. (Hons.) Japanese,28,1,"nearest parent, needs review",JAPANESE,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Korean,B.A. (Hons.) Korean,26,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Pashto,B.A. (Hons.) Pashto,21,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Persian,B.A. (Hons.) Persian,25,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Russian,B.A. (Hons.) Russian,31,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JNU-CUET,B.A. (Hons.) Spanish,B.A. (Hons.) Spanish,29,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): foreign-language B.A. -> ARTS (JAPANESE where it exists)
+JMI-CUET,B.A. (Hons.) French & Francophone Studies,B.A. (Hons.) French & Francophone Studies,12,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.A. (Hons.) Hindi,B.A. (Hons.) Hindi,11,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.A. (Hons.) Korean Language,B.A. (Hons.) Korean Language,15,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.A. (Hons.) Sanskrit,B.A. (Hons.) Sanskrit,1,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.A. (Hons.) Spanish & Latin American Studies,B.A. (Hons.) Spanish & Latin American Studies,16,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.A. (Hons.) Turkish Language & Literature,B.A. (Hons.) Turkish Language & Literature,12,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.A. (Hons.) Urdu,B.A. (Hons.) Urdu,15,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+JMI-CUET,B.Sc. (Hons.) Applied Mathematics,B.Sc. (Hons.) Applied Mathematics,17,1,taxonomy parent by name,MATH,,
+JMI-CUET,B.Sc. (Multidisciplinary),B.Sc. (Multidisciplinary),19,1,"nearest parent, needs review",GENSCI,,provisional (for Amogh): mapped by the course's main subject
