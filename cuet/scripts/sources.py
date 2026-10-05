@@ -10,7 +10,7 @@ counts. The rules are read from each university's own bulletin
 strings of that university's cutoff fact.
 
 Raw: the bulletins as published.
-Course strings: the clean facts of the cutoff sources (ducuet, bhuug, allahabadug),
+Course strings: the clean facts of the cutoff sources (ducuet, bhuug, allahabadug, cusbug),
 fetched from GCS.
 
 GCS layout:
@@ -65,6 +65,8 @@ RAW_FILES = [
     # and B.Com
     RawFile("allahabad_ug_guidelines_2025.pdf", "ALD",
             "https://allduniv.ac.in/upload/file_collection/GuidelinesEligibilityRevised.pdf"),
+    RawFile("cusb_ug_eligibility_2025.pdf", "CUSB",
+            "https://www.cusb.ac.in/images/2025/admission_25/ug/rev_intake.pdf"),
 ]
 BULLETIN = {rf.university: rf for rf in RAW_FILES}
 
@@ -84,6 +86,8 @@ CUTOFF_SOURCES = [
     CutoffSource("BHU", "bhuug/clean/bhuug_fact_cutoffs.parquet",
                  "program", "min_score"),
     CutoffSource("ALD", "allahabadug/clean/allahabadug_fact_cutoffs.parquet",
+                 "program", "cutoff"),
+    CutoffSource("CUSB", "cusbug/clean/cusbug_fact_cutoffs.parquet",
                  "program", "cutoff"),
 ]
 

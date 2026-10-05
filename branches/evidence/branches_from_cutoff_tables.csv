@@ -2408,3 +2408,26 @@ ALD-CUET,Disaster Management and Environmental Studies (5-year integrated),Disas
 ALD-CUET,B.Voc. (Software Development),B.Voc. (Software Development),43,1,"nearest parent, needs review",CSIT,,provisional (for Amogh)
 ALD-CUET,B.P.A. (Music),B.P.A. (Music),22,1,taxonomy parent by name,MUSIC,,
 ALD-CUET,Family and Community Sciences (5-year integrated B.Sc. & M.Sc.),Family and Community Sciences (5-year integrated B.Sc. & M.Sc.),1,1,taxonomy parent by name,COMMUNITYSCI,,
+CUSB-CUET,2 Year Diploma in Pharmacy,2 Year Diploma in Pharmacy,12,1,taxonomy parent by name,PHARMA,,
+CUSB-CUET,4 Year B.Sc. (Hons.) Agriculture,4 Year B.Sc. (Hons.) Agriculture,16,1,taxonomy parent by name,AGRI,,
+CUSB-CUET,4 Year Integrated B.A. B.Ed.,4 Year Integrated B.A. B.Ed.,7,1,"nearest parent, needs review",TEACH,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,4 Year Integrated B.Sc. B.Ed.,4 Year Integrated B.Sc. B.Ed.,7,1,"nearest parent, needs review",TEACH,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated BA.LLB (Hons.),5 Year Integrated BA.LLB (Hons.),14,1,"nearest parent, needs review",LLB,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated BBA.LLB,5 Year Integrated BBA.LLB,7,1,"nearest parent, needs review",LLB,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated UG-PG in Chemistry,5 Year Integrated UG-PG in Chemistry,7,1,taxonomy parent by name,CHEM,,
+CUSB-CUET,5 Year Integrated UG-PG in Commerce,5 Year Integrated UG-PG in Commerce,13,1,taxonomy parent by name,COMMERCE,,
+CUSB-CUET,5 Year Integrated UG-PG in Computer Science,5 Year Integrated UG-PG in Computer Science,7,1,"nearest parent, needs review",CSIT,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated UG-PG in Economics,5 Year Integrated UG-PG in Economics,12,1,taxonomy parent by name,ECON,,
+CUSB-CUET,5 Year Integrated UG-PG in English,5 Year Integrated UG-PG in English,9,1,taxonomy parent by name,ENGLISH,,
+CUSB-CUET,5 Year Integrated UG-PG in Geography,5 Year Integrated UG-PG in Geography,16,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated UG-PG in Geology,5 Year Integrated UG-PG in Geology,8,1,"nearest parent, needs review",GEO,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated UG-PG in Hindi,5 Year Integrated UG-PG in Hindi,7,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated UG-PG in History,5 Year Integrated UG-PG in History,10,1,taxonomy parent by name,HIST,,
+CUSB-CUET,5 Year Integrated UG-PG in Journalism and Mass Communication,5 Year Integrated UG-PG in Journalism and Mass Communication,11,1,taxonomy parent by name,JOURNAL,,
+CUSB-CUET,5 Year Integrated UG-PG in Life Science,5 Year Integrated UG-PG in Life Science,8,1,taxonomy parent by name,LIFESCI,,
+CUSB-CUET,5 Year Integrated UG-PG in Mathematics,5 Year Integrated UG-PG in Mathematics,11,1,taxonomy parent by name,MATH,,
+CUSB-CUET,5 Year Integrated UG-PG in Physics,5 Year Integrated UG-PG in Physics,12,1,taxonomy parent by name,PHYSICS,,
+CUSB-CUET,5 Year Integrated UG-PG in Political Science and International Relations,5 Year Integrated UG-PG in Political Science and International Relations,7,1,taxonomy parent by name,POLISCI,,
+CUSB-CUET,5 Year Integrated UG-PG in Psychology,5 Year Integrated UG-PG in Psychology,12,1,taxonomy parent by name,PSYCH,,
+CUSB-CUET,5 Year Integrated UG-PG in Sociology,5 Year Integrated UG-PG in Sociology,7,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+CUSB-CUET,5 Year Integrated UG-PG in Statistics,5 Year Integrated UG-PG in Statistics,10,1,taxonomy parent by name,MATH,,

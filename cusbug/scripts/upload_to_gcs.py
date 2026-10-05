@@ -2,8 +2,7 @@
 """
 Upload CUSB UG cut-off data to GCS.
 
-  - Raw:       every notice and the guideline, as downloaded (no named lists
-               lists, kept private for provenance; never published)
+  - Raw:       every announcement and rules document, as downloaded
                gs://avantifellows-external-data/cusbug/raw/<file>
   - Extracted: the reviewed transcription of scanned / per-category notices
                gs://avantifellows-external-data/cusbug/extracted/manual_transcriptions.csv

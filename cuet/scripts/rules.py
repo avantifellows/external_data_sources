@@ -123,6 +123,25 @@ RULES = {
     "ALD_FACS": ("ALD", [[EN_HI, ["homesci"], G]], False, "guideline entry 4; women only"),
 }
 
+# Central University of South Bihar: Annexure I lists the papers per
+# programme; a clarification (28 Jul 2025) says only those count
+RULES.update({
+    "CUSB_GAT_EN": ("CUSB", [[["english"], G]], False, "Annexure I rows 1, 2, 4, 5, 15"),
+    "CUSB_GAT": ("CUSB", [[G]], False, "Annexure I rows 6, 10, 13, 16, 20, 22, 23"),
+    "CUSB_GAT_OR_MATH": ("CUSB", [[G], [M]], False, "Annexure I row 7 (GAT or Mathematics)"),
+    "CUSB_GAT_CHEM": ("CUSB", [[G, C]], False, "Annexure I row 8"),
+    "CUSB_GAT_MATH": ("CUSB", [[G, M]], False, "Annexure I row 9"),
+    "CUSB_GAT_POLSCI": ("CUSB", [[G, ["polsci"]]], False, "Annexure I row 11"),
+    "CUSB_GAT_HIST": ("CUSB", [[G, ["history"]]], False, "Annexure I row 12"),
+    "CUSB_PHY": ("CUSB", [[P]], False, "Annexure I row 14 (Physics only)"),
+    "CUSB_GAT_ACC": ("CUSB", [[G, ["accountancy"]]], False, "Annexure I row 17"),
+    "CUSB_GAT_HINDI": ("CUSB", [[G, ["hindi"]]], False, "Annexure I row 18"),
+    "CUSB_GAT_CS": ("CUSB", [[G, ["cs"]]], False, "Annexure I row 19"),
+    "CUSB_GAT_BIO": ("CUSB", [[G, BIO]], False, "Annexure I row 21"),
+    "CUSB_AGRI": ("CUSB", [[C, ["agriculture", "biology", "maths", "physics"]]], False,
+                  "Annexure I row 3 (Chemistry + Agriculture / Biology / Mathematics / Physics)"),
+})
+
 # rules whose university counts a paper the student didn't take as 0
 # (Allahabad: "zero (0) marks has been awarded for the concerned test")
 # instead of leaving the course out of reach
@@ -213,4 +232,30 @@ ALD_PROGRAMS = {
     "Family and Community Sciences (5-year integrated B.Sc. & M.Sc.)": "ALD_FACS",
 }
 
-RULE_OF = {"DU": du_rule, "BHU": bhu_rule, "ALD": ALD_PROGRAMS.get}
+CUSB_PROGRAMS = {
+    "4 Year Integrated B.A. B.Ed.": "CUSB_GAT_EN",
+    "4 Year Integrated B.Sc. B.Ed.": "CUSB_GAT_EN",
+    "4 Year B.Sc. (Hons.) Agriculture": "CUSB_AGRI",
+    "5 Year Integrated BBA.LLB": "CUSB_GAT_EN",
+    "5 Year Integrated BA.LLB (Hons.)": "CUSB_GAT_EN",
+    "5 Year Integrated UG-PG in Commerce": "CUSB_GAT_ACC",
+    "5 Year Integrated UG-PG in Mathematics": "CUSB_GAT_MATH",
+    "5 Year Integrated UG-PG in Statistics": "CUSB_GAT_OR_MATH",
+    "5 Year Integrated UG-PG in Chemistry": "CUSB_GAT_CHEM",
+    "5 Year Integrated UG-PG in Physics": "CUSB_PHY",
+    "5 Year Integrated UG-PG in Computer Science": "CUSB_GAT_CS",
+    "5 Year Integrated UG-PG in Life Science": "CUSB_GAT_BIO",
+    "5 Year Integrated UG-PG in Geology": "CUSB_GAT",
+    "5 Year Integrated UG-PG in Geography": "CUSB_GAT",
+    "5 Year Integrated UG-PG in English": "CUSB_GAT_EN",
+    "5 Year Integrated UG-PG in Hindi": "CUSB_GAT_HINDI",
+    "5 Year Integrated UG-PG in History": "CUSB_GAT_HIST",
+    "5 Year Integrated UG-PG in Sociology": "CUSB_GAT",
+    "5 Year Integrated UG-PG in Political Science and International Relations": "CUSB_GAT_POLSCI",
+    "5 Year Integrated UG-PG in Economics": "CUSB_GAT",
+    "5 Year Integrated UG-PG in Psychology": "CUSB_GAT",
+    "5 Year Integrated UG-PG in Journalism and Mass Communication": "CUSB_GAT",
+    "2 Year Diploma in Pharmacy": "CUSB_GAT",
+}
+
+RULE_OF = {"DU": du_rule, "BHU": bhu_rule, "ALD": ALD_PROGRAMS.get, "CUSB": CUSB_PROGRAMS.get}
