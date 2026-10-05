@@ -1,0 +1,5 @@
+raw/*.pdf
+extracted/*.csv
+clean/*.parquet
+.venv/
+__pycache__/

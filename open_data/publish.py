@@ -352,6 +352,23 @@ STAT_DATASETS = [
         ("allahabadug/clean/allahabadug_fact_cutoffs.parquet", "allahabadug/extracted/allahabadug_cutoffs_2025.csv", "University of Allahabad UG 2025 — Cut-off marks by programme, round and category", 2025),
      ]},
 
+    {"id": "cusbug", "category": "admissions",
+     "title": "Central University of South Bihar UG 2025 admissions (through CUET)",
+     "blurb": "Cut-off scores for every round, programme and category of CUSB's UG admissions (integrated UG-PG, B.Ed., law, agriculture, pharmacy): the announcements as published, zipped, and the table read from them.",
+     "source": {"label": "cusb.ac.in", "url": "https://www.cusb.ac.in/index.php?option=com_content&view=article&id=751&Itemid=616"},
+     "zip_files": [
+        ("cusbug/raw/cusbug_cutoff_announcements_2025.zip", "CUSB UG 2025 — Cut-off announcements and eligibility, as published", 2025,
+         ["cusbug/raw/" + n for n in ("ug_1st_cut_off_ug.pdf", "ug_2nd_cut_off.pdf", "ug_3rd_round_ug.pdf", "ug_4th_round_ug.pdf",
+                                      "ug_5th_cut_off_1.pdf", "ug_6th_cut_off_ug.pdf", "ug_agri_corri.pdf", "ug_rev_intake.pdf",
+                                      "ug_clearification_1.pdf")]),
+     ],
+     "files": [
+        ("cusbug/extracted/manual_transcriptions.csv", "CUSB UG 2025 — Transcription of the scanned announcements", "extracted", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("cusbug/clean/cusbug_fact_cutoffs.parquet", "cusbug/extracted/cusbug_cutoffs_2025.csv", "CUSB UG 2025 — Cut-off score by round, programme and category", 2025),
+     ]},
+
     {"id": "uptac", "category": "admissions",
      "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
      "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",

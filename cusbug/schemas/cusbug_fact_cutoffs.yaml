@@ -1,0 +1,26 @@
+# cusbug_fact_cutoffs
+#
+# Source: Central University of South Bihar (Gaya) UG admission 2025-26,
+# six category-wise cut-off announcements + a round-1 corrigendum.
+#   raw:       gs://avantifellows-external-data/cusbug/raw/<file>
+#   extracted: gs://avantifellows-external-data/cusbug/extracted/manual_transcriptions.csv
+#   clean:     gs://avantifellows-external-data/cusbug/clean/cusbug_fact_cutoffs.parquet
+#   BQ:        avantifellows.external_data_sources.cusbug_fact_cutoffs
+#
+# Score = sum of the CUET papers the programme counts (Annexure I): GAT +
+# one subject (of 500), or one paper (of 250). See ../cuet (rules CUSB_*).
+
+description: CUSB UG (CUET) 2025-26 cut-off score per round x programme x category, as announced.
+rows: 230
+grain: (round, program, category, source_file)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: "2025."}
+  - {name: round, type: INTEGER, mode: REQUIRED, description: "1-6. Rounds 2-6 print only the cells that re-opened."}
+  - {name: notice_date, type: DATE, mode: NULLABLE, description: "Date on the announcement."}
+  - {name: program, type: STRING, mode: REQUIRED, description: "One of 23 programmes (integrated UG-PG, B.A./B.Sc. B.Ed., law, agriculture, D.Pharm)."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "UR, OBC, SC, ST, EWS, PWD, CW (wards of armed-forces personnel)."}
+  - {name: cutoff, type: FLOAT, mode: NULLABLE, description: "Cut-off score; NULL when all_admitted."}
+  - {name: all_admitted, type: BOOLEAN, mode: REQUIRED, description: "Printed 'All' = all registered candidates."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "Announcement the row comes from."}
+  - {name: extraction, type: STRING, mode: REQUIRED, description: "'text' (parsed) or 'manual' (scanned, transcribed)."}
