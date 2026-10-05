@@ -1,0 +1,25 @@
+# jnuug_fact_cutoffs
+#
+# Source: JNU 2025-26 B.A. (Hons.) foreign-language cut-off lists 1-4
+# (jnuee.jnu.ac.in/JNUCutoff2025.html), each with a Code-1 and a Code-2 table.
+#   raw:   gs://avantifellows-external-data/jnuug/raw/<file>
+#   clean: gs://avantifellows-external-data/jnuug/clean/jnuug_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.jnuug_fact_cutoffs
+#
+# Marks = (English + GAT CUET marks, of 500) converted to 100 (Admission
+# Policy 2025-26, 3.2). See ../cuet (rule JNU_EN_GAT).
+
+description: JNU B.A. (Hons.) foreign languages, 2025-26 CUET cut-off rank and marks (of 100) per list x seat code x programme x category.
+rows: 279
+grain: (list_no, seat_code, program, category)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: "2025."}
+  - {name: list_no, type: INTEGER, mode: REQUIRED, description: "Merit list 1-4."}
+  - {name: seat_code, type: INTEGER, mode: REQUIRED, description: "1 = Code-I seats (80%: Class 12 passed in 2024 or 2025), 2 = Code-II (20%: others)."}
+  - {name: program_code, type: STRING, mode: REQUIRED, description: "As printed: ARAU, CHIU, FREU, GRMU, JPNU, KRNU, PASU, PRNU, RUSU, SPAU."}
+  - {name: program, type: STRING, mode: REQUIRED, description: "B.A. (Hons.) Arabic / Chinese / French / German / Japanese / Korean / Pashto / Persian / Russian / Spanish."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "UR, SC, ST, PWD, OBC, EWS, FN (foreign nationals)."}
+  - {name: cutoff_rank, type: INTEGER, mode: NULLABLE, description: "Category rank of the last candidate offered a seat."}
+  - {name: cutoff_marks, type: FLOAT, mode: REQUIRED, description: "Merit marks (of 100) of that candidate."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "List PDF."}
