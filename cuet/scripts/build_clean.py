@@ -36,7 +36,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from rules import (LANGUAGES, PAPER_LABEL, PAPER_SCORE_MAX, RULE_OF, RULES,
-                   SUBJECTS)
+                   SUBJECTS, ZERO_IF_MISSING)
 from sources import (BULLETIN, CLEAN, CUTOFF_SOURCES, GCS_BUCKET, RAW,
                      RAW_FILES, TABLES, YEAR)
 
@@ -111,6 +111,7 @@ def build_rules() -> pd.DataFrame:
             "max_score": max(sizes) * PAPER_SCORE_MAX,
             "prorated": len(sizes) > 1,
             "needs_language": needs_lang,
+            "missing_counts_zero": rid in ZERO_IF_MISSING,
             "source_url": BULLETIN[uni].url,
             "source_ref": ref,
             "year": YEAR,

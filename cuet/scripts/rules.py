@@ -99,7 +99,34 @@ RULES = {
     "BHU_PCM_OR_PCB": ("BHU", [[C, M, P], [BIO, C, P]], False, "entries 5-6 (Geography / Earth Science in both groups), 18"),
     "BHU_AGRI": ("BHU", [[C, M, P], [BIO, C, P], [["agriculture"], BIO, C]], False, "entries 4, 11"),
     "BHU_SHASTRI": ("BHU", [[["sanskrit"]]], False, "entry 17"),
+
+    # Allahabad: best of Hindi / English + ONE domain subject from the
+    # programme's list + General Test, out of 750. The guideline's "any TWO
+    # domain subjects compulsory" is for registering; the notices compute
+    # merit on the best one.
+    "ALD_BA": ("ALD", [[EN_HI, ["economics", "polsci", "sociology", "psychology",
+                                "anthropology", "history", "geography", "sanskrit"], G]], False,
+               "guideline entry 1; B.A. notices"),
+    "ALD_BSC_MATHS": ("ALD", [[EN_HI, ["physics", "chemistry", "maths", "cs"], G]], False,
+                      "guideline entry 2; B.Sc. (Maths) notices"),
+    "ALD_SCI7": ("ALD", [[EN_HI, ["accountancy", "physics", "chemistry", "maths", "cs",
+                                  "biology", "envsci"], G]], False,
+                 "B.Sc. (Biology) and B.Com first notices (domain list)"),
+    "ALD_BROAD": ("ALD", [[EN_HI, ["accountancy", "agriculture", "anthropology", "biology",
+                                   "business", "chemistry", "envsci", "cs", "economics",
+                                   "geography", "history", "homesci", "massmedia", "maths",
+                                   "physics", "polsci", "psychology", "sociology"], G]], False,
+                  "guideline entries 10-11; BBA-MBA and Disaster Management notices"),
+    "ALD_BPA": ("ALD", [[EN_HI, B, G]], False,
+                "B.P.A. notices ('best score from any one domain subject'); Music at Class 12 required"),
+    "ALD_BVOC_SD": ("ALD", [[EN_HI, ["cs", "maths", "physics"], G]], False, "guideline (IPS / CVSSD, B.Voc. Software Development)"),
+    "ALD_FACS": ("ALD", [[EN_HI, ["homesci"], G]], False, "guideline entry 4; women only"),
 }
+
+# rules whose university counts a paper the student didn't take as 0
+# (Allahabad: "zero (0) marks has been awarded for the concerned test")
+# instead of leaving the course out of reach
+ZERO_IF_MISSING = {r for r in RULES if r.startswith("ALD_")}
 
 # course string (as in the cutoff fact) -> rule. First match wins.
 DU_PROGRAMS = [
@@ -174,4 +201,16 @@ def du_rule(p: str) -> str | None:
     return next((rule for pat, rule in DU_PROGRAMS if re.search(pat, p)), None)
 
 
-RULE_OF = {"DU": du_rule, "BHU": bhu_rule}
+ALD_PROGRAMS = {
+    "B.A.": "ALD_BA",
+    "B.Sc. (Maths)": "ALD_BSC_MATHS",
+    "B.Sc. (Biology)": "ALD_SCI7",
+    "B.Com": "ALD_SCI7",
+    "BBA-MBA (5-year integrated)": "ALD_BROAD",
+    "Disaster Management and Environmental Studies (5-year integrated)": "ALD_BROAD",
+    "B.P.A. (Music)": "ALD_BPA",
+    "B.Voc. (Software Development)": "ALD_BVOC_SD",
+    "Family and Community Sciences (5-year integrated B.Sc. & M.Sc.)": "ALD_FACS",
+}
+
+RULE_OF = {"DU": du_rule, "BHU": bhu_rule, "ALD": ALD_PROGRAMS.get}
