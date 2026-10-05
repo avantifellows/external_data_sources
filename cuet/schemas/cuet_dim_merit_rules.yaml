@@ -1,6 +1,6 @@
 tables:
   avantifellows.external_data_sources.cuet_dim_merit_rules:
-    claude_md_summary: "CUET (UG) merit rules from the DU, BHU, University of Allahabad and CUSB 2025 bulletins: which CUET papers each course adds up (e.g. Physics + Chemistry + Maths, out of 750), as text and as JSON combinations, with proration flag and the bulletin page. 53 rules (DU 25, CUSB 13, BHU 8, ALD 7). Join courses via cuet_dim_program_rules."
+    claude_md_summary: "CUET (UG) merit rules from the 2025 bulletins of DU, BHU, Allahabad, CUSB, JNU and Jamia: which CUET papers each course adds up (e.g. Physics + Chemistry + Maths, out of 750), as text and as JSON combinations, with proration flag and the bulletin page. 58 rules (DU 25, CUSB 13, BHU 8, ALD 7, JMI 4, JNU 1). Join courses via cuet_dim_program_rules."
     description: |
       One row per rule_id. A DU/BHU cutoff is ONE number, but it is the sum of
       the per-paper normalized CUET scores (each out of 250) that the course
@@ -29,20 +29,21 @@ tables:
 
     coverage:
       years: [2025]
-      notes: "Read from BigQuery on 2026-10-05. 53 rules: DU 25, CUSB 13, BHU 8, ALD 7."
+      notes: "Read from BigQuery on 2026-10-05. 58 rules: DU 25, CUSB 13, BHU 8, ALD 7, JMI 4, JNU 1."
 
     core_columns:
       rule_id: {type: STRING, description: "e.g. 'DU_PCM', 'BHU_L_GAT'. Primary key."}
-      university: {type: STRING, description: "'DU', 'BHU', 'ALD' (University of Allahabad) or 'CUSB' (Central University of South Bihar)."}
+      university: {type: STRING, description: "'DU', 'BHU', 'ALD' (University of Allahabad), 'CUSB' (Central University of South Bihar), 'JNU' or 'JMI' (Jamia Millia Islamia)."}
       papers: {type: STRING, description: "Readable combinations: 'Language + Maths + 2 subjects, or language + Accountancy + 2 subjects'."}
       combinations_json: {type: STRING, description: "JSON list of combinations (GOTCHA #1)."}
       n_combinations: {type: INTEGER, description: "Number of alternatives."}
-      max_score: {type: INTEGER, description: "Highest possible score on this rule (GOTCHA #2)."}
+      max_score: {type: INTEGER, description: "Scale of the printed cut-offs: highest possible score (GOTCHA #2). JNU prints the paper total rescaled to 100."}
+      papers_max: {type: INTEGER, description: "Raw paper total (250 x papers). Differs from max_score only where the university rescales (JNU: 500 -> 100)."}
       prorated: {type: BOOLEAN, description: "Mixed combination sizes, smaller scaled up (GOTCHA #3)."}
       needs_language: {type: BOOLEAN, description: "Language paper required but not counted (GOTCHA #4)."}
       missing_counts_zero: {type: BOOLEAN, description: "A paper not taken counts 0 (GOTCHA #6)."}
       source_url: {type: STRING, description: "The university bulletin the rule is read from."}
-      source_ref: {type: STRING, description: "Where in it: DU bulletin page(s), BHU eligibility entry number(s), Allahabad guideline entry / notices, CUSB Annexure I row."}
+      source_ref: {type: STRING, description: "Where in it: DU bulletin page(s), BHU eligibility entry number(s), Allahabad guideline entry / notices, CUSB Annexure I row, JNU policy, Jamia prospectus page."}
       year: {type: INTEGER, description: "2025 (admission year)."}
 
 example_queries:

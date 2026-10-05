@@ -142,6 +142,30 @@ RULES.update({
                   "Annexure I row 3 (Chemistry + Agriculture / Biology / Mathematics / Physics)"),
 })
 
+# JNU: English (101) + GAT (501) for every B.A. (Hons.) foreign language
+# (UG e-Prospectus 2025-26); the merit list uses that total converted to 100
+# (Admission Policy 2025-26, 3.2)
+RULES["JNU_EN_GAT"] = ("JNU", [[["english"], G]], False,
+                       "e-Prospectus (papers); Admission Policy 3.2 (converted to 100)")
+
+# Jamia: one CUET paper per programme (Prospectus 2025-26 p. 139)
+RULES.update({
+    "JMI_GAT": ("JMI", [[G]], False, "Prospectus p. 139 (B28, B30, B58, B60, B61, B64: General Test)"),
+    "JMI_HINDI": ("JMI", [[["hindi"]]], False, "Prospectus p. 139 (B29: Hindi)"),
+    "JMI_URDU": ("JMI", [[["urdu"]]], False, "Prospectus p. 139 (B35: Urdu)"),
+    "JMI_MATHS": ("JMI", [[M]], False, "Prospectus p. 139 (B66: Mathematics)"),
+})
+JMI_PROGRAMS = {
+    "B.A. (Hons.) Turkish Language & Literature": "JMI_GAT", "B.A. (Hons.) Sanskrit": "JMI_GAT",
+    "B.A. (Hons.) French & Francophone Studies": "JMI_GAT",
+    "B.A. (Hons.) Spanish & Latin American Studies": "JMI_GAT", "B.A. (Hons.) Korean Language": "JMI_GAT",
+    "B.Sc. (Multidisciplinary)": "JMI_GAT", "B.A. (Hons.) Hindi": "JMI_HINDI",
+    "B.A. (Hons.) Urdu": "JMI_URDU", "B.Sc. (Hons.) Applied Mathematics": "JMI_MATHS",
+}
+
+# rules whose printed scores are the paper total rescaled to this maximum
+SCALE_TO = {"JNU_EN_GAT": 100}
+
 # rules whose university counts a paper the student didn't take as 0
 # (Allahabad: "zero (0) marks has been awarded for the concerned test")
 # instead of leaving the course out of reach
@@ -258,4 +282,5 @@ CUSB_PROGRAMS = {
     "2 Year Diploma in Pharmacy": "CUSB_GAT",
 }
 
-RULE_OF = {"DU": du_rule, "BHU": bhu_rule, "ALD": ALD_PROGRAMS.get, "CUSB": CUSB_PROGRAMS.get}
+RULE_OF = {"DU": du_rule, "BHU": bhu_rule, "ALD": ALD_PROGRAMS.get, "CUSB": CUSB_PROGRAMS.get,
+           "JNU": lambda p: "JNU_EN_GAT", "JMI": JMI_PROGRAMS.get}

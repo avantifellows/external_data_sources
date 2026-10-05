@@ -10,7 +10,7 @@ counts. The rules are read from each university's own bulletin
 strings of that university's cutoff fact.
 
 Raw: the bulletins as published.
-Course strings: the clean facts of the cutoff sources (ducuet, bhuug, allahabadug, cusbug),
+Course strings: the clean facts of the cutoff sources (ducuet, bhuug, allahabadug, cusbug, jnuug, jamiaug),
 fetched from GCS.
 
 GCS layout:
@@ -67,6 +67,10 @@ RAW_FILES = [
             "https://allduniv.ac.in/upload/file_collection/GuidelinesEligibilityRevised.pdf"),
     RawFile("cusb_ug_eligibility_2025.pdf", "CUSB",
             "https://www.cusb.ac.in/images/2025/admission_25/ug/rev_intake.pdf"),
+    RawFile("jnu_admission_policy_2025.pdf", "JNU",
+            "https://www.jnu.ac.in/sites/default/files/admission/AdmissionPolicy2025-26.pdf"),
+    RawFile("jmi_prospectus_2025.pdf", "JMI",
+            "https://admission.jmi.ac.in/application/assets/pdfFile/prospectus/UniversityProspectus/University_Prospectus_2025-2026.pdf"),
 ]
 BULLETIN = {rf.university: rf for rf in RAW_FILES}
 
@@ -88,6 +92,10 @@ CUTOFF_SOURCES = [
     CutoffSource("ALD", "allahabadug/clean/allahabadug_fact_cutoffs.parquet",
                  "program", "cutoff"),
     CutoffSource("CUSB", "cusbug/clean/cusbug_fact_cutoffs.parquet",
+                 "program", "cutoff"),
+    CutoffSource("JNU", "jnuug/clean/jnuug_fact_cutoffs.parquet",
+                 "program", "cutoff_marks"),
+    CutoffSource("JMI", "jamiaug/clean/jamiaug_fact_cutoffs.parquet",
                  "program", "cutoff"),
 ]
 

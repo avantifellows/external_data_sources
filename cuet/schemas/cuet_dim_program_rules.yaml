@@ -1,12 +1,13 @@
 tables:
   avantifellows.external_data_sources.cuet_dim_program_rules:
-    claude_md_summary: "Every course string in the DU, BHU, Allahabad and CUSB CUET cutoff tables (ducuet_fact_cutoffs.program_name, bhuug_fact_cutoffs.program, allahabadug_fact_cutoffs.program, cusbug_fact_cutoffs.program) mapped to its merit rule in cuet_dim_merit_rules — the bridge for 'which CUET papers does this course count'. 717 rows (DU 334, BHU 351, CUSB 23, ALD 9), 100% mapped."
+    claude_md_summary: "Every course string in the six CUET cutoff tables (ducuet_fact_cutoffs.program_name; bhuug, allahabadug, cusbug, jnuug, jamiaug _fact_cutoffs.program) mapped to its merit rule in cuet_dim_merit_rules — the bridge for 'which CUET papers does this course count'. 736 rows (DU 334, BHU 351, CUSB 23, JNU 10, ALD 9, JMI 9), 100% mapped."
     description: |
       One row per (university, program). `program` is the cutoff table's own
       string: join DU on ducuet_fact_cutoffs.program_name, BHU on
       bhuug_fact_cutoffs.program (the cleaned column, not program_raw),
       Allahabad (university 'ALD') on allahabadug_fact_cutoffs.program,
-      CUSB (university 'CUSB') on cusbug_fact_cutoffs.program.
+      CUSB (university 'CUSB') on cusbug_fact_cutoffs.program, JNU ('JNU') on
+      jnuug_fact_cutoffs.program, Jamia ('JMI') on jamiaug_fact_cutoffs.program.
 
       GOTCHAS:
       1. JOIN ON BOTH university AND program — the two universities' strings are
@@ -19,10 +20,10 @@ tables:
 
     coverage:
       years: [2025]
-      notes: "Read from BigQuery on 2026-10-05. DU 334 course strings (25 rules), BHU 351 (8 rules), ALD 9 (7 rules), CUSB 23 (13 rules); 0 excluded."
+      notes: "Read from BigQuery on 2026-10-05. DU 334 course strings (25 rules), BHU 351 (8 rules), ALD 9 (7 rules), CUSB 23 (13 rules), JNU 10 (1 rule), JMI 9 (4 rules); 0 excluded."
 
     core_columns:
-      university: {type: STRING, description: "'DU', 'BHU', 'ALD' or 'CUSB'."}
+      university: {type: STRING, description: "'DU', 'BHU', 'ALD', 'CUSB', 'JNU' or 'JMI'."}
       program: {type: STRING, description: "Course string as in the cutoff table (GOTCHA #1)."}
       rule_id: {type: STRING, description: "FK to cuet_dim_merit_rules.rule_id; NULL when excluded."}
       excluded_reason: {type: STRING, description: "Why a course has no rule (GOTCHA #2)."}
