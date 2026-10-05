@@ -1,0 +1,44 @@
+tables:
+  avantifellows.external_data_sources.cuet_dim_program_rules:
+    claude_md_summary: "Every course string in the DU and BHU CUET cutoff tables (ducuet_fact_cutoffs.program_name, bhuug_fact_cutoffs.program) mapped to its merit rule in cuet_dim_merit_rules — the bridge for 'which CUET papers does this course count'. 685 rows (DU 334, BHU 351), 100% mapped."
+    description: |
+      One row per (university, program). `program` is the cutoff table's own
+      string: join DU on ducuet_fact_cutoffs.program_name, BHU on
+      bhuug_fact_cutoffs.program (the cleaned column, not program_raw).
+
+      GOTCHAS:
+      1. JOIN ON BOTH university AND program — the two universities' strings are
+         separate vocabularies.
+      2. rule_id NULL with excluded_reason = a course CUET alone can't decide
+         (practical / performance test). None in the 2025 DU/BHU data.
+      3. max_cutoff is the highest cutoff of the course across colleges,
+         categories and rounds, kept as the build's sanity check: it never
+         exceeds the rule's max_score.
+
+    coverage:
+      years: [2025]
+      notes: "Read from BigQuery on 2026-10-05. DU 334 course strings (25 rules), BHU 351 (8 rules); 0 excluded."
+
+    core_columns:
+      university: {type: STRING, description: "'DU' or 'BHU'."}
+      program: {type: STRING, description: "Course string as in the cutoff table (GOTCHA #1)."}
+      rule_id: {type: STRING, description: "FK to cuet_dim_merit_rules.rule_id; NULL when excluded."}
+      excluded_reason: {type: STRING, description: "Why a course has no rule (GOTCHA #2)."}
+      max_cutoff: {type: FLOAT, description: "Highest cutoff seen for the course (GOTCHA #3)."}
+      year: {type: INTEGER, description: "2025."}
+
+example_queries:
+  - question: "How many DU and BHU courses use each rule?"
+    sql: |
+      SELECT university, rule_id, COUNT(*) AS courses
+      FROM `avantifellows.external_data_sources.cuet_dim_program_rules`
+      GROUP BY 1, 2
+      ORDER BY courses DESC
+  - question: "BHU courses a student with only English and GAT papers can apply to"
+    sql: |
+      SELECT p.program
+      FROM `avantifellows.external_data_sources.cuet_dim_program_rules` p
+      JOIN `avantifellows.external_data_sources.cuet_dim_merit_rules` m USING (rule_id)
+      WHERE p.university = 'BHU' AND m.papers = 'English or Hindi + GAT'
+      ORDER BY 1
+      LIMIT 20
