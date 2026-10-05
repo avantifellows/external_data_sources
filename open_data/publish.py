@@ -29,8 +29,16 @@ import io
 import json
 import zipfile
 from datetime import date
+from pathlib import Path
 
 from google.cloud import storage
+
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location("_ald_sources", Path(__file__).resolve().parent.parent / "allahabadug/scripts/sources.py")
+_ald_sources = _ilu.module_from_spec(_spec)
+import sys as _sys
+_sys.modules["_ald_sources"] = _ald_sources  # dataclasses look the module up
+_spec.loader.exec_module(_ald_sources)
 
 SRC_BUCKET = "avantifellows-external-data"
 DST_BUCKET = "avantifellows-open-data"
@@ -329,6 +337,21 @@ STAT_DATASETS = [
         ("bhuug/clean/bhuug_fact_cutoffs.parquet", "bhuug/extracted/bhuug_cutoffs_2025.csv", "BHU UG 2025 — Minimum score by round, programme, faculty/college and category", 2025),
      ]},
 
+    {"id": "allahabadug", "category": "admissions",
+     "title": "University of Allahabad UG 2025 admissions (through CUET)",
+     "blurb": "Cut-off marks for every round, programme and category of the university's UG admissions (B.A., B.Com, B.Sc., BBA-MBA, B.Voc., B.P.A. and more): the notices as published, zipped, and the table read from them. Named candidate lists are left out.",
+     "source": {"label": "allduniv.ac.in", "url": "https://allduniv.ac.in/p/692/ug-admission-2025-arts-faculty"},
+     "zip_files": [
+        ("allahabadug/raw/allahabadug_cutoff_notices_2025.zip", "University of Allahabad UG 2025 — Cut-off notices, as published", 2025,
+         [f"allahabadug/raw/{rf.name}" for rf in _ald_sources.RAW_FILES if rf.role in ("text", "manual", "rules") and not rf.has_names]),
+     ],
+     "files": [
+        ("allahabadug/extracted/manual_transcriptions.csv", "University of Allahabad UG 2025 — Transcription of the scanned notices", "extracted", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("allahabadug/clean/allahabadug_fact_cutoffs.parquet", "allahabadug/extracted/allahabadug_cutoffs_2025.csv", "University of Allahabad UG 2025 — Cut-off marks by programme, round and category", 2025),
+     ]},
+
     {"id": "uptac", "category": "admissions",
      "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
      "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",
@@ -588,6 +611,15 @@ def main():
                     with zipfile.ZipFile(io.BytesIO(b.download_as_bytes())) as part:
                         for n in part.namelist():
                             z.writestr(f"{edition}/{n.split('/')[-1]}", part.read(n))
+            add2(dest, buf.getvalue(), title, "raw", year, "zip")
+
+        # an explicit file list zipped into one download: a source of many
+        # small notices, some of which (named lists) must stay out
+        for dest, title, year, paths in spec.get("zip_files", []):
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for pth in paths:
+                    z.writestr(pth.split("/")[-1], src.blob(pth).download_as_bytes())
             add2(dest, buf.getvalue(), title, "raw", year, "zip")
 
         for src_path, title, kind, year in spec.get("files", []):

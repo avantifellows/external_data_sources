@@ -1,0 +1,32 @@
+# allahabadug_fact_cutoffs
+#
+# Source: University of Allahabad UG admission 2025-26 cut-off notices, one
+# per programme per round (allduniv.ac.in/p/692, /693, /694), plus 5 rows of
+# the 2026-27 cycle that share those pages. Text notices parsed
+# (scripts/parse_notices.py); scanned notices and B.P.A.'s per-category
+# rounds transcribed by eye (extracted/manual_transcriptions.csv).
+#   raw:       gs://avantifellows-external-data/allahabadug/raw/<file>
+#   extracted: gs://avantifellows-external-data/allahabadug/extracted/manual_transcriptions.csv
+#   clean:     gs://avantifellows-external-data/allahabadug/clean/allahabadug_fact_cutoffs.parquet
+#   BQ:        avantifellows.external_data_sources.allahabadug_fact_cutoffs
+#
+# Merit = CUET-UG computed marks: best of Hindi / English + one domain
+# subject (programme-specific list) + General Test, out of 750; a paper not
+# taken counts 0. See ../cuet (cuet_dim_merit_rules) for each programme.
+
+description: University of Allahabad UG (CUET) 2025-26 cut-off marks per programme x round x category, as printed in each notice.
+rows: 312
+grain: (year, program, round, category, source_file)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: "Admission cycle from the notice (CUET-UG-2025 -> 2025). 307 rows 2025, 5 rows 2026 (Disaster Management 3rd notice)."}
+  - {name: program, type: STRING, mode: REQUIRED, description: "B.A., B.Com, B.Sc. (Biology), B.Sc. (Maths), BBA-MBA (5-year integrated), Disaster Management and Environmental Studies (5-year integrated), B.Voc. (Software Development), B.P.A. (Music), Family and Community Sciences (5-year integrated B.Sc. & M.Sc.)."}
+  - {name: round, type: INTEGER, mode: REQUIRED, description: "Cut-off round as printed; B.Sc. (Maths) notices print none and are numbered by notice date; B.P.A. prints a round per category."}
+  - {name: notice_date, type: DATE, mode: NULLABLE, description: "Date printed on the notice (NULL when none)."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "UR, EWS, OBC, SC, ST, PWD, SPORTS."}
+  - {name: category_raw, type: STRING, mode: REQUIRED, description: "Label as printed (transcribed notices); = category for parsed ones."}
+  - {name: cutoff, type: FLOAT, mode: NULLABLE, description: "Cut-off marks (of 750): low end of a printed range, the number of '& Above'. NULL when all_admitted."}
+  - {name: cutoff_high, type: FLOAT, mode: NULLABLE, description: "High end when the notice printed a range ('362 - 371' = the band admitted that round)."}
+  - {name: all_admitted, type: BOOLEAN, mode: REQUIRED, description: "Printed 'All' / 'Last Candidate': every registered candidate in the category was offered a seat."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "Notice the row comes from (sources.RAW_FILES)."}
+  - {name: extraction, type: STRING, mode: REQUIRED, description: "'text' (parsed) or 'manual' (transcribed by eye)."}
