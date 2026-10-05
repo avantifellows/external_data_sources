@@ -369,6 +369,19 @@ STAT_DATASETS = [
         ("cusbug/clean/cusbug_fact_cutoffs.parquet", "cusbug/extracted/cusbug_cutoffs_2025.csv", "CUSB UG 2025 — Cut-off score by round, programme and category", 2025),
      ]},
 
+    {"id": "jnuug", "category": "admissions",
+     "title": "JNU B.A. (Hons.) foreign languages 2025 admissions (through CUET)",
+     "blurb": "Cut-off rank and marks for every list, seat code, programme and category of JNU's ten foreign-language B.A. programmes: the lists as published, and the table read from them. Marks are English + GAT converted to 100.",
+     "source": {"label": "jnuee.jnu.ac.in", "url": "https://jnuee.jnu.ac.in/JNUCutoff2025.html"},
+     "zip_files": [
+        ("jnuug/raw/jnuug_cutoff_lists_2025.zip", "JNU B.A. (Hons.) 2025 — Cut-off lists 1-4, as published", 2025,
+         ["jnuug/raw/" + n for n in ("BA_list1_cutoff_2025.pdf", "BA_list2_cutoff_2025_07_08.pdf",
+                                     "BA_list3_cutoff_2025_03.pdf", "BA_list4_cutoff_15_09_25.pdf")]),
+     ],
+     "parquet_as_extracted": [
+        ("jnuug/clean/jnuug_fact_cutoffs.parquet", "jnuug/extracted/jnuug_cutoffs_2025.csv", "JNU B.A. (Hons.) 2025 — Cut-off rank and marks by list, seat code, programme and category", 2025),
+     ]},
+
     {"id": "uptac", "category": "admissions",
      "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
      "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",
