@@ -2399,3 +2399,12 @@ BHU-CUET,Shastri (Honours) in Vyakaran with Mimansa,Shastri (Honours) in Vyakara
 BHU-CUET,Shastri (Honours) in Vyakaran with Nyay-Vaisheshika,Shastri (Honours) in Vyakaran with Nyay-Vaisheshika,4,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject; B.A. Program pairs and Shastri -> ARTS
 BHU-CUET,Shastri (Honours) in Vyakaran with Sahitya,Shastri (Honours) in Vyakaran with Sahitya,8,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject; B.A. Program pairs and Shastri -> ARTS
 BHU-CUET,Shastri (Honours) in Vyakaran with Vedanta,Shastri (Honours) in Vyakaran with Vedanta,5,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject; B.A. Program pairs and Shastri -> ARTS
+ALD-CUET,B.A.,B.A.,27,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
+ALD-CUET,B.Com,B.Com,49,1,taxonomy parent by name,COMMERCE,,
+ALD-CUET,B.Sc. (Biology),B.Sc. (Biology),46,1,taxonomy parent by name,BIO,,
+ALD-CUET,B.Sc. (Maths),B.Sc. (Maths),48,1,taxonomy parent by name,MATH,,
+ALD-CUET,BBA-MBA (5-year integrated),BBA-MBA (5-year integrated),50,1,"nearest parent, needs review",MBA,,provisional (for Amogh): integrated BBA-MBA -> MBA
+ALD-CUET,Disaster Management and Environmental Studies (5-year integrated),Disaster Management and Environmental Studies (5-year integrated),26,1,"nearest parent, needs review",GENSCI,,provisional (for Amogh): no taxonomy branch for disaster management
+ALD-CUET,B.Voc. (Software Development),B.Voc. (Software Development),43,1,"nearest parent, needs review",CSIT,,provisional (for Amogh)
+ALD-CUET,B.P.A. (Music),B.P.A. (Music),22,1,taxonomy parent by name,MUSIC,,
+ALD-CUET,Family and Community Sciences (5-year integrated B.Sc. & M.Sc.),Family and Community Sciences (5-year integrated B.Sc. & M.Sc.),1,1,taxonomy parent by name,COMMUNITYSCI,,
