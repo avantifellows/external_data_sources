@@ -1,0 +1,25 @@
+# jamiaug_fact_cutoffs
+#
+# Source: Jamia Millia Islamia 2025-26 selection lists for its nine CUET UG
+# programmes; each list's category-wise cut-off table.
+#   raw:   gs://avantifellows-external-data/jamiaug/raw/<file>   (lists carry roll numbers: private)
+#   clean: gs://avantifellows-external-data/jamiaug/clean/jamiaug_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.jamiaug_fact_cutoffs
+#
+# Cut-off = CUET marks (of 250) in the one paper the programme counts
+# (Prospectus 2025-26 p. 139). See ../cuet (rules JMI_*).
+
+description: JMI UG (CUET) 2025-26 cut-off marks per programme x selection list x JMI category.
+rows: 118
+grain: (program_code, list_no, category)
+
+columns:
+  - {name: year, type: INTEGER, mode: REQUIRED, description: "2025."}
+  - {name: program_code, type: STRING, mode: REQUIRED, description: "JMI code: B28, B29, B30, B35, B58, B60, B61, B64, B66."}
+  - {name: program, type: STRING, mode: REQUIRED, description: "Programme name."}
+  - {name: cuet_paper, type: STRING, mode: REQUIRED, description: "The one CUET paper counted: General Test, Hindi, Urdu or Mathematics."}
+  - {name: list_no, type: INTEGER, mode: REQUIRED, description: "Selection list 1-3."}
+  - {name: category_raw, type: STRING, mode: REQUIRED, description: "As printed."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "GENERAL, MUSLIM, MUSLIM_OBC_ST, MUSLIM_WOMEN, JAMIA_INTERNAL, PWD, KASHMIRI_MIGRANT, JK_CANDIDATE (JMI's own reservation scheme)."}
+  - {name: cutoff, type: FLOAT, mode: REQUIRED, description: "CUET marks of 250."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "Selection list PDF."}

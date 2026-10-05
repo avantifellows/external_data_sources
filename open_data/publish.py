@@ -382,6 +382,17 @@ STAT_DATASETS = [
         ("jnuug/clean/jnuug_fact_cutoffs.parquet", "jnuug/extracted/jnuug_cutoffs_2025.csv", "JNU B.A. (Hons.) 2025 — Cut-off rank and marks by list, seat code, programme and category", 2025),
      ]},
 
+    {"id": "jamiaug", "category": "admissions",
+     "title": "Jamia Millia Islamia UG 2025 admissions (through CUET)",
+     "blurb": "Cut-off marks for every selection list and category of Jamia's nine CUET-based UG programmes, read from the lists' cut-off tables, and the prospectus page that says which CUET paper each counts. The lists themselves carry candidate numbers and are not republished.",
+     "source": {"label": "admission.jmi.ac.in", "url": "https://admission.jmi.ac.in/EntranceResults/UniversityResult"},
+     "files": [
+        ("jamiaug/raw/University_Prospectus_2025-2026.pdf", "Jamia 2025-26 — University prospectus, as published", "raw", 2025),
+     ],
+     "parquet_as_extracted": [
+        ("jamiaug/clean/jamiaug_fact_cutoffs.parquet", "jamiaug/extracted/jamiaug_cutoffs_2025.csv", "Jamia UG 2025 — Cut-off marks by programme, selection list and category", 2025),
+     ]},
+
     {"id": "uptac", "category": "admissions",
      "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
      "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",
