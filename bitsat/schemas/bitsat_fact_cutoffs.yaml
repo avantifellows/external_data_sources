@@ -1,0 +1,22 @@
+# bitsat_fact_cutoffs
+#
+# Source: BITS Pilani "BITSAT cutoff Links" page (one page, every year
+# 2017-18 to 2026-27), saved as an HTML snapshot.
+#   raw:   gs://avantifellows-external-data/bitsat/raw/bitsat_cutoffs_page_<date>.html
+#   clean: gs://avantifellows-external-data/bitsat/clean/bitsat_fact_cutoffs.parquet
+#   BQ:    avantifellows.external_data_sources.bitsat_fact_cutoffs
+
+description: BITSAT final cut-off score per academic year x campus x programme, 2017-18 to 2026-27.
+rows: 402
+grain: (academic_year, campus, program)
+
+columns:
+  - {name: academic_year, type: STRING, mode: REQUIRED, description: "Admission year, e.g. '2026-2027' (BITSAT 2026)."}
+  - {name: exam_year, type: INTEGER, mode: REQUIRED, description: "BITSAT year (first year of academic_year)."}
+  - {name: campus_raw, type: STRING, mode: REQUIRED, description: "As printed ('Goa' before 2024-25, 'K K Birla Goa' after)."}
+  - {name: campus, type: STRING, mode: REQUIRED, description: "Pilani, K K Birla Goa, Hyderabad."}
+  - {name: program_raw, type: STRING, mode: REQUIRED, description: "As printed."}
+  - {name: program, type: STRING, mode: REQUIRED, description: "Spelling made consistent ('Electrical & Electronics', 'B.Pharm.')."}
+  - {name: cutoff_score, type: INTEGER, mode: REQUIRED, description: "Final cut-off BITSAT score."}
+  - {name: max_score, type: INTEGER, mode: REQUIRED, description: "BITSAT maximum marks that year: 450 until 2021-22, 390 from 2022-23."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "HTML snapshot read."}
