@@ -2450,3 +2450,24 @@ JMI-CUET,B.A. (Hons.) Turkish Language & Literature,B.A. (Hons.) Turkish Languag
 JMI-CUET,B.A. (Hons.) Urdu,B.A. (Hons.) Urdu,15,1,"nearest parent, needs review",ARTS,,provisional (for Amogh): mapped by the course's main subject
 JMI-CUET,B.Sc. (Hons.) Applied Mathematics,B.Sc. (Hons.) Applied Mathematics,17,1,taxonomy parent by name,MATH,,
 JMI-CUET,B.Sc. (Multidisciplinary),B.Sc. (Multidisciplinary),19,1,"nearest parent, needs review",GENSCI,,provisional (for Amogh): mapped by the course's main subject
+BITSAT,B. Pharm,B.Pharm.,14,2,taxonomy parent by name,PHARMA,,
+BITSAT,B.E. Chemical,B.E. Chemical,30,3,taxonomy parent by name,CHEMENG,,
+BITSAT,B.E. Civil,B.E. Civil,20,2,taxonomy parent by name,CIVILENG,,
+BITSAT,B.E. Computer Science,B.E. Computer Science,30,3,taxonomy parent by name,CSIT,,
+BITSAT,B.E. Electrical & Electronics,B.E. Electrical & Electronics,24,3,taxonomy parent by name,ELEC,,
+BITSAT,B.E. Electrical and Electronics,B.E. Electrical & Electronics,6,2,taxonomy parent by name,ELEC,,
+BITSAT,B.E. Electronics & Communication,B.E. Electronics & Communication,26,3,taxonomy parent by name,ELEC,,
+BITSAT,B.E. Electronics & Instrumentation,B.E. Electronics & Instrumentation,30,3,taxonomy parent by name,INSTRENG,,
+BITSAT,B.E. Electronics and Computer,B.E. Electronics and Computer,2,1,"nearest parent, needs review",ELEC,,provisional (for Amogh)
+BITSAT,B.E. Environmental and Sustainability,B.E. Environmental and Sustainability,6,3,taxonomy parent by name,ENVENG,,
+BITSAT,B.E. Manufacturing,B.E. Manufacturing,11,2,taxonomy parent by name,INDENG,,
+BITSAT,B.E. Mathematics and Computing,B.E. Mathematics and Computing,9,3,taxonomy parent by name,MNC,,
+BITSAT,B.E. Mechanical,B.E. Mechanical,30,3,taxonomy parent by name,MECHENG,,
+BITSAT,B.E. Pharmaceutical Engg.,B.E. Pharmaceutical Engg.,2,2,taxonomy parent by name,PHARMAENG,,
+BITSAT,B.Pharm.,B.Pharm.,6,2,taxonomy parent by name,PHARMA,,
+BITSAT,M.Sc. Biological Sciences,M.Sc. Biological Sciences,30,3,taxonomy parent by name,BIO,,
+BITSAT,M.Sc. Chemistry,M.Sc. Chemistry,30,3,taxonomy parent by name,CHEM,,
+BITSAT,M.Sc. Economics,M.Sc. Economics,30,3,taxonomy parent by name,ECON,,
+BITSAT,M.Sc. Mathematics,M.Sc. Mathematics,30,3,taxonomy parent by name,MATH,,
+BITSAT,M.Sc. Physics,M.Sc. Physics,30,3,taxonomy parent by name,PHYSICS,,
+BITSAT,M.Sc. Semiconductor and Nanoscience,M.Sc. Semiconductor and Nanoscience,6,3,"nearest parent, needs review",PHYSICS,,provisional (for Amogh)
