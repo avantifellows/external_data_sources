@@ -393,6 +393,17 @@ STAT_DATASETS = [
         ("jamiaug/clean/jamiaug_fact_cutoffs.parquet", "jamiaug/extracted/jamiaug_cutoffs_2025.csv", "Jamia UG 2025 — Cut-off marks by programme, selection list and category", 2025),
      ]},
 
+    {"id": "bitsat", "category": "admissions",
+     "title": "BITSAT cut-offs 2017-2026 (BITS Pilani, Goa, Hyderabad)",
+     "blurb": "Final BITSAT cut-off score for every campus and programme, ten admission years: BITS's cut-off page as published, and the table read from it. Maximum marks were 450 until 2021 and 390 since.",
+     "source": {"label": "admissions.bits-pilani.ac.in", "url": "https://admissions.bits-pilani.ac.in/FD/BITSAT_cutOffs.html"},
+     "files": [
+        ("bitsat/raw/bitsat_cutoffs_page_2026-10-07.html", "BITSAT 2017-2026 — Cut-off page, as published (saved 7 Oct 2026)", "raw", "2017-2026"),
+     ],
+     "parquet_as_extracted": [
+        ("bitsat/clean/bitsat_fact_cutoffs.parquet", "bitsat/extracted/bitsat_cutoffs_2017_2026.csv", "BITSAT 2017-2026 — Cut-off score by year, campus and programme", "2017-2026"),
+     ]},
+
     {"id": "uptac", "category": "admissions",
      "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
      "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",

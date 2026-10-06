@@ -1,0 +1,4 @@
+raw/*.html
+clean/*.parquet
+.venv/
+__pycache__/
