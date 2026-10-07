@@ -85,9 +85,57 @@ Route by what the data is:
 - [ ] **Offline filter test:** replicate getFilters exactly, sweep the full option
       grid, count dead combos.
 - [ ] **Browser audit — non-negotiable.** Run the app, click through the new exam:
-      form flow, every dropdown, expanded rows, one absurd input. Three sessions
+      form flow, every dropdown, expanded rows, one absurd input, and a result
+      row's college link through to its card (rank, placement, programmes). Three sessions
       running, this step caught something offline checks missed every time
       (unreachable categories, a private college shown as govt, duplicate rows).
+### Every tab the source touches (not just the predictor)
+
+- [ ] **Branch mapping:** the source's programmes in `exam_branch_mapping`
+      (branches/evidence → build_and_load.py → BQ), then appended to the app's
+      data-sources/exam_branch_mapping.csv. No row unmapped.
+- [ ] **Exams tab:** the exam's rows in data-sources/exams_cleaned.csv carry the
+      predictor key, so "Check your chances" lands on the predictor.
+- [ ] **Careers tab:** EXAM_LINKS chip for the exam and OPTION_SOURCES example
+      colleges in build_careers_data.py; rebuild careers.json and confirm every
+      example college links (`q` not null).
+- [ ] **Datasets tab:** search keywords for the new dataset in pages/datasets.js.
+
+### Colleges tab — every college the source names
+
+- [ ] **One card per college.** Before making a card, look for one: the JoSAA
+      card, a state-CET card, an AISHE-id card. Add programmes to the existing
+      card (programmes tables show rank and score columns side by side, as on
+      JNU and Allahabad). Then list AISHE codes shared by more than one
+      non-evening card: each is a duplicate or a bad pin (Allahabad got two
+      cards this way).
+- [ ] **NIRF rank on every card NIRF ranks.** NIRF ids end in the AISHE code
+      (IR-O-U-0109 = U-0109). For each new card, query nirf_fact_rankings by
+      that suffix and compare with the card: missing, wrong list (Overall on an
+      engineering card), or stuck on an old year are all bugs. The name matcher
+      misses spellings ("& Science -Pilani"); nirf_from_aishe in
+      build_colleges_data.py is the fallback.
+- [ ] **The right list:** the card's subject first (Engineering for a B.Tech
+      card, College for a DU college, Agriculture for an ICAR university), then
+      University / Overall. Never show a rank from one list as another's.
+- [ ] **Multi-campus institutes:** say who NIRF ranked. BITS files one return for
+      all three campuses (all three cards, "as a whole" in the source); a campus
+      or centre of an institute that files alone (ICT Jalna, VTU's PG centres)
+      does not take the parent's rank or placement.
+- [ ] **Check NIRF's id against the card's name.** NIRF files the odd college
+      under another's AISHE code (Bharati Vidyapeeth's College of Engineering
+      under MMCOE Pune's): same state and the same distinctive name word, or no.
+- [ ] **Placement** from the matching DCS block (Engineering UG-4Y, MBBS,
+      College UG-3Y, Law UG-5Y); none from a university's mixed UG totals.
+- [ ] **Links resolve to the card.** Every institute name the predictor rows
+      carry, run through utils/search.js's matchesQuery against the tab, finds
+      exactly one card (an exact display name shows only that card). Zero hits
+      = a dead link (JNU's "..., New Delhi"; Hansraj vs Hans Raj; GUJCET's
+      nursing colleges). The exam is in NAME_LINK_EXAMS (and NO_COMPARE_EXAMS if
+      it is a score, not a rank).
+- [ ] **Card basics:** state, district, public/private, website, exam chip,
+      programme count, score label and max ("/ 750", "BITSAT score").
+
 - [ ] **Site-visible changes go by PR; data refreshes and pipeline code go to main.**
       Check the deploy preview — it builds on case-sensitive Linux and has caught
       what a Mac cannot (Navbar vs navbar).
