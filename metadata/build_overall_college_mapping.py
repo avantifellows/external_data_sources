@@ -85,12 +85,12 @@ BQ_DATASET  = "external_data_sources"
 BQ_LOCATION = "asia-south1"
 OUT_TABLE   = f"{BQ_PROJECT}.{BQ_DATASET}.overall_college_mapping"
 
-AISHE_TABLES = [
-    ("aishe_dim_colleges",                            "name",           "state"),
-    ("aishe_dim_universities",                        "name",           "state"),
-    ("aishe_dim_standalone_institutions",             "name",           "state"),
-    ("aishe_dim_research_institutions",               "institute_name", "state_name"),
-    ("aishe_dim_pm_vidyalaxmi_eligible_institutions", "institute_name", "state_name"),
+AISHE_TABLES = [  # (table, name, state, district or None)
+    ("aishe_dim_colleges",                            "name",           "state",      "district"),
+    ("aishe_dim_universities",                        "name",           "state",      "district"),
+    ("aishe_dim_standalone_institutions",             "name",           "state",      "district"),
+    ("aishe_dim_research_institutions",               "institute_name", "state_name", "district_name"),
+    ("aishe_dim_pm_vidyalaxmi_eligible_institutions", "institute_name", "state_name", None),
 ]
 
 NIRF_TABLES = [
@@ -290,9 +290,10 @@ def _spaceless(s: pd.Series) -> pd.Series:
 
 def _read_aishe(client) -> pd.DataFrame:
     parts = []
-    for table, name_col, state_col in AISHE_TABLES:
+    for table, name_col, state_col, dist_col in AISHE_TABLES:
         sql = f"""
-            SELECT aishe_code, {name_col} AS college_name, {state_col} AS college_state
+            SELECT aishe_code, {name_col} AS college_name, {state_col} AS college_state,
+                   {dist_col or "CAST(NULL AS STRING)"} AS college_district
             FROM `{BQ_PROJECT}.{BQ_DATASET}.{table}`
             WHERE aishe_code IS NOT NULL
         """
@@ -698,7 +699,7 @@ def _match_kcet(aishe: pd.DataFrame, kcet: pd.DataFrame) -> pd.DataFrame:
 
 def _read_nmc(client) -> pd.DataFrame:
     sql = f"""
-        SELECT sl_no, college, state
+        SELECT sl_no, college, state, district
         FROM `{BQ_PROJECT}.{BQ_DATASET}.{NMC_TABLE}`
         WHERE sl_no IS NOT NULL
     """
@@ -711,6 +712,75 @@ def _read_nmc(client) -> pd.DataFrame:
     df["spaceless_name"]  = _spaceless(df["college"])
     df["norm_state"]      = _norm_state(df["state"])
     return df
+
+
+# ── NMC pair check ───────────────────────────────────────────────────────────
+# Words every medical college shares, plus address words NMC prints in the name.
+_PAIR_GENERIC = _GENERIC_TOKENS | {"GMC", "ESIC", "DISTRICT", "ALLOPATHIC", "CAMPUS", "NEAR",
+                                   "ROAD", "MARG", "POLICE", "STATION", "PREV", "KNOWN", "AS",
+                                   "ACADEMY", "TRUST", "SOCIETY"}
+# the same place under two names (a town and its district)
+_DISTRICT_ALIASES = {"GREATER NOIDA": "GAUTAM BUDDHA NAGAR", "BETTIAH": "PASHCHIM CHAMPARAN"}
+
+
+def _pair_generic(t: str) -> bool:
+    # AISHE's typos of the shared words ("INSTITITE", "SCINECE", "GOVERNAMENT")
+    return t in _PAIR_GENERIC or (len(t) > 5 and any(
+        difflib.SequenceMatcher(None, t, g).ratio() >= 0.85 for g in _PAIR_GENERIC))
+
+
+def _pair_seq(name) -> list[str]:
+    canon = _canon_name(pd.Series([str(name or "")]))[0]
+    return [t for t in canon.split() if not _pair_generic(t) and not t.isdigit()]
+
+
+def _pair_toks(name) -> set[str]:
+    return {t for t in _pair_seq(name) if len(t) > 2}
+
+
+def _pair_close(t: str, pool) -> bool:
+    return any(t == p or difflib.SequenceMatcher(None, t, p).ratio() >= 0.8
+               or (min(len(t), len(p)) >= 4 and (t.startswith(p) or p.startswith(t)))
+               for p in pool)
+
+
+def _nmc_names_agree(nmc_name, aishe_name, nmc_district, aishe_district) -> bool:
+    """Do an NMC college and an AISHE entry name the same college?
+
+    The names' distinctive words (what is left after the words every medical
+    college shares) decide: most must have a close partner on the other side,
+    or the names run together the same way ("Ruxmaniben Deepchand" /
+    "Rukmani Ben DeepchandGardi"), or one is the other's acronym ("GTB" /
+    "Guru Teg Bahadur"). Where a name is only shared words ("Medical College",
+    "Govt. Medical College"), the place decides: name or district words."""
+    short = lambda x: re.split(r"[,(]", str(x or ""))[0]
+    spaceless = lambda x: re.sub(r"[^A-Z0-9]", "", short(x).upper())
+    place = lambda x: _DISTRICT_ALIASES.get(str(x or "").upper().strip(), str(x or ""))
+    # initials name the person a college is named after: "Dr. M.K. Shah" and
+    # "Smt. B.K. Shah" are two colleges
+    inits = lambda x: "".join(re.findall(r"\b([A-Z])\b", short(x).upper().replace(".", " ")))
+    # (two or more: "Sher-I-Kashmir" / "Sher-e-Kashmir" is one college)
+    if len(inits(nmc_name)) >= 2 and len(inits(aishe_name)) >= 2 and inits(nmc_name) != inits(aishe_name) \
+            and spaceless(nmc_name) != spaceless(aishe_name):
+        return False
+    ns, as_ = _pair_toks(short(nmc_name)), _pair_toks(short(aishe_name))
+    nf = _pair_toks(nmc_name) | _pair_toks(place(nmc_district))
+    af = _pair_toks(aishe_name) | _pair_toks(place(aishe_district))
+    if ns and as_:
+        if spaceless(nmc_name) == spaceless(aishe_name):
+            return True
+        if sum(_pair_close(t, af) for t in ns) >= max(1, len(ns) / 2):
+            return True
+        joined_n, joined_a = "".join(_pair_seq(short(nmc_name))), "".join(_pair_seq(short(aishe_name)))
+        if difflib.SequenceMatcher(None, joined_n, joined_a).ratio() >= 0.8:
+            return True
+        initials = lambda w: "".join(x[0] for x in w)
+        return any(len(t) >= 3 and (t in initials(_pair_seq(aishe_name)) or t in initials(_pair_seq(nmc_name)))
+                   for t in ns | as_)
+    if ns or as_:
+        one, other = (ns, af) if ns else (as_, nf)
+        return spaceless(nmc_name) == spaceless(aishe_name) or any(_pair_close(t, other) for t in one)
+    return bool(nf and af and any(_pair_close(t, af) for t in nf))
 
 
 def _match_nmc(aishe: pd.DataFrame, nmc: pd.DataFrame) -> pd.DataFrame:
@@ -876,6 +946,20 @@ def _match_nmc(aishe: pd.DataFrame, nmc: pd.DataFrame) -> pd.DataFrame:
         [s1, s2, s3[["sl_no", "aishe_code", "nmc_match_method"]],
          s4, s5], ignore_index=True
     )
+
+    # Every strategy's pair must name the same college (_nmc_names_agree). s2/s3/s5
+    # paired "Institute of Medical Sciences, BHU" with IMS Amroha, Saveetha with
+    # Nandha, Malabar with Al-Azhar, Mayo with Ruma: 25 of 498 wrong.
+    pairs = matched.merge(nmc[["sl_no", "college", "district"]], on="sl_no", how="left") \
+                   .merge(aishe[["aishe_code", "college_name", "college_district"]], on="aishe_code", how="left")
+    keep = [_nmc_names_agree(r.college, r.college_name, r.district, r.college_district)
+            for r in pairs.itertuples()]
+    rejected = pairs[[not k for k in keep]]
+    if not rejected.empty:
+        print(f"  NMC name check: rejecting {len(rejected)} pair(s) that name different colleges")
+        for r in rejected.itertuples():
+            print(f"    {r.nmc_match_method}: {r.college[:50]!r} -> {str(r.college_name)[:50]!r}")
+        matched = matched[~matched["sl_no"].isin(rejected["sl_no"])]
 
     # Final collision check across all strategies: if multiple NMC sl_nos mapped
     # to the same AISHE code (e.g. all "Government Medical College" in one state),
