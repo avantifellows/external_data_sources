@@ -143,10 +143,10 @@ repo's `docs/schemas/external/nirf_*.yaml`.
 | `nirf_fact_master` | 90,707 | (institute, year, category, type, academic_year, metric) |
 | `nirf_fact_strength` | 186,012 | (institute, year, category, programme, metric) |
 | `nirf_fact_aggregate` | 31,717 | (institute, year, category, academic_year, type) |
-| `nirf_fact_dcs_placements` | 28,167 | (edition, discipline, institute, program level, graduating AY) |
-| `nirf_fact_dcs_intake` | 29,613 | (edition, discipline, institute, program level, AY) |
-| `nirf_fact_dcs_strength` | 8,889 | (edition, discipline, institute, program level) |
-| `nirf_fact_dcs_institution` | 3,347 | (edition, discipline, institute) |
+| `nirf_fact_dcs_placements` | 28,818 | (edition, discipline, institute, program level, graduating AY) |
+| `nirf_fact_dcs_intake` | 30,301 | (edition, discipline, institute, program level, AY) |
+| `nirf_fact_dcs_strength` | 9,106 | (edition, discipline, institute, program level) |
+| `nirf_fact_dcs_institution` | 3,469 | (edition, discipline, institute) |
 | `nirf_dim_participants` | 31,672 | (year, discipline, name, city) |
 
 Every grain is unique — `build_clean.py` enforces it and fails otherwise.

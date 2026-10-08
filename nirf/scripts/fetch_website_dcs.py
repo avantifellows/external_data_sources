@@ -14,7 +14,7 @@ submissions were up in Oct 2026 while nirfindia.org had none).
 
 The manifest — nirf/institute_website_pdfs.csv, committed — is the record:
 one row per PDF with the URL, what page 1 says (IR-id, discipline, edition),
-how it was found (crawl / search / manual), fetch date and sha256. PDFs land
+how it was found (crawl / search / manual / prototype = the Feb-Mar 2026 NIRF Extractor's URLs), fetch date and sha256. PDFs land
 in raw/dcs/website/<Discipline>/<edition>/<IR-id>.pdf (gitignored; GCS is
 canonical via upload_to_gcs.py --dcs-raw).
 
@@ -281,7 +281,7 @@ def main() -> None:
     a = sub.add_parser("add")
     a.add_argument("urls", nargs="+")
     a.add_argument("--state", required=True)
-    a.add_argument("--found-by", default="search", choices=["search", "manual", "crawl"])
+    a.add_argument("--found-by", default="search", choices=["search", "manual", "crawl", "prototype"])
     sub.add_parser("fetch")
     args = ap.parse_args()
     if args.cmd == "discover":
