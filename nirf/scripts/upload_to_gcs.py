@@ -32,7 +32,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import (DCS_RAW, DCS_SEEDS, EXTRACTED, GCS_BUCKET, GCS_PREFIX,
+from sources import (DCS_RAW, DCS_SEEDS, EXTRACTED, GCS_BUCKET, GCS_PREFIX, WEBSITE_MANIFEST,
                      TABLES, Table)
 
 
@@ -80,6 +80,16 @@ def upload_dcs_raw(client, dry_run: bool) -> None:
                 for f in pdfs:
                     zf.write(f, f.name)
             _upload_blob(client, f"{GCS_PREFIX}/raw/dcs/{z.name}", z, dry_run)
+    # institute-website copies (fetch_website_dcs.py): one zip keeping
+    # <Discipline>/<edition>/<IR-id>.pdf, and the manifest that names their URLs
+    web = sorted((DCS_RAW / "website").glob("*/*/*.pdf"))
+    if web:
+        z = tmp / "dcs_website_pdfs.zip"
+        with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in web:
+                zf.write(f, str(f.relative_to(DCS_RAW / "website")))
+        _upload_blob(client, f"{GCS_PREFIX}/raw/dcs/{z.name}", z, dry_run)
+        _upload_blob(client, f"{GCS_PREFIX}/raw/dcs/{WEBSITE_MANIFEST.name}", WEBSITE_MANIFEST, dry_run)
     # every saved ranking/band/participant page, one zip
     z = tmp / "ranking_pages.zip"
     with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:

@@ -35,6 +35,10 @@ DCS-table gotchas that bite queries:
   `median_salary = 0` — graduates proceed to internship, not "placement".
 - Band institutes exist in `nirf_fact_rankings` with NULL `institute_id`,
   NULL score, and `rank_band` like `'101-150'` — grain there is (name, city).
+- `pdf_source` says where a DCS row's PDF came from: `nirf_cdn` (nirfindia.org)
+  or `institute_website` (the institute's own copy, for institutes NIRF never
+  hosts — `institute_website_pdfs.csv` lists them; `source_url` on every row).
+  Add a state with `fetch_website_dcs.py discover --state "<State>"`.
 - College PDFs exist only for the ranked top 100 per edition; band colleges
   (101–300) have ranking rows but no DCS rows. College ids end in the AISHE
   code (`IR-C-C-6355` = Miranda House, C-6355).
@@ -139,10 +143,10 @@ repo's `docs/schemas/external/nirf_*.yaml`.
 | `nirf_fact_master` | 90,707 | (institute, year, category, type, academic_year, metric) |
 | `nirf_fact_strength` | 186,012 | (institute, year, category, programme, metric) |
 | `nirf_fact_aggregate` | 31,717 | (institute, year, category, academic_year, type) |
-| `nirf_fact_dcs_placements` | 26,670 | (edition, discipline, institute, program level, graduating AY) |
-| `nirf_fact_dcs_intake` | 28,100 | (edition, discipline, institute, program level, AY) |
-| `nirf_fact_dcs_strength` | 8,394 | (edition, discipline, institute, program level) |
-| `nirf_fact_dcs_institution` | 3,119 | (edition, discipline, institute) |
+| `nirf_fact_dcs_placements` | 28,167 | (edition, discipline, institute, program level, graduating AY) |
+| `nirf_fact_dcs_intake` | 29,613 | (edition, discipline, institute, program level, AY) |
+| `nirf_fact_dcs_strength` | 8,889 | (edition, discipline, institute, program level) |
+| `nirf_fact_dcs_institution` | 3,347 | (edition, discipline, institute) |
 | `nirf_dim_participants` | 31,672 | (year, discipline, name, city) |
 
 Every grain is unique — `build_clean.py` enforces it and fails otherwise.
