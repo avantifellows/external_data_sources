@@ -162,8 +162,11 @@ def parse_pdf(path: Path, edition: int, disc: str,
     pdf = pdfplumber.open(path)
     inst_id = path.stem
     text0 = pdf.pages[0].extract_text() or ""
-    m = re.search(r"Institute Name:\s*(.+?)\s*\[IR", text0)
-    inst_name = re.sub(r"\s+", " ", m.group(1)) if m else None
+    # the portal's "Full Report" print (some institutes post that one on their
+    # websites) puts the name on its own line, without the "[IR-…]" after it
+    m = (re.search(r"Institute Name:\s*(.+?)\s*\[IR", text0)
+         or re.search(r"Institute Name:\s*(.+)", text0))
+    inst_name = re.sub(r"\s+", " ", m.group(1)).strip() if m else None
 
     phd_ft = phd_pt = faculty = None
     placement_hdrs: list[str] = []
@@ -181,6 +184,9 @@ def parse_pdf(path: Path, edition: int, disc: str,
                 (ay_in, fy_intake, fy_adm,
                  ay_grad, grad, placed, salary, higher) = row[:8]
                 ay_lat = lat_adm = None
+            # the "Full Report" print brackets years: "(2019-20)"
+            ay_in, ay_lat, ay_grad = (a.strip("() ") if isinstance(a, str) else a
+                                      for a in (ay_in, ay_lat, ay_grad))
             placements.append([
                 edition, disc, inst_id, inst_name, level,
                 re.sub(r"\s+", " ", level_raw).strip(),
@@ -259,18 +265,57 @@ def parse_pdf(path: Path, edition: int, disc: str,
     pdf.close()
 
 
-def parse_pdfs() -> None:
+def _sources() -> list[tuple[Path, str, str]]:
+    """(pdf, pdf_source, source_url) for NIRF's CDN copies and the
+    institutes' own website copies (fetch_website_dcs.py). A website copy of
+    a PDF NIRF also hosts is skipped: nirfindia.org wins."""
+    from sources import WEBSITE_MANIFEST, WEBSITE_PDFS
+    out = []
+    for path in sorted(PDFS.glob("*/*/*.pdf")):
+        disc, edition = path.parent.parent.name, path.parent.name
+        out.append((path, "nirf_cdn",
+                    f"https://www.nirfindia.org/nirfpdfcdn/{edition}/pdf/{disc}/{path.name}"))
+    urls = {}
+    if WEBSITE_MANIFEST.exists():
+        with open(WEBSITE_MANIFEST, newline="") as fh:
+            for r in csv.DictReader(fh):
+                urls[(r["discipline"], r["edition_year"], r["institute_id"])] = r["url"]
+    for path in sorted(WEBSITE_PDFS.glob("*/*/*.pdf")):
+        disc, edition = path.parent.parent.name, path.parent.name
+        key = (disc, edition, path.stem)
+        if (PDFS / disc / edition / path.name).exists():
+            continue
+        if key not in urls:
+            raise SystemExit(f"{path} is not in {WEBSITE_MANIFEST.name}: add it with "
+                             f"fetch_website_dcs.py so its URL is on record")
+        out.append((path, "institute_website", urls[key]))
+    return out
+
+
+def parse_pdfs(website_only: bool = False) -> None:
+    """Parse every DCS PDF into extracted/. website_only: parse just the
+    institute-website PDFs and splice them into the existing CSVs — NIRF's
+    own rows stay as parsed (only tagged nirf_cdn + their CDN URL), so adding
+    a state takes seconds instead of a full re-parse."""
     placements, intakes, strengths, institutions = [], [], [], []
-    files = sorted(PDFS.glob("*/*/*.pdf"))
-    print(f"parsing {len(files)} DCS pdfs")
-    for i, path in enumerate(files):
+    files = _sources()
+    if website_only:
+        files = [f for f in files if f[1] == "institute_website"]
+    print(f"parsing {len(files)} DCS pdfs "
+          f"({sum(1 for f in files if f[1] == 'institute_website')} from institute websites)")
+    for i, (path, source, url) in enumerate(files):
         disc = path.parent.parent.name
         edition = int(path.parent.name)
+        before = [len(x) for x in (placements, intakes, strengths, institutions)]
         try:
             parse_pdf(path, edition, disc,
                       placements, intakes, strengths, institutions)
         except Exception as e:
-            print(f"  FAIL {disc}/{edition}/{path.name}: {e}")
+            print(f"  FAIL {source} {disc}/{edition}/{path.name}: {e}")
+        # every row says where its PDF came from
+        for rows, n in zip((placements, intakes, strengths, institutions), before):
+            for row in rows[n:]:
+                row += [source, url]
         if (i + 1) % 200 == 0:
             print(f"  …{i + 1}/{len(files)}")
 
@@ -283,23 +328,36 @@ def parse_pdfs() -> None:
             "first_year_admitted", "lateral_academic_year",
             "lateral_admitted", "graduating_academic_year",
             "graduated_on_time", "students_placed", "median_salary",
-            "higher_studies_selected"]),
+            "higher_studies_selected", "pdf_source", "source_url"]),
         "dcs_intake.csv": (intakes, [
             "edition_year", "discipline", "institute_id", "institute_name",
             "program_level", "program_level_raw", "academic_year",
-            "sanctioned_intake"]),
+            "sanctioned_intake", "pdf_source", "source_url"]),
         "dcs_strength.csv": (strengths, [
             "edition_year", "discipline", "institute_id", "institute_name",
             "program_level", "program_level_raw", "male", "female", "total",
             "within_state", "outside_state", "outside_country",
             "economically_backward", "socially_challenged",
             "fee_reimb_government", "fee_reimb_institution",
-            "fee_reimb_private", "no_fee_reimbursement"]),
+            "fee_reimb_private", "no_fee_reimbursement", "pdf_source", "source_url"]),
         "dcs_institution.csv": (institutions, [
             "edition_year", "discipline", "institute_id", "institute_name",
             "phd_full_time_pursuing", "phd_part_time_pursuing",
-            "faculty_count"]),
+            "faculty_count", "pdf_source", "source_url"]),
     }
+    if website_only:
+        import pandas as pd
+        for name, (rows, header) in heads.items():
+            old_df = pd.read_csv(OUT / name, dtype=str, keep_default_na=False)
+            if "pdf_source" not in old_df.columns:
+                old_df["pdf_source"] = "nirf_cdn"
+                old_df["source_url"] = ("https://www.nirfindia.org/nirfpdfcdn/" + old_df.edition_year
+                                        + "/pdf/" + old_df.discipline + "/" + old_df.institute_id + ".pdf")
+            old_df = old_df[old_df.pdf_source != "institute_website"][header]
+            new_df = pd.DataFrame(rows, columns=header).astype(str).replace({"None": ""})
+            pd.concat([old_df, new_df]).to_csv(OUT / name, index=False)
+            print(f"{name}: {len(old_df)} NIRF rows kept + {len(new_df)} institute-website rows")
+        return
     for name, (rows, header) in heads.items():
         with open(OUT / name, "w", newline="") as fh:
             w = csv.writer(fh)
@@ -314,3 +372,5 @@ if __name__ == "__main__":
         parse_pages()
     if which in ("all", "pdfs"):
         parse_pdfs()
+    if which == "website":
+        parse_pdfs(website_only=True)

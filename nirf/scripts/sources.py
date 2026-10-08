@@ -59,6 +59,13 @@ DCS_RAW = RAW / "dcs"
 # probe is what decides membership, the seeds only widen the candidate pool.
 DCS_SEEDS = DCS_RAW / "seeds"
 
+# The same DCS PDFs, published by institutes on their OWN websites — for the
+# participants nirfindia.org never hosts (fetch_website_dcs.py). The manifest
+# is committed (URL, page-1 id/discipline/edition, how found, sha256); the
+# PDFs sit beside the CDN ones under raw/dcs/website/ and go to GCS with them.
+WEBSITE_PDFS = DCS_RAW / "website"
+WEBSITE_MANIFEST = ROOT / "institute_website_pdfs.csv"
+
 # ranking_category values that are FIRST-PARTY in nirf_fact_rankings: rows for
 # these come from nirfindia.org pages (extracted/nirf_rankings_official.csv);
 # every other category still carries the Dataful vintage. See build_clean.py.

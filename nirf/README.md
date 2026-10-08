@@ -20,6 +20,7 @@ known coverage limits that are not visible in the tables themselves.
 Dataful vintage                          First-party (Engg, Med, Univ, College, Law)
 nirf/raw/*.parquet                       nirfindia.org ranking pages + DCS PDFs
 (local; gitignored)                             │ scripts/fetch_dcs.py   → raw/dcs/
+(local; gitignored)                             │ scripts/fetch_website_dcs.py → raw/dcs/website/ (institutes' own copies)
        │                                        │ scripts/parse_dcs.py   → extracted/*.csv
        └──────────────┬─────────────────────────┘
                       │ scripts/build_clean.py   ← dedup, splice official
@@ -46,10 +47,10 @@ objects and the BQ tables are byte-identical.
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
 | `nirf_fact_aggregate` | 31,717  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
-| `nirf_fact_dcs_placements`  | 26,670 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
-| `nirf_fact_dcs_intake`      | 28,100 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
-| `nirf_fact_dcs_strength`    | 8,394  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
-| `nirf_fact_dcs_institution` | 3,119  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
+| `nirf_fact_dcs_placements`  | 28,167 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
+| `nirf_fact_dcs_intake`      | 29,613 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
+| `nirf_fact_dcs_strength`    | 8,889  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
+| `nirf_fact_dcs_institution` | 3,347  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
 | `nirf_dim_participants`     | 31,672 | (year, discipline, name, city) | "ALL participants" pages (Engineering, Medical, College) — names only, NIRF publishes no ids for them |
 
 Every table's grain is unique — `build_clean.py` enforces it and fails if not.
@@ -151,10 +152,32 @@ NLU cards get placements). Each list is one entry in
   Pradesh (a different college, correct) and Delhi, Andhra Pradesh (a typo).
   `KNOWN_SOURCE_TYPOS` in `build_clean.py` drops exactly that row and prints
   it; any other grain conflict still fails the build.
-- **Unranked participants are out of scope**: the ~1,585-name "ALL" page
-  carries no ids and no PDF links, and their CDN URLs 404. Reaching them means
-  crawling institute websites (~27% yield in the NIRF Extractor prototype this
-  work replaced).
+- **Unranked participants: only from their own websites.** The ~1,585-name
+  "ALL" page carries no ids and no PDF links, and their CDN URLs 404 for every
+  edition. But NIRF makes each participant publish its submission on its own
+  website, and that copy is the identical DCS PDF (its id is the AISHE code:
+  Ujjain Engineering College = `IR-E-C-36192` = AISHE C-36192).
+  `scripts/fetch_website_dcs.py` finds them (crawl from the AISHE website per
+  state, or by hand), checks page 1 is a DCS page, and records each in the
+  committed manifest [`institute_website_pdfs.csv`](institute_website_pdfs.csv)
+  (URL, id, discipline, edition, how found, fetch date, sha256). They parse
+  with everything else; rows carry `pdf_source = 'institute_website'` and
+  their `source_url`.
+  - **Gap-filling only**: an institute NIRF's CDN hosts in a discipline keeps
+    its NIRF series — its website copy is never used, even a newer edition
+    (2026 copies for a few ranked institutes would leave the rest on 2025).
+  - **Edition**: page 1 says "NIRF'2025" from 2022 on; older layouts don't, so
+    the edition is the latest graduating year's end + 1 (`edition_inferred` in
+    the manifest). A 2026 website copy can predate NIRF's own publication.
+  - **Not taken**: scanned PDFs without a text layer (MITS Gwalior 2026),
+    sites that serve HTML to every script (SGSITS) — those need a person —
+    and the 2019 layout with bracketed years (UIT-RGPV; grads to 2017-18).
+  - **Adding a state is incremental**: `parse_dcs.py website` parses only the
+    website PDFs and splices them into extracted/ (NIRF's rows untouched);
+    a full `parse_dcs.py pdfs` gives the same result in ~30 minutes.
+  - Coverage so far: Madhya Pradesh (Oct 2026), the template for other states.
+    Earlier: the NIRF Extractor prototype crawled ~790 sites (~27% yield)
+    but kept only figures, not PDFs or URLs.
 
 ## What `build_clean.py` fixes
 
