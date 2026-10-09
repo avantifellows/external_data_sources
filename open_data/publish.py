@@ -404,6 +404,17 @@ STAT_DATASETS = [
         ("bitsat/clean/bitsat_fact_cutoffs.parquet", "bitsat/extracted/bitsat_cutoffs_2017_2026.csv", "BITSAT 2017-2026 — Cut-off score by year, campus and programme", "2017-2026"),
      ]},
 
+    # the JIC reports print toppers' names and roll numbers: the table read
+    # from them is published, the PDFs are linked, not re-hosted
+    {"id": "jeeadv", "category": "admissions",
+     "title": "JEE Advanced marks and ranks 2025-2026",
+     "blurb": "The aggregate JEE (Advanced) marks, out of 360, of the candidate at every 100th rank of each rank list (common, GEN-EWS, OBC-NCL, SC, ST, PwD), read from the official results reports.",
+     "source": {"label": "jeeadv.ac.in reports", "url": "https://jeeadv.ac.in/reports/2026.pdf"},
+     "files": [],
+     "parquet_as_extracted": [
+        ("jeeadv/clean/jeeadv_fact_marks_at_rank.parquet", "jeeadv/extracted/jeeadv_marks_at_rank_2025_2026.csv", "JEE Advanced 2025-2026 — Marks at every 100th rank, by rank list", "2025-2026"),
+     ]},
+
     {"id": "uptac", "category": "admissions",
      "title": "UPTAC 2026 admissions (Uttar Pradesh, AKTU colleges)",
      "blurb": "Opening and closing ranks for every round, institute, branch and category of Uttar Pradesh's technical counselling: B.Tech on JEE Main, plus architecture, management and computer applications. UPTAC's own table, parsed.",
