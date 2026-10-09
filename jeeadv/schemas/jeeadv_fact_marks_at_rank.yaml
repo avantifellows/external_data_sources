@@ -1,0 +1,20 @@
+# jeeadv_fact_marks_at_rank
+#
+# Source: Joint Implementation Committee (JIC) report of JEE (Advanced),
+# jeeadv.ac.in/reports/<year>.pdf, sections 6.8-6.13.
+#   raw:   gs://avantifellows-external-data/jeeadv/raw/jic_report_<year>.pdf
+#   clean: gs://avantifellows-external-data/jeeadv/clean/jeeadv_fact_marks_at_rank.parquet
+#   BQ:    avantifellows.external_data_sources.jeeadv_fact_marks_at_rank
+
+description: Aggregate JEE (Advanced) marks (Paper 1 + Paper 2, out of 360) of the candidate at ranks 1, 101, 201, ... of each rank list, 2025 and 2026.
+rows: 1200
+grain: (exam_year, rank_list, rank)
+
+columns:
+  - {name: exam_year, type: INTEGER, mode: REQUIRED, description: "JEE (Advanced) year."}
+  - {name: rank_list, type: STRING, mode: REQUIRED, description: "CRL, GEN-EWS, OBC-NCL, SC, ST, CRL-PwD (a category rank list; CRL is the common rank list)."}
+  - {name: rank, type: INTEGER, mode: REQUIRED, description: "Rank in that list: 1, 101, 201, ... (one misprint kept as printed: 2025 CRL 28402)."}
+  - {name: marks, type: INTEGER, mode: REQUIRED, description: "Aggregate marks of the candidate at that rank."}
+  - {name: max_marks, type: INTEGER, mode: REQUIRED, description: "Aggregate maximum that year (360 in 2025 and 2026)."}
+  - {name: report_section, type: STRING, mode: REQUIRED, description: "6.8 (CRL) ... 6.13 (CRL-PwD)."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "Report PDF read."}
