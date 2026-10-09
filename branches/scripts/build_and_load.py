@@ -53,8 +53,16 @@ GCS = "avantifellows-external-data"
 def fetch_sheet():
     scope = ["https://spreadsheets.google.com/feeds",
              "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(str(SHEETS_KEY), scope)
-    sh = gspread.authorize(creds).open_by_key(SHEET_ID)
+    if SHEETS_KEY.exists():
+        creds = ServiceAccountCredentials.from_json_keyfile_name(str(SHEETS_KEY), scope)
+        client = gspread.authorize(creds)
+    else:
+        # no key file: the person's own Google login (gcloud auth
+        # application-default login with the drive/spreadsheets scopes)
+        import google.auth
+        creds, _ = google.auth.default(scopes=scope)
+        client = gspread.authorize(creds)
+    sh = client.open_by_key(SHEET_ID)
 
     def tab(title):
         vals = sh.worksheet(title).get_all_values()
@@ -133,7 +141,9 @@ def main() -> None:
     raw = ROOT / f"raw/branch_sheet_{stamp}.csv"
     branch.to_csv(raw, index=False)
 
-    creds = service_account.Credentials.from_service_account_file(GCP_KEY)
+    # the service-account key if it's here, else the person's own login
+    creds = (service_account.Credentials.from_service_account_file(GCP_KEY)
+             if GCP_KEY.exists() else None)
     bucket = storage.Client(credentials=creds, project="avantifellows").bucket(GCS)
     for p, dest in [(raw, f"branches/raw/{raw.name}"),
                     (dim_pq, "branches/clean/branch_dim.parquet"),
