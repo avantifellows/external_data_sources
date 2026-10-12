@@ -72,6 +72,17 @@ def parse_demo(counselling: str, demo: str) -> tuple[str | None, bool | None, bo
     return None, None, None
 
 
+# Branch_ID values that aren't branch_dim parent ids: POLYMER was always a
+# slip for POLYMERTECH; the rest are parents the Branch sheet folded into
+# others in Oct 2026 (branches/scripts/build_and_load.py RETIRED_IDS)
+BRANCH_ID_FIXES = {
+    "POLYMER": "POLYMERTECH",
+    "BIOSCI": "BIO", "CYBERSEC": "CSIT", "EARTHSCI": "GEO", "ENGSCI": "GENENG",
+    "NATSCI": "GENSCI", "PRINTENG": "PAPERENG", "SPACEENG": "AERO",
+    "ADMIN": "MBA",
+}
+
+
 def build() -> pd.DataFrame:
     df = pd.read_csv(RAW_CSV, low_memory=False)
     df.columns = [c.strip() for c in df.columns]
@@ -86,7 +97,7 @@ def build() -> pd.DataFrame:
         "college_id":   df["College ID"].astype(str).str.strip(),
         "college_name": df["College Name"].str.strip(),
         "course_name":  df["Course Name"].str.strip(),
-        "branch_id":    df["Branch_ID"],
+        "branch_id":    df["Branch_ID"].str.strip().replace(BRANCH_ID_FIXES),
         "demo_id":      df["Demo_ID"].astype(str).str.strip(),
         "tuition_fee":  pd.to_numeric(df["Tuition Fees (INR)"], errors="coerce"),
         "total_fee":    pd.to_numeric(df["Tuition + Exam + ECAs + Development Fee"],
