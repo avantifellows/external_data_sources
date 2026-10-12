@@ -179,6 +179,20 @@ def _build_dcs(table: Table) -> pd.DataFrame:
         )
     df = pd.read_csv(table.extracted_path)
     start = len(df)
+    # One institute filing under two IR-ids across editions: without one id
+    # the newer edition cannot supersede the older one's restatements, and
+    # the shared graduating years count twice. Map to the id that matches
+    # the institute's AISHE code; extracted/ keeps what each PDF says.
+    KNOWN_ID_ALIASES = {
+        # L.D. College of Engineering, Ahmedabad (AISHE C-212): website PDFs
+        # for 2024-25 print IR-E-C-151, 2026 prints IR-E-C-212
+        "IR-E-C-151": "IR-E-C-212",
+    }
+    for old, new in KNOWN_ID_ALIASES.items() if "institute_id" in df else ():
+        hit = df.institute_id == old
+        if hit.any():
+            print(f"    institute_id {old} → {new} ({int(hit.sum())} rows)")
+            df.loc[hit, "institute_id"] = new
     df = df.drop_duplicates()
     grain = list(table.grain)
     conflicts = df[df.duplicated(grain, keep=False)]
