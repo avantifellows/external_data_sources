@@ -47,10 +47,10 @@ objects and the BQ tables are byte-identical.
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
 | `nirf_fact_aggregate` | 31,717  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
-| `nirf_fact_dcs_placements`  | 29,073 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
-| `nirf_fact_dcs_intake`      | 30,569 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
-| `nirf_fact_dcs_strength`    | 9,190  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
-| `nirf_fact_dcs_institution` | 3,513  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
+| `nirf_fact_dcs_placements`  | 29,241 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
+| `nirf_fact_dcs_intake`      | 30,757 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
+| `nirf_fact_dcs_strength`    | 9,246  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
+| `nirf_fact_dcs_institution` | 3,551  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
 | `nirf_dim_participants`     | 32,811 | (year, discipline, name, city) | "ALL participants" pages (Engineering, Medical, College) — names only, NIRF publishes no ids for them |
 
 Every table's grain is unique — `build_clean.py` enforces it and fails if not.
@@ -170,15 +170,25 @@ NLU cards get placements). Each list is one entry in
     the edition is the latest graduating year's end + 1 (`edition_inferred` in
     the manifest). A 2026 website copy can predate NIRF's own publication.
   - **Not taken**: scanned PDFs without a text layer (MITS Gwalior 2026),
-    sites that serve HTML to every script (SGSITS) — those need a person —
+    sites that serve HTML to every script (SGSITS) or only a JavaScript shell
+    (ACCET Karaikudi) — those need a person —
     and the 2019 layout with bracketed years (UIT-RGPV; grads to 2017-18).
   - **Adding a state is incremental**: `parse_dcs.py website` parses only the
     website PDFs and splices them into extracted/ (NIRF's rows untouched);
     a full `parse_dcs.py pdfs` gives the same result in ~30 minutes.
-  - Coverage so far (Oct 2026): Madhya Pradesh, Maharashtra, Karnataka and
-    Gujarat crawled; plus the NIRF Extractor prototype's (Feb-Mar 2026, ~790 sites)
+  - Coverage so far (Oct 2026): Madhya Pradesh, Maharashtra, Karnataka,
+    Gujarat and Tamil Nadu crawled; plus the NIRF Extractor prototype's (Feb-Mar 2026, ~790 sites)
     website URLs re-fetched and checked (`found_by = prototype`) — it had kept
-    only figures, not PDFs. 189 PDFs.
+    only figures, not PDFs. 227 PDFs.
+  - **AISHE's "www.x" can be wrong**: five Tamil Nadu GCEs (Salem, Bargur,
+    Dharmapuri, Thanjavur, Bodinayakanur) answer only on https://x, and
+    http://www.x redirects to a dead http://x//. `crawl` falls back to
+    https:// with and without www.
+  - **Edition set by hand**: UCE Nagercoil's "2024" copy is the portal's
+    "All Report" print, whose intake table runs a year past its graduates
+    (2022-23 vs 2021-22), so the inferred edition came out one high; the
+    manifest row says 2023 with a note. Check an inferred edition against its
+    latest graduating year (NIRF's own editions end two years before).
   - **An institute's IR-id can change between editions**: L.D. College of
     Engineering files as IR-E-C-151 (2024, 2025) and IR-E-C-212 (2026). Two
     ids would count its shared graduating years twice (the 2026 edition could

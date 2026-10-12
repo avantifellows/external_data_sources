@@ -180,6 +180,14 @@ def crawl(site: str) -> list[str]:
     s = s if s.startswith("http") else "http://" + s.lower()
     base, html = _get(s, 2_000_000)
     if not html:
+        # AISHE lists "www.x" for sites that answer only on https://x — the
+        # Tamil Nadu GCEs' http://www.x redirects to a dead http://x//
+        host = re.sub(r"^https?://(www\.)?", "", s)
+        for alt in ("https://" + host, "https://www." + host):
+            base, html = _get(alt, 2_000_000)
+            if html:
+                break
+    if not html:
         return []
     queue = [(u, t) for u, t in _links(base, html)
              if re.search(r"nirf|mandatory|disclosure|ranking", u + t, re.I)]
