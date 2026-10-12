@@ -180,8 +180,11 @@ NLU cards get placements). Each list is one entry in
     website URLs re-fetched and checked (`found_by = prototype`) — it had kept
     only figures, not PDFs. 189 PDFs.
   - **An institute's IR-id can change between editions**: L.D. College of
-    Engineering files as IR-E-C-151 (2024, 2025) and IR-E-C-212 (2026). Match
-    a website institute across editions by name, as with NIRF's own ids.
+    Engineering files as IR-E-C-151 (2024, 2025) and IR-E-C-212 (2026). Two
+    ids would count its shared graduating years twice (the 2026 edition could
+    not supersede the 2025 restatements), so `build_clean.py`
+    `KNOWN_ID_ALIASES` maps the stray id to the one matching the AISHE code
+    (C-212). extracted/ keeps each PDF's own id.
   - **Dropped by hand**: a copy that files one programme level twice with
     different numbers (KSSEM 2026: three "PG 2 years" tables — M.Tech, MBA,
     MCA) fails the grain check; it is left out rather than guessed.
