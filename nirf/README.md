@@ -163,9 +163,12 @@ NLU cards get placements). Each list is one entry in
   (URL, id, discipline, edition, how found, fetch date, sha256). They parse
   with everything else; rows carry `pdf_source = 'institute_website'` and
   their `source_url`.
-  - **Gap-filling only**: an institute NIRF's CDN hosts in a discipline keeps
-    its NIRF series — its website copy is never used, even a newer edition
-    (2026 copies for a few ranked institutes would leave the rest on 2025).
+  - **Gap-filling only**: an institute in NIRF's latest CDN edition of a
+    discipline keeps its NIRF series — its website copy is never used, even a
+    newer edition (2026 copies for a few ranked institutes would leave the rest
+    on 2025). An institute NIRF hosted only in older editions — ranked once,
+    banded since, like GMR (2022) or HBTU (2020) — gets its website copies for
+    the editions NIRF doesn't have.
   - **Edition**: page 1 says "NIRF'2025" from 2022 on; older layouts don't, so
     the edition is the latest graduating year's end + 1 (`edition_inferred` in
     the manifest). A 2026 website copy can predate NIRF's own publication.
@@ -179,7 +182,17 @@ NLU cards get placements). Each list is one entry in
   - Coverage so far (Oct 2026): Madhya Pradesh, Maharashtra, Karnataka,
     Gujarat and Tamil Nadu crawled; plus the NIRF Extractor prototype's (Feb-Mar 2026, ~790 sites)
     website URLs re-fetched and checked (`found_by = prototype`) — it had kept
-    only figures, not PDFs. 227 PDFs.
+    only figures, not PDFs; plus the NIRF 2025 Engineering 151-300 band colleges
+    of Andhra Pradesh, Uttar Pradesh, Uttarakhand, Madhya Pradesh, Odisha and
+    Chhattisgarh, found by search (`found_by = search`). 275 PDFs.
+  - **Band colleges not taken** (2025 band, those six states): Aditya
+    University, QIS Ongole, SVCE Tirupati (no 2025 submission posted), IES
+    Bhopal (site gone); Galgotias CET and IIIT Naya Raipur (scanned, no text
+    layer); Godavari IET (its PDF host has no public DNS). HBTU and SV
+    University post 2025 only inside an all-categories PDF whose page 1 is
+    OVERALL — their 2026 copies carry 2023-24 intake instead. SVCET Chittoor
+    and RNTU file under a new IR-id in 2026; only their 2025 copies are taken,
+    so the two ids don't both hold the same graduating years.
   - **AISHE's "www.x" can be wrong**: five Tamil Nadu GCEs (Salem, Bargur,
     Dharmapuri, Thanjavur, Bodinayakanur) answer only on https://x, and
     http://www.x redirects to a dead http://x//. `crawl` falls back to
