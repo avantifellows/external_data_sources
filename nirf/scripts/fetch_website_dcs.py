@@ -20,9 +20,11 @@ canonical via upload_to_gcs.py --dcs-raw).
 
 Rules:
   - A PDF is accepted only if page 1 is a DCS page with an IR-id.
-  - Gap-filling only: an institute NIRF's CDN hosts in a discipline (any
-    edition) is skipped, so ranked institutes keep one consistent NIRF
-    series. parse_dcs.py also skips any website copy NIRF hosts.
+  - Gap-filling only: an institute NIRF's CDN hosts in its latest edition
+    of a discipline is skipped, so ranked institutes keep one consistent
+    NIRF series. One NIRF hosted only in older editions (ranked once,
+    banded since) is taken for the editions NIRF lacks. parse_dcs.py also
+    skips any website copy of an edition NIRF hosts.
   - An edition later than the current year is a misprint: rejected.
   - Edition: "Submitted Institute Data for NIRF'2026'" on page 1. Older
     layouts (2019-2023) don't print it; then edition = end year of the latest
@@ -151,11 +153,18 @@ def accept(url: str, pdf: bytes, state: str, found_by: str, manifest: list[dict]
            "sha256": hashlib.sha256(pdf).hexdigest(), "note": ""}
     if info["edition_year"] > date.today().year:
         return f"edition {info['edition_year']} is in the future: misprint, check by hand"
-    # gap-filling only: an institute NIRF hosts in this discipline keeps its
-    # NIRF series, even where its website has a newer edition — a 2026 copy
-    # for a few ranked institutes would leave the rest on 2025
-    if any(CDN_PDFS.glob(f"{info['discipline']}/*/{info['institute_id']}.pdf")):
-        return "NIRF hosts this institute already"
+    # gap-filling only: an institute in NIRF's latest published edition keeps
+    # its NIRF series, even where its website has a newer edition — a 2026
+    # copy for a few ranked institutes would leave the rest on 2025. One NIRF
+    # stopped hosting (ranked in 2022, banded since: GMR, HBTU, LNCT …) gets
+    # its website copies for the editions NIRF doesn't have.
+    disc_dir = CDN_PDFS / info["discipline"]
+    editions = sorted(int(p.name) for p in disc_dir.iterdir() if p.name.isdigit()) if disc_dir.exists() else []
+    hosted = {e for e in editions if (disc_dir / str(e) / f"{info['institute_id']}.pdf").exists()}
+    if info["edition_year"] in hosted:
+        return "NIRF hosts this edition already"
+    if editions and editions[-1] in hosted:
+        return "NIRF hosts this institute in its latest edition"
     dest = local_path(row)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(pdf)
