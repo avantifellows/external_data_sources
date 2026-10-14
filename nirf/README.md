@@ -47,10 +47,10 @@ objects and the BQ tables are byte-identical.
 | `nirf_fact_master`    | 90,707  | (institute, year, category, type, academic_year, metric) | `raw/nirf_master.parquet`, deduped |
 | `nirf_fact_strength`  | 186,012 | (institute, year, category, programme, metric) | `raw/nirf_strength.parquet`, deduped |
 | `nirf_fact_aggregate` | 31,717  | (institute, year, category, academic_year, type) | **derived** — pivot of clean master + ranked rankings rows |
-| `nirf_fact_dcs_placements`  | 29,241 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
-| `nirf_fact_dcs_intake`      | 30,757 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
-| `nirf_fact_dcs_strength`    | 9,246  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
-| `nirf_fact_dcs_institution` | 3,551  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
+| `nirf_fact_dcs_placements`  | 29,505 | (edition, discipline, institute, program level, graduating AY) | DCS PDFs; `superseded` marks older-edition restatements |
+| `nirf_fact_dcs_intake`      | 31,029 | (edition, discipline, institute, program level, AY) | DCS PDFs (sanctioned intake), `superseded` flag |
+| `nirf_fact_dcs_strength`    | 9,334  | (edition, discipline, institute, program level) | DCS PDFs (actual strength + demographics) |
+| `nirf_fact_dcs_institution` | 3,599  | (edition, discipline, institute) | DCS PDFs (PhD pursuing, faculty count) |
 | `nirf_dim_participants`     | 32,811 | (year, discipline, name, city) | "ALL participants" pages (Engineering, Medical, College) — names only, NIRF publishes no ids for them |
 
 Every table's grain is unique — `build_clean.py` enforces it and fails if not.
