@@ -193,6 +193,25 @@ def _build_dcs(table: Table) -> pd.DataFrame:
         if hit.any():
             print(f"    institute_id {old} → {new} ({int(hit.sum())} rows)")
             df.loc[hit, "institute_id"] = new
+    # A cell whose digits contradict the same PDF's amount in words by a
+    # factor of ten: the words win. Keyed by the placement grain.
+    KNOWN_AMOUNT_MISPRINTS = {
+        # MJP Rohilkhand University, Bareilly, NIRF 2026 Engineering
+        # (website copy), UG-4Y graduating 2024-25: "100685(Ten Lakh Six
+        # Thousand Eighty five)"; 2022-23 and 2023-24 read 8.65 and 9.2 lakh
+        ("IR-E-U-0525", 2026, "Engineering", "UG-4Y", "2024-25",
+         "median_salary"): 1006085,
+    }
+    for (iid, ed, disc, level, grad, col), value in KNOWN_AMOUNT_MISPRINTS.items():
+        if col not in df or "graduating_academic_year" not in df:
+            continue
+        hit = ((df.institute_id == iid) & (df.edition_year == ed)
+               & (df.discipline == disc) & (df.program_level == level)
+               & (df.graduating_academic_year == grad))
+        if hit.any():
+            print(f"    {iid} {ed} {level} {grad} {col}: "
+                  f"{df.loc[hit, col].iloc[0]:g} → {value} (amount in words)")
+            df.loc[hit, col] = value
     df = df.drop_duplicates()
     grain = list(table.grain)
     conflicts = df[df.duplicated(grain, keep=False)]
