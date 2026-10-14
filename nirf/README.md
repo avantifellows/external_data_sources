@@ -208,6 +208,13 @@ NLU cards get placements). Each list is one entry in
     not supersede the 2025 restatements), so `build_clean.py`
     `KNOWN_ID_ALIASES` maps the stray id to the one matching the AISHE code
     (C-212). extracted/ keeps each PDF's own id.
+  - **A figure whose digits contradict its own words**: MJP Rohilkhand
+    University's 2026 copy prints the UG-4Y 2024-25 median as
+    "100685(Ten Lakh Six Thousand Eighty five)". `KNOWN_AMOUNT_MISPRINTS` in
+    `build_clean.py` takes the words (10,06,085); extracted/ keeps the
+    digits. A scan of every website copy's medians against their words found
+    no other order-of-magnitude case in a current row (most mismatches are
+    spellings like "lack" or "laks" with the right digits).
   - **Dropped by hand**: a copy that files one programme level twice with
     different numbers (KSSEM 2026: three "PG 2 years" tables — M.Tech, MBA,
     MCA) fails the grain check; it is left out rather than guessed.
