@@ -95,7 +95,10 @@ Route by what the data is:
       (branches/evidence → build_and_load.py → BQ), then appended to the app's
       data-sources/exam_branch_mapping.csv. No row unmapped.
 - [ ] **Exams tab:** the exam's rows in data-sources/exams_cleaned.csv carry the
-      predictor key, so "Check your chances" lands on the predictor.
+      predictor key, so "Check your chances" lands on the predictor. A new exam
+      also needs a line in scripts/exam_access.json (`eligible_in`: "All India"
+      or the one state whose students it's for; `run_by`: Public or Private), or
+      build_exams_data.py fails.
 - [ ] **Careers tab:** EXAM_LINKS chip for the exam and OPTION_SOURCES example
       colleges in build_careers_data.py; rebuild careers.json and confirm every
       example college links (`q` not null).
