@@ -1,0 +1,37 @@
+# acpmec_dim_institutes
+#
+# Source: medadmgujarat.org, Gujarat's admission committees for professional
+# medical courses, 2026-27 institute lists (BDS seat matrix, BAMS / BHMS
+# intake & fees, one nursing & allied file per course).
+#   raw:   gs://avantifellows-external-data/acpmec/raw/<file>.pdf
+#   clean: gs://avantifellows-external-data/acpmec/clean/acpmec_dim_institutes.parquet
+#   BQ:    avantifellows.external_data_sources.acpmec_dim_institutes
+#
+# One row per course x institute. An institute teaching two courses (a
+# physiotherapy and a nursing college under one trust) has two rows with
+# different inst_label values; nothing here joins them.
+
+description: Gujarat 2026-27 institute lists for BDS, BAMS, BHMS, B.Sc. Nursing and allied health degrees (physiotherapy, optometry, OT, P&O, audiology, naturopathy) — type, university, intake, tuition fee.
+rows: 485
+grain: (course_code, inst_label)
+
+columns:
+  - {name: academic_year, type: STRING, mode: REQUIRED, description: "'2026-27'."}
+  - {name: committee, type: STRING, mode: REQUIRED, description: "'ug_medical' (NEET-based: BDS, BAMS, BHMS) or 'nursing_allied' (the nursing & allied courses committee)."}
+  - {name: course_code, type: STRING, mode: REQUIRED, description: "BDS, BAMS, BHMS, BSC_NURSING, BPT, BO, BOT, BOP, BASLP, BNYS."}
+  - {name: course_name, type: STRING, mode: REQUIRED, description: "e.g. 'Bachelor of Physiotherapy'."}
+  - {name: inst_code, type: STRING, mode: NULLABLE, description: "Nursing & allied 4-digit institute code ('0701'); null for BDS/BAMS/BHMS."}
+  - {name: inst_label, type: STRING, mode: REQUIRED, description: "The committee's short code ('AP', 'AD', 'AAY'): the key the committee's own last-rank lists use."}
+  - {name: institute_name, type: STRING, mode: REQUIRED, description: "As printed, whitespace collapsed (nursing & allied files print UPPER CASE)."}
+  - {name: affiliated_university, type: STRING, mode: NULLABLE, description: "As printed; null for BDS (the seat matrix has no university column)."}
+  - {name: inst_type_raw, type: STRING, mode: REQUIRED, description: "As printed: GOV / SFI, Govt / GIA / SFI, 'Govt. Dental Colleges' / 'SFI Dental Colleges'."}
+  - {name: ownership, type: STRING, mode: REQUIRED, description: "Government, Government-aided (GIA), Self-financed (SFI) — from the committee's own type column, never from the name."}
+  - {name: intake, type: INTEGER, mode: NULLABLE, description: "Annual intake. Null for the one Occupational Therapy institute (its file prints no intake). 0 for colleges denied or awaiting permission (see permission)."}
+  - {name: seats_aiq, type: INTEGER, mode: NULLABLE, description: "All-India quota seats (BDS, BAMS, BHMS only)."}
+  - {name: seats_gq, type: INTEGER, mode: NULLABLE, description: "Government (state) quota seats (BDS, BAMS, BHMS only)."}
+  - {name: seats_mq, type: INTEGER, mode: NULLABLE, description: "Management quota seats (BDS, BAMS, BHMS only)."}
+  - {name: seats_nri, type: INTEGER, mode: NULLABLE, description: "NRI quota seats (BDS, BAMS, BHMS only)."}
+  - {name: permission, type: STRING, mode: NULLABLE, description: "BAMS/BHMS regulator permission for 2026-27 (NCISM / NCH): Permitted, Denied, Awaited. Null elsewhere."}
+  - {name: tuition_fee_inr, type: INTEGER, mode: NULLABLE, description: "Annual tuition, rupees, government-quota seat: FRC fee for nursing & allied; BAMS/BHMS printed in lakh and converted. Null for BDS."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "Raw PDF the row came from (gs://avantifellows-external-data/acpmec/raw/)."}
+  - {name: source_url, type: STRING, mode: REQUIRED, description: "Where the committee publishes that PDF."}

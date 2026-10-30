@@ -1,0 +1,6 @@
+# ACPMEC institute lists pipeline dependencies.
+pandas>=2.0
+pyarrow>=14.0
+pdfplumber>=0.11
+google-cloud-storage>=2.10
+google-cloud-bigquery>=3.11

@@ -1,0 +1,6 @@
+# Committee PDFs — staged to GCS, not git.
+raw/*.pdf
+# Parsed parquet — regenerable via build_clean.py.
+clean/*.parquet
+.venv/
+__pycache__/
