@@ -19,7 +19,8 @@ allied health degrees, from medadmgujarat.org. One table,
 3. **One institute, several rows** when it teaches several courses; nothing
    here says two rows are one campus.
 4. **`intake = 0` is real** (BAMS/BHMS colleges denied or awaiting NCISM /
-   NCH permission). `intake` null is the one OT file that prints none.
+   NCH permission). `intake` null is a blank in the list (the OT file has no intake column;
+   two optometry and one physiotherapy cell are blank).
 
 ## Refresh
 

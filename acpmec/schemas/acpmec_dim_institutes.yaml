@@ -26,7 +26,7 @@ columns:
   - {name: affiliated_university, type: STRING, mode: NULLABLE, description: "As printed; null for BDS (the seat matrix has no university column)."}
   - {name: inst_type_raw, type: STRING, mode: REQUIRED, description: "As printed: GOV / SFI, Govt / GIA / SFI, 'Govt. Dental Colleges' / 'SFI Dental Colleges'."}
   - {name: ownership, type: STRING, mode: REQUIRED, description: "Government, Government-aided (GIA), Self-financed (SFI) — from the committee's own type column, never from the name."}
-  - {name: intake, type: INTEGER, mode: NULLABLE, description: "Annual intake. Null for the one Occupational Therapy institute (its file prints no intake). 0 for colleges denied or awaiting permission (see permission)."}
+  - {name: intake, type: INTEGER, mode: NULLABLE, description: "Annual intake. Null where the list prints none (the Occupational Therapy file has no intake column; two optometry and one physiotherapy cell are blank). 0 for colleges denied or awaiting permission (see permission)."}
   - {name: seats_aiq, type: INTEGER, mode: NULLABLE, description: "All-India quota seats (BDS, BAMS, BHMS only)."}
   - {name: seats_gq, type: INTEGER, mode: NULLABLE, description: "Government (state) quota seats (BDS, BAMS, BHMS only)."}
   - {name: seats_mq, type: INTEGER, mode: NULLABLE, description: "Management quota seats (BDS, BAMS, BHMS only)."}

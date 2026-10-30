@@ -26,7 +26,8 @@ cell by cell. Three layouts:
 
 Quality gates (hard asserts):
   - every file's parsed intake sums to the Total row the committee prints
-    (the Occupational Therapy file prints no intake at all: intake is null)
+    (blank intake cells are null: the Occupational Therapy file has no
+    intake column, and the BO / BPT files leave three cells blank)
   - serial numbers run 1..N with no gap (checked once by hand for 2026-27)
   - no duplicate (course, inst_label)
   - per-course institute counts as of the 2026-27 lists

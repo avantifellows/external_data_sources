@@ -36,7 +36,9 @@ python3 scripts/load_bq.py
 
 ## Gaps, stated
 
-- The Occupational Therapy 2026-27 file prints no intake: `intake` is null.
+- `intake` is null where the list prints none: the Occupational Therapy file
+  (no intake column at all) and three blank cells (two optometry schools, one
+  physiotherapy college). Each file's printed total still equals the parsed sum.
 - BDS has no university column in its seat matrix and no fee: null.
 - Addresses are not kept: the nursing & allied files print them in Gujarati
   and the extracted text is garbled. District comes from AISHE downstream.
