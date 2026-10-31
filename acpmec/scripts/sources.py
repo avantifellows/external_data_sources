@@ -135,4 +135,27 @@ class Table:
         return f"{BQ_PROJECT}.{BQ_DATASET}.{self.name}"
 
 
-TABLES = [Table("acpmec_dim_institutes")]
+# ── last ranks: who got in, per institute x quota x category ────────────────
+# The 2025-26 cycle (the latest complete one). Nursing & allied: one PDF per
+# round (1-8; round 0 is a mock), ranks on the committee's merit list (Class
+# 12 marks). UG (NEET): one compiled PDF for MBBS + BDS and one for BAMS +
+# BHMS, each the final last rank with NEET percentile, score and rank.
+LAST_RANK_YEAR = "2025-26"
+NURSING_ROUNDS = range(1, 9)
+
+
+def _para_round(r: int) -> RawFile:
+    return RawFile(f"para_last_rank_2025-26_r{r}.pdf",
+                   f"{PORTAL}/NUR2025/ROUND-{r:02d}/para_last_rank-r{r}.pdf",
+                   "last_rank_nursing")
+
+
+LAST_RANK_FILES = [_para_round(r) for r in NURSING_ROUNDS] + [
+    RawFile("ug_last_rank_2025-26.pdf",
+            f"{PORTAL}/ug2025/Compiled_Closure_UG_2025-26.pdf", "last_rank_ug"),
+    RawFile("ug_ayush_last_rank_2025-26.pdf",
+            f"{PORTAL}/UG2025/UGAYUS/Compiled_Closure_UG_2025-26_BAMS_BHMS.pdf",
+            "last_rank_ug"),
+]
+
+TABLES = [Table("acpmec_dim_institutes"), Table("acpmec_fact_last_ranks")]

@@ -1,0 +1,58 @@
+# acpmec_fact_last_ranks
+#
+# Source: medadmgujarat.org, Gujarat's admission committees for professional
+# medical courses, 2025-26 last-rank lists.
+#   raw:   gs://avantifellows-external-data/acpmec/raw/para_last_rank_2025-26_r<N>.pdf (rounds 1-8)
+#          gs://avantifellows-external-data/acpmec/raw/ug_last_rank_2025-26.pdf (MBBS, BDS)
+#          gs://avantifellows-external-data/acpmec/raw/ug_ayush_last_rank_2025-26.pdf (BAMS, BHMS)
+#   clean: gs://avantifellows-external-data/acpmec/clean/acpmec_fact_last_ranks.parquet
+#   BQ:    avantifellows.external_data_sources.acpmec_fact_last_ranks
+#
+# Two committees, two kinds of rank:
+#   nursing_allied  last_rank is the committee's merit-list rank (Class 12
+#                   marks; no entrance exam), per round 1-8.
+#   ug_medical      NEET-based: neet_score / neet_rank / neet_percentile of
+#                   the last student admitted, plus their state merit number
+#                   (last_rank) and category merit number; one final list
+#                   (round is null).
+#
+# Join to acpmec_dim_institutes: nursing_allied on (course_code, inst_code)
+# (labels repeat across institutes); ug_medical on (course_code,
+# inst_label). MBBS is not in the institute table (nmc_fact_mbbs_seats lists
+# the colleges). GNM / ANM are nursing diplomas, here but not there.
+
+description: Gujarat 2025-26 last ranks admitted per course x institute x quota x category — nursing & allied (merit rank, rounds 1-8) and MBBS / BDS / BAMS / BHMS (NEET score and rank, final).
+rows: 91063
+grain: (course_code, inst_code or inst_label, quota, seat_pool, round, category)
+
+columns:
+  - {name: academic_year, type: STRING, mode: REQUIRED, description: "'2025-26'."}
+  - {name: committee, type: STRING, mode: REQUIRED, description: "'nursing_allied' (Class 12 merit) or 'ug_medical' (NEET)."}
+  - {name: course_code, type: STRING, mode: REQUIRED, description: "MBBS, BDS, BAMS, BHMS, BSC_NURSING, BPT, BO, BOT, BOP, BASLP, BNYS, GNM, ANM."}
+  - {name: inst_code, type: STRING, mode: NULLABLE, description: "Nursing & allied 4-digit institute code ('0701'), the institute key there; null for ug_medical."}
+  - {name: inst_label, type: STRING, mode: REQUIRED, description: "The committee's short code ('AP', 'AMED'). Unique per course for ug_medical; nursing & allied reuse a label across institutes."}
+  - {name: inst_short, type: STRING, mode: NULLABLE, description: "The short name the list prints. A hint only: cut short when it wraps onto the next page. Names come from acpmec_dim_institutes."}
+  - {name: govt_college, type: BOOLEAN, mode: NULLABLE, description: "Nursing & allied: the list's '*' (government college). Null for ug_medical."}
+  - {name: quota, type: STRING, mode: REQUIRED, description: "GQ government quota, MQ management quota, NQ NRI quota (ug_medical only)."}
+  - {name: seat_pool, type: STRING, mode: NULLABLE, description: "Nursing & allied: 'M' where the label carries the suffix '-M' ('HVNUR -M'), a separate pool the list does not explain. Null otherwise."}
+  - {name: round, type: INTEGER, mode: NULLABLE, description: "Nursing & allied allotment round 1-8; null for ug_medical (final list)."}
+  - {name: category, type: STRING, mode: REQUIRED, description: "Nursing & allied: OP EW SC ST SE and OPPH EWPH SCPH STPH SEPH (disability). ug_medical: OPEN SC ST SE EW. SE = SEBC (Gujarat's OBC)."}
+  - {name: last_rank, type: FLOAT, mode: NULLABLE, description: "Nursing & allied: merit rank of the last student admitted. ug_medical: their state (general) merit number. Can be fractional as printed ('23369.5'). Null when vacant or not filled on merit."}
+  - {name: category_merit_no, type: FLOAT, mode: NULLABLE, description: "ug_medical, not OPEN: merit number on the category list."}
+  - {name: neet_percentile, type: FLOAT, mode: NULLABLE, description: "ug_medical: NEET percentile of the last student admitted."}
+  - {name: neet_score, type: INTEGER, mode: NULLABLE, description: "ug_medical: NEET score (out of 720) of the last student admitted."}
+  - {name: neet_rank, type: INTEGER, mode: NULLABLE, description: "ug_medical: NEET all-India rank of the last student admitted."}
+  - {name: vacant, type: BOOLEAN, mode: REQUIRED, description: "The list prints 99999: seats in this category stayed vacant (no one allotted). A category with no seats has no row."}
+  - {name: source_file, type: STRING, mode: REQUIRED, description: "Raw PDF the row came from (gs://avantifellows-external-data/acpmec/raw/)."}
+  - {name: source_url, type: STRING, mode: REQUIRED, description: "Where the committee publishes that PDF."}
+
+example_queries:
+  - description: B.Sc. Nursing government colleges' final-round open last rank
+    sql: |
+      SELECT d.institute_name, f.last_rank
+      FROM `avantifellows.external_data_sources.acpmec_fact_last_ranks` f
+      JOIN `avantifellows.external_data_sources.acpmec_dim_institutes` d
+        ON d.course_code = f.course_code AND d.inst_code = f.inst_code
+      WHERE f.course_code = 'BSC_NURSING' AND f.round = 8 AND f.quota = 'GQ'
+        AND f.seat_pool IS NULL AND f.category = 'OP' AND f.govt_college
+      ORDER BY f.last_rank

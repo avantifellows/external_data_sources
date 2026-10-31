@@ -6,8 +6,9 @@ See the [top-level CLAUDE.md](../CLAUDE.md) for cross-source conventions.
 ## What this folder is
 
 Gujarat's 2026-27 institute lists for BDS, BAMS, BHMS, B.Sc. Nursing and the
-allied health degrees, from medadmgujarat.org. One table,
-`acpmec_dim_institutes`, one row per course x institute.
+allied health degrees, from medadmgujarat.org (`acpmec_dim_institutes`, one
+row per course x institute), and the 2025-26 last ranks for those courses and
+MBBS (`acpmec_fact_last_ranks`).
 
 ## The load-bearing facts
 
@@ -21,6 +22,13 @@ allied health degrees, from medadmgujarat.org. One table,
 4. **`intake = 0` is real** (BAMS/BHMS colleges denied or awaiting NCISM /
    NCH permission). `intake` null is a blank in the list (the OT file has no intake column;
    two optometry and one physiotherapy cell are blank).
+
+5. **Last-rank PDFs are not ruled tables.** Values are right-aligned and a
+   blank cell is absent, so every number is placed by its right edge
+   (`build_last_ranks.py`). Nursing columns come from the header; UG
+   columns from clustering the numbers themselves (its header labels sit
+   off their columns). 99999 = vacant; never a rank.
+6. **Nursing & allied labels repeat** across institutes: key on `inst_code`.
 
 ## Refresh
 

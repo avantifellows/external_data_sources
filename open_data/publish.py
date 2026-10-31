@@ -535,8 +535,8 @@ STAT_DATASETS = [
      "parquet_as_extracted": [
         ("nmc/clean/mbbs_seats.parquet", "nmc/extracted/nmc_mbbs_seats.csv", "NMC — MBBS seats by college", 2024)]},
     {"id": "acpmec", "category": "education-statistics",
-     "title": "Gujarat dental, AYUSH, nursing and allied colleges (2026-27)",
-     "blurb": "Every college Gujarat's admission committees list for 2026-27 in BDS, BAMS, BHMS, B.Sc. Nursing, physiotherapy, optometry, occupational therapy, prosthetics & orthotics, audiology and naturopathy: type, university, annual intake and tuition fee. The committees' lists as published, and the table read from them.",
+     "title": "Gujarat medical, dental, AYUSH, nursing and allied colleges and last ranks",
+     "blurb": "Every college Gujarat's admission committees list for 2026-27 in BDS, BAMS, BHMS, B.Sc. Nursing, physiotherapy, optometry, occupational therapy, prosthetics & orthotics, audiology and naturopathy: type, university, annual intake and tuition fee. And the 2025-26 last ranks: nursing & allied merit ranks by round, MBBS / BDS / BAMS / BHMS NEET scores and ranks of the last student admitted. The committees' lists as published, and the tables read from them.",
      "source": {"label": "medadmgujarat.org", "url": "https://www.medadmgujarat.org/"},
      "files": [
         ("acpmec/raw/dental_seat_matrix_2026-27.pdf", "Gujarat — BDS seat matrix 2026-27", "raw", 2026),
@@ -549,9 +549,14 @@ STAT_DATASETS = [
         ("acpmec/raw/nur_inst_BOT_2026-27.pdf", "Gujarat — Occupational Therapy colleges 2026-27", "raw", 2026),
         ("acpmec/raw/nur_inst_BOP_2026-27.pdf", "Gujarat — Prosthetics and Orthotics colleges 2026-27", "raw", 2026),
         ("acpmec/raw/nur_inst_BASLP_2026-27.pdf", "Gujarat — Audiology and Speech-Language Pathology colleges 2026-27", "raw", 2026),
-        ("acpmec/raw/nur_inst_BNYS_2026-27.pdf", "Gujarat — Naturopathy and Yoga colleges 2026-27", "raw", 2026)],
+        ("acpmec/raw/nur_inst_BNYS_2026-27.pdf", "Gujarat — Naturopathy and Yoga colleges 2026-27", "raw", 2026),
+        *[(f"acpmec/raw/para_last_rank_2025-26_r{r}.pdf", f"Gujarat — Nursing & allied last ranks 2025-26, round {r}", "raw", 2025)
+          for r in range(1, 9)],
+        ("acpmec/raw/ug_last_rank_2025-26.pdf", "Gujarat — MBBS & BDS last ranks 2025-26", "raw", 2025),
+        ("acpmec/raw/ug_ayush_last_rank_2025-26.pdf", "Gujarat — BAMS & BHMS last ranks 2025-26", "raw", 2025)],
      "parquet_as_extracted": [
-        ("acpmec/clean/acpmec_dim_institutes.parquet", "acpmec/extracted/acpmec_institutes_2026-27.csv", "Gujarat — Dental, AYUSH, nursing and allied colleges with type, intake and fees, 2026-27", 2026)]},
+        ("acpmec/clean/acpmec_dim_institutes.parquet", "acpmec/extracted/acpmec_institutes_2026-27.csv", "Gujarat — Dental, AYUSH, nursing and allied colleges with type, intake and fees, 2026-27", 2026),
+        ("acpmec/clean/acpmec_fact_last_ranks.parquet", "acpmec/extracted/acpmec_last_ranks_2025-26.csv", "Gujarat — Last ranks by college, quota and category, 2025-26", 2025)]},
     {"id": "udise", "category": "education-statistics",
      "title": "UDISE+ school enrolment",
      "blurb": "School enrolment from the Ministry of Education's UDISE+ system.",

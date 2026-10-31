@@ -25,12 +25,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sources import GCS_BUCKET, GCS_PREFIX, RAW_FILES, TABLES
+from sources import GCS_BUCKET, GCS_PREFIX, LAST_RANK_FILES, RAW_FILES, TABLES
 
 
 def upload_raw(client, dry_run: bool) -> None:
     print(f"Raw → gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/ ...")
-    for rf in RAW_FILES:
+    for rf in RAW_FILES + LAST_RANK_FILES:
         if not rf.local_path.exists():
             raise SystemExit(f"missing raw file: {rf.local_path}")
         size_mb = rf.local_path.stat().st_size / 1e6
