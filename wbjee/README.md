@@ -14,9 +14,12 @@ raw/WBJEE_<year>_ORCR.html   the OR-CR reports exactly as admissions.nic.in serv
 clean/wbjee_fact_cutoffs.parquet → GCS → external_data_sources.wbjee_fact_cutoffs
 ```
 
-Three per-year facts the data carries rather than smooths over: 2021 has no
-seat-type column (the WBJEE-vs-JEE(Main) seat split began 2022); 2026 merged
-OBC-A/OBC-B into one 'OBC'; EWS appears only from 2025.
+Three per-year facts the data carries rather than smooths over: 2021 and 2022
+have no seat-type column (the WBJEE-vs-JEE(Main) seat split first appears in
+2023); 2026 merged OBC-A/OBC-B into one 'OBC'; EWS appears only from 2025.
+
+Two rank spaces: 'WBJEE Seats' rows are WBJEE General Merit Ranks (max about
+1 lakh); 'JEE(Main) Seats' rows are JEE Main ranks (up to 15 lakh in 2026).
 
 The fetch trick that matters: the report URLs' `enc` token must keep its `+`
 LITERAL — percent-encoding it returns NIC's error page. Tokens for every year
