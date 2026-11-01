@@ -207,8 +207,6 @@ This re-derives the `NSS = NSC` check by grouping. It has three subtle issues:
 
 Our `_combined()` in `weights.py` handles all three correctly.
 
-## Validation
-
 ## What the total actually means
 
 **Verified, and it is less than I first claimed.** Two things are established and one is not, and the
@@ -288,46 +286,6 @@ If you need the reason, it is a question for MoSPI, not for inference.
 - **A count needs a per-release factor, measured rather than reasoned.** Divide the target year's
   population by that release's weighted total. Do not derive one factor and reuse it: the ratio moves
   from 0.78 to 0.84 across the releases, so a single factor is wrong at both ends.
-
-## Validation
-
-## What the total actually means
-
-**The summed weight reproduces the CENSUS 2011 population, by construction.** It is not an estimate
-of the current population, it is not 15% wrong, and the gap is not under-coverage.
-
-Read the survey's own documents, both in `raw/docs/`:
-
-| where | what it says |
-|---|---|
-| `EstimationProcedure_PLFS.pdf` §1.2.7 | rural frame is the "List of 2011 Population Census villages"; urban is UFS blocks on 2011 census towns |
-| §1.2.8 | urban strata by size class of towns "as per Population Census 2011" |
-| §1.2.11.1 | sample allocated "in proportion to the population as per Census 2011" |
-| `Technical clarification ... 2022-23.pdf` §2-3 | `weight = 1/P(selection) = Σzᵢ/zᵢ`, "an inverse of inclusion probability", where `Σzᵢ` is "the total size (**Census Population** in rural sector) of the NSS region" |
-
-Searched the estimation procedure for *calibration*, *post-stratification*, *benchmarking* and
-*projection*: **no matches.** These are pure design weights and nothing is applied after them. So the
-PPS size measure *is* Census 2011 population, and summing the weights can only give the 2011 frame's
-population. Measured: `annual_2023_24` state sums come to 1,200.8m against Census 2011's 1,207.5m for
-the same 30 states — a ratio of **0.994**.
-
-**This is why PLFS publishes rates and not counts** (`EstimationProcedure` §3.6 defines its outputs as
-ratios `R = Ŷ/X̂`). The frame's vintage cancels between a numerator and a denominator, so:
-
-- **A percentage needs no correction at all.** Ever.
-- **A count is a 2011-frame count.** For a current-year figure, scale by population growth since 2011
-  — about **×1.21** for 2025 (1.4639bn / 1.2109bn). Say which of the two you are quoting.
-
-An earlier version of this section said totals "should land in ~1.08-1.22B (India's actual population
-is ~1.4B; PLFS under-counts institutional populations / floating workers)". The band was right and
-the explanation was invented — institutional population is ~1% of India, not 15%. That guess also
-reached `data-assistant`'s schema note in a different wrong form ("PLFS's own *projected* population"),
-and an analysis then argued from it that there was an unexplained coverage deficit. A wrong mechanism
-attached to right numbers cannot be caught by checking the numbers, which is why the primary document
-is not optional.
-
-Still unexplained, and much smaller: the four earliest releases gross up to 0.89-0.96 of the frame
-where 2022-23 onward sit at 0.97-1.01.
 
 ## Validation
 
