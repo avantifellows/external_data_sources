@@ -63,6 +63,9 @@ Output table (this build IS the production mapping — the canonical table):
 
 Usage:
     python3 scripts/build_student_outcome_mapping.py
+    # Impact check: write to a scratch table, not to the production table.
+    python3 scripts/build_student_outcome_mapping.py --out-table avantifellows.analysis.<scratch_table>
+    Do not run add_avanti_fk.py after a scratch run. It reads the production table.
 """
 
 import difflib
@@ -76,6 +79,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sources import (BQ_PROJECT, BQ_DATASET, BQ_LOCATION,
                      POOJITA, TENTH_SCORE, JEE_2024_RAW, JEE_2025_RAW, NEET_2024_RAW,
                      NCST_2024_RAW_CANDIDATES, NCST_2024_RAW_SHEET)
+import name_distance as nd
 
 # This build IS the production JNV student outcome mapping — it writes the
 # canonical `jnv_student_outcome_mapping` table.
@@ -821,6 +825,122 @@ def _key_group_edges(frame: pd.DataFrame, key: str, name: dict = None,
     return edges
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 2b — round 2: fuzzy-name identity edges, last
+# ─────────────────────────────────────────────────────────────────────────────
+# After all exact edges (rounds 0 and 1), each IDENTITY_RULE gets a fuzzy pass for the
+# students that are still apart: a student who has the rule's left stage and not its
+# right stage, against a student who has the right stage and not the left stage.
+# Names use name_distance.py: an edit distance with low costs for common Indian spelling
+# variants (idea from devdatalab/masala-merge; our own code). In the fuzzy pass:
+#   • the student name may be a spelling variant (nd.same_name);
+#   • name + DOB rule:    the same DOB; the fathers must not differ (nd.father_check_v2);
+#   • name + father rule: the fathers must match (nd.father_check_v2 in FUZZY_FATHER_OK).
+# Pairs are compared only inside blocks: (DOB, first letter of the name) for a DOB rule;
+# (name skeleton, first letter of the father) for a father rule, with the skeleton taken
+# in word order and in sorted word order. Then the rule's year gap and the same
+# component-level unambiguity check as the exact pass.
+# Each fuzzy edge then goes through _CheckedUnion like every other union (one record per
+# stage, years that fit), and joins two students only when they hold at most one Avanti id
+# between them (_round2_fuzzy).
+FUZZY_FATHER_OK = {"same", "spelling variant", "initial or dropped word", "joined or split words"}
+_FUZZY_OPTS = frozenset({"placeholders", "abbrev", "prefix", "span"})
+_FUZZY_COLS = ["node_id", "yr", "norm_name", "norm_father", "dob"]
+
+
+def _fuzzy_keys(nodes: dict) -> dict:
+    """Per stage: the node columns that the fuzzy pass needs, plus its blocking keys."""
+    out = {}
+    for st in STAGES:
+        df = nodes[st][_FUZZY_COLS].dropna(subset=["norm_name", "yr"]).copy()
+        df = df[df.norm_name.str.len() > 0]
+        df["skel"] = df.norm_name.map(nd.skeleton)
+        df["skel_sorted"] = df.norm_name.map(nd.skeleton_sorted)
+        df["nfl"] = df.skel.str[:1]
+        df["ffl"] = df.norm_father.map(nd.father_first_letter)
+        out[st] = df
+    return out
+
+
+def _fuzzy_rule_edges(fk: dict, left: str, right: str, keys: list, lo: int, hi: int,
+                      comp: dict, comp_stages: dict) -> list[tuple]:
+    """Fuzzy candidates of one IDENTITY_RULE between students that are still apart: the left
+    student has no `right` record, the right student has no `left` record."""
+    L, R = fk[left], fk[right]
+    L = L[L.node_id.map(lambda n: right not in comp_stages[comp[n]]).astype(bool)]
+    R = R[R.node_id.map(lambda n: left not in comp_stages[comp[n]]).astype(bool)]
+    take = [c + s for c in _FUZZY_COLS for s in ("_l", "_r")]
+    if "dob" in keys:
+        L, R = L[_present(L.dob)], R[_present(R.dob)]
+        m = L.merge(R, on=["dob", "nfl"], suffixes=("_l", "_r"))
+        m["dob_l"] = m["dob_r"] = m["dob"]
+        m = m[take]
+    else:
+        L, R = L[L.ffl.notna()], R[R.ffl.notna()]
+        m = pd.concat([L.merge(R, on=[blk, "ffl"], suffixes=("_l", "_r"))[take]
+                       for blk in ("skel", "skel_sorted")], ignore_index=True)
+    if m.empty:
+        return []
+    gap = m.yr_r - m.yr_l
+    m = m[(gap >= lo) & (gap <= hi)].drop_duplicates(["node_id_l", "node_id_r"])
+    m = m.assign(comp_l=m.node_id_l.map(comp), comp_r=m.node_id_r.map(comp))
+    m = m[m.comp_l != m.comp_r]
+    # row filters as boolean Series on m's index (a plain empty list would select columns)
+    m = m[pd.Series([nd.same_name(a, b) for a, b in zip(m.norm_name_l, m.norm_name_r)], index=m.index, dtype=bool)]
+    if "dob" in keys:
+        ok = [not (isinstance(a, str) and isinstance(b, str)) or nd.father_check_v2(a, b, _FUZZY_OPTS) != "different"
+              for a, b in zip(m.norm_father_l, m.norm_father_r)]
+    else:
+        ok = [nd.father_check_v2(a, b, _FUZZY_OPTS) in FUZZY_FATHER_OK
+              for a, b in zip(m.norm_father_l, m.norm_father_r)]
+    m = m[pd.Series(ok, index=m.index, dtype=bool)]
+    if m.empty:
+        return []
+    lc = m.groupby("comp_l")["comp_r"].transform("nunique")
+    rc = m.groupby("comp_r")["comp_l"].transform("nunique")
+    m = m[(lc == 1) & (rc == 1)]
+    return list(zip(m.node_id_l, m.node_id_r))
+
+
+def _round2_fuzzy(cu, nodes: dict) -> None:
+    """Round 2: add the fuzzy-name edges, last. Each edge goes through _CheckedUnion (one
+    record per stage, years that fit), and is refused when the two students hold two
+    different Avanti ids."""
+    uf = cu.uf
+    comp = {n: uf.find(n) for n in uf.parent}
+    comp_stages = {root: {s for s, _ in recs} for root, recs in cu.recs.items()}
+    fks = {}   # component root -> Avanti ids of the student
+    for st in STAGES:
+        for nid, f in zip(nodes[st].node_id, nodes[st].fk_avanti_id):
+            if nid in comp and isinstance(f, str) and f:
+                fks.setdefault(comp[nid], set()).add(f)
+
+    fk = _fuzzy_keys(nodes)
+    cands = []
+    # name + DOB rules first (stronger), then name + father rules
+    for left, right, keys, lo, hi in sorted(IDENTITY_RULES, key=lambda r: "dob" not in r[2]):
+        e = _fuzzy_rule_edges(fk, left, right, keys, lo, hi, comp, comp_stages)
+        print(f"    fuzzy {left}->{right} {'+'.join(keys)}: {len(e):,} candidates")
+        cands += e
+
+    fmt = lambda recs: " ".join(sorted(f"{s}:{y}" for s, y in recs))
+    before, added = len(cu.refused), 0
+    for a, b in cands:
+        ra, rb = uf.find(a), uf.find(b)
+        if ra == rb:
+            continue
+        if len(fks.get(ra, set()) | fks.get(rb, set())) > 1:
+            cu.refused.append(("fuzzy names", "two Avanti ids", a, b, fmt(cu.recs[ra]), fmt(cu.recs[rb])))
+            continue
+        cu.union(a, b, "fuzzy names")
+        root = uf.find(a)
+        if root == uf.find(b):
+            fks[root] = fks.pop(ra, set()) | fks.pop(rb, set())
+            added += 1
+    print(f"    {'fuzzy names':<22}{len(cands):>9,} edges, {len(cu.refused) - before:>6,} refused")
+    print(f"  round-2 fuzzy edges:    {added:>8,}")
+
+
 def _identity_edges(nodes: dict, comp: dict) -> list[tuple]:
     """Draw the IDENTITY_RULES edges. Unambiguity is checked at the CURRENT
     component level (comp) so a dropper matching several already-merged entrance
@@ -907,6 +1027,11 @@ def _entrance_edges(nodes: dict) -> list[tuple]:
 # Parent first-name placeholders that must NOT anchor a merge block.
 _PARENT_STOP = {"NA", "N/A", "NULL", "NONE", "FATHER", "MOTHER", "NAME", "XXX", "XX", "ABC", "TEST"}
 _PARENT_DOB_BLOCK_MAX = 12   # (dob, father, mother) block bigger than this => placeholder, skip
+# Twin check: two records with the same DOB and parents whose names pass
+# _name_subset or _name_similar can still be twins with close given names (a shared surname
+# makes the whole names look alike). nd.given_names_differ refuses the pair when each name
+# keeps a word that has no partner in the other name. The refused pairs go to _REFUSED.
+_TWIN_REFUSED = []
 
 
 def _parent_dob_edges(nodes: dict) -> list[tuple]:
@@ -922,7 +1047,9 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
     fall out, exactly as the mining's excluded 'twin' cluster showed). This adds the
     mother signal (unused elsewhere) and a spelling-variant path the token gate can't
     reach — without the recall-killing 1:1 guard, because the block key is already
-    highly specific. Skips placeholder parent tokens and oversized (garbage) blocks."""
+    highly specific. Skips placeholder parent tokens and oversized (garbage) blocks.
+    The name gates still pass twins whose given names are close; the twin check
+    (nd.given_names_differ) refuses those pairs and keeps them in _TWIN_REFUSED."""
     cols = ["node_id", "norm_name", "norm_father", "norm_mother", "dob"]
     alln = pd.concat([nodes[s][cols] for s in STAGES], ignore_index=True)
     sub = alln[_present(alln.dob) & _present(alln.norm_name)
@@ -931,7 +1058,8 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
     sub["mf"] = sub.norm_mother.str.split().str[0]
     sub = sub[(sub.ff.str.len() >= 3) & (sub.mf.str.len() >= 3)
               & ~sub.ff.isin(_PARENT_STOP) & ~sub.mf.isin(_PARENT_STOP)]
-    edges = []
+    global _TWIN_REFUSED
+    edges, _TWIN_REFUSED = [], []
     for _, grp in sub.groupby(["dob", "ff", "mf"], sort=False):
         recs = list(zip(grp.node_id, grp.norm_name))
         if len(recs) < 2 or len(recs) > _PARENT_DOB_BLOCK_MAX:
@@ -940,7 +1068,10 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
             for j in range(i + 1, len(recs)):
                 na, nb = recs[i][1], recs[j][1]
                 if _name_subset(na, nb) or _name_similar(na, nb):
-                    edges.append((recs[i][0], recs[j][0]))
+                    if nd.given_names_differ(na, nb):
+                        _TWIN_REFUSED.append((recs[i][0], recs[j][0]))
+                    else:
+                        edges.append((recs[i][0], recs[j][0]))
     return edges
 
 
@@ -965,26 +1096,119 @@ class _UnionFind:
             self.parent[max(ra, rb)] = min(ra, rb)   # keep the smaller id as root
 
 
+# ── one record per stage, years that fit ──────────────────────────────────────
+# Every union is checked against the two whole students before it joins them:
+#   • at most one NCST, one 10th and one 12th record per student;
+#   • JEE and NEET may repeat (a repeater sits again in a later year), but at most
+#     one JEE and one NEET record per year;
+#   • every pair of the student's records fits the journey years (_JOURNEY_YEARS).
+# A link that would break a rule is refused. Edges are applied strongest first:
+# crosswalk ids, entrance same-person edges, DOB/parent edges (round 0), then the
+# identity rules (round 1). Refused links are kept in _REFUSED (a scratch run writes
+# them to <out_table>_refused).
+_JOURNEY_YEARS = {
+    # (earlier, later): (lo, hi) — gap = later.yr - earlier.yr; hi None = no upper limit
+    ("ncst", "b10"): (0, 0), ("ncst", "b12"): (2, 2), ("b10", "b12"): (2, 2),
+    ("ncst", "jee"): (2, None), ("ncst", "neet"): (2, None),
+    ("b10", "jee"): (2, None), ("b10", "neet"): (2, None),
+    ("b12", "jee"): (0, None), ("b12", "neet"): (0, None),
+}
+_ONE_PER_STUDENT = {"ncst", "b10", "b12"}
+_ONE_PER_YEAR = {"jee", "neet"}
+_REFUSED = None
+
+
+def _years_fit(recs_a: list, recs_b: list) -> bool:
+    """True when every (stage, yr) of one student fits every (stage, yr) of the other."""
+    for s1, y1 in recs_a:
+        for s2, y2 in recs_b:
+            if (s1, s2) in _JOURNEY_YEARS:
+                (lo, hi), gap = _JOURNEY_YEARS[(s1, s2)], y2 - y1
+            elif (s2, s1) in _JOURNEY_YEARS:
+                (lo, hi), gap = _JOURNEY_YEARS[(s2, s1)], y1 - y2
+            else:
+                continue
+            if gap < lo or (hi is not None and gap > hi):
+                return False
+    return True
+
+
+class _CheckedUnion:
+    """Union-find wrapper: refuses a union when the joined student would break a rule above."""
+
+    def __init__(self, uf: _UnionFind, nodes: dict):
+        self.uf = uf
+        self.recs = {}   # root -> [(stage, yr)] (yr None when the record has no year)
+        for st in STAGES:
+            for nid, yr in zip(nodes[st].node_id, nodes[st].yr):
+                if nid in uf.parent:
+                    self.recs[nid] = [(st, int(yr) if pd.notna(yr) else None)]
+        self.refused = []
+
+    @staticmethod
+    def _why_not(ra: list, rb: list) -> str | None:
+        if {s for s, _ in ra if s in _ONE_PER_STUDENT} & {s for s, _ in rb if s in _ONE_PER_STUDENT}:
+            return "second NCST, 10th or 12th record"
+        if ({(s, y) for s, y in ra if s in _ONE_PER_YEAR and y is not None}
+                & {(s, y) for s, y in rb if s in _ONE_PER_YEAR and y is not None}):
+            return "two JEE or two NEET records in one year"
+        if not _years_fit([r for r in ra if r[1] is not None], [r for r in rb if r[1] is not None]):
+            return "years do not fit"
+        return None
+
+    def union(self, a: str, b: str, edge_type: str) -> None:
+        ra, rb = self.uf.find(a), self.uf.find(b)
+        if ra == rb:
+            return
+        why = self._why_not(self.recs[ra], self.recs[rb])
+        if why:
+            fmt = lambda recs: " ".join(sorted(f"{s}:{y}" for s, y in recs))
+            self.refused.append((edge_type, why, a, b, fmt(self.recs[ra]), fmt(self.recs[rb])))
+            return
+        self.uf.union(a, b)
+        root = self.uf.find(a)
+        other = rb if root == ra else ra
+        self.recs[root] = self.recs[root] + self.recs.pop(other)
+
+
 def _cluster(nodes: dict, refs: dict, ncst24: pd.DataFrame) -> pd.DataFrame:
-    """Run the two-round union-find and return node_id → student_key."""
+    """Run the two-round union-find and return node_id → student_key. Every union goes
+    through _CheckedUnion (one record per stage, years that fit)."""
+    global _REFUSED
     all_nodes = pd.concat([nodes[s][["node_id"]] for s in STAGES], ignore_index=True)
     uf = _UnionFind(all_nodes.node_id.tolist())
+    cu = _CheckedUnion(uf, nodes)
 
-    # Round 0 — hard edges (deterministic + entrance same-person + DOB/parent).
-    hard = (_deterministic_edges(nodes, refs, ncst24) + _entrance_edges(nodes)
-            + _parent_dob_edges(nodes))
-    hard = [(a, b) for a, b in hard if a in uf.parent and b in uf.parent]
-    for a, b in hard:
-        uf.union(a, b)
+    def apply(edges, edge_type):
+        edges = [(a, b) for a, b in edges if a in uf.parent and b in uf.parent]
+        before = len(cu.refused)
+        for a, b in edges:
+            cu.union(a, b, edge_type)
+        print(f"    {edge_type:<22}{len(edges):>9,} edges, {len(cu.refused) - before:>6,} refused")
+        return edges
+
+    # Round 0 — hard edges (deterministic + entrance same-person + DOB/parent), strongest first.
+    hard = (apply(_deterministic_edges(nodes, refs, ncst24), "crosswalk / id")
+            + apply(_entrance_edges(nodes), "entrance same-person")
+            + apply(_parent_dob_edges(nodes), "DOB + parents"))
     print(f"  round-0 hard edges:     {len(hard):>8,}")
 
     # Round 1 — identity edges, ambiguity judged against round-0 components.
     comp = {n: uf.find(n) for n in uf.parent}
-    soft = _identity_edges(nodes, comp)
-    soft = [(a, b) for a, b in soft if a in uf.parent and b in uf.parent]
-    for a, b in soft:
-        uf.union(a, b)
+    soft = apply(_identity_edges(nodes, comp), "identity rules")
     print(f"  round-1 identity edges: {len(soft):>8,}")
+
+    # Round 2 — fuzzy-name edges, last, through the same checks as every other union.
+    _round2_fuzzy(cu, nodes)
+
+    twin_rows = [("DOB + parents", "given names differ (twin check)", a, b, "", "")
+                 for a, b in _TWIN_REFUSED]
+    _REFUSED = pd.DataFrame(twin_rows + cu.refused,
+                            columns=["edge_type", "reason", "node_a", "node_b",
+                                     "student_a_records", "student_b_records"])
+    if len(_REFUSED):
+        print("  refused links: " + ", ".join(
+            f"{r} {n:,}" for r, n in _REFUSED.reason.value_counts().items()))
 
     key = pd.DataFrame({"node_id": list(uf.parent)})
     key["student_key"] = key.node_id.map(uf.find)   # root = min node_id in component
@@ -1276,8 +1500,71 @@ def _am_strong_ok(a: str, b: str) -> bool:
     return len(ta & tb) >= 2
 
 
+# ── STEP 6 record pass ────────────────────────────────────────────────────────
+# _match_fk_v2 matches ONE resolved identity per student (name 12th > 10th > JEE > NEET >
+# NCST; DOB 10th > JEE > NEET > NCST). When that identity takes the name or DOB of one
+# record, another record of the same student can hold the name and DOB that dim_student
+# has, and the student stays without an Avanti id. The record pass fixes that, FILL-ONLY:
+#   • only students with no candidate at all from the resolved identity (not 'ambiguous');
+#   • each record's own name, DOB and father, on the exact tiers only: name + DOB,
+#     name + DOB swapped, name + father (not the DOB-blocked strong/fuzzy name tiers);
+#   • grade-12 frame first, the all-grade frame for students it does not place;
+#   • one Avanti id across all the student's record matches, or nothing ('ambiguous').
+# Its tiers rank below every existing tier (_CONF_PRI), so in step 6b a student that
+# already holds an id always beats a record-pass claimant.
+_RECORD_TIERS = {"record_name_dob": 9, "record_name_dob_swapped": 10, "record_name_father": 11}
+
+
+def _record_identities(nodes: dict, n2k: pd.Series) -> pd.DataFrame:
+    """One row per source record: its own name, DOB and father, with its student_key."""
+    parts = []
+    for st in STAGES:
+        df = nodes[st][["node_id", "norm_name", "norm_father", "dob"]].copy()
+        df["student_key"] = df.node_id.map(n2k)
+        parts.append(df.dropna(subset=["student_key"]))
+    return pd.concat(parts, ignore_index=True)
+
+
+def _record_candidates(r: pd.DataFrame, avanti: pd.DataFrame) -> pd.DataFrame:
+    """Exact tiers on each record's own identity. One row per (student_key, Avanti id, tier)."""
+    cols = ["student_key", "pk_student_id", "conf"]
+    rd = r[_present(r.norm_name) & _present(r.dob)]
+    a = rd.merge(avanti[["pk_student_id", "norm_name", "dob"]], on=["norm_name", "dob"])
+    b = rd.merge(avanti.loc[_present(avanti.dob_swapped), ["pk_student_id", "norm_name", "dob_swapped"]],
+                 left_on=["norm_name", "dob"], right_on=["norm_name", "dob_swapped"])
+    rf = r[_present(r.norm_name) & _present(r.norm_father)]
+    c = rf.merge(avanti.loc[_present(avanti.norm_father), ["pk_student_id", "norm_name", "norm_father"]],
+                 on=["norm_name", "norm_father"])
+    return pd.concat([a.assign(conf="record_name_dob")[cols],
+                      b.assign(conf="record_name_dob_swapped")[cols],
+                      c.assign(conf="record_name_father")[cols]], ignore_index=True)
+
+
+def _record_pass(rec: pd.DataFrame, blank: set, avanti_g12: pd.DataFrame,
+                 avanti_all: pd.DataFrame) -> pd.DataFrame:
+    """Match the students in `blank` on each record's own identity. Returns rows in the
+    _match_fk_v2 output shape: one Avanti id -> filled; two or more -> 'ambiguous'."""
+    out_cols = ["student_key", "fk_avanti_student_id", "match_confidence", "match_count"]
+    r = rec[rec.student_key.isin(blank)]
+    g12 = _record_candidates(r, avanti_g12)
+    wide = _record_candidates(r[~r.student_key.isin(set(g12.student_key))], avanti_all)
+    cand = pd.concat([g12, wide], ignore_index=True).drop_duplicates()
+    if cand.empty:
+        return pd.DataFrame(columns=out_cols)
+    cand["pri"] = cand.conf.map(_RECORD_TIERS)
+    best = cand.sort_values(["student_key", "pri"]).drop_duplicates("student_key").set_index("student_key")
+    n_ids = cand.groupby("student_key")["pk_student_id"].nunique()
+    one = n_ids[n_ids == 1].index
+    many = n_ids[n_ids > 1]
+    filled = pd.DataFrame({"student_key": one, "fk_avanti_student_id": best.loc[one, "pk_student_id"].values,
+                           "match_confidence": best.loc[one, "conf"].values, "match_count": 1})
+    withheld = pd.DataFrame({"student_key": many.index, "fk_avanti_student_id": pd.NA,
+                             "match_confidence": "ambiguous", "match_count": many.values})
+    return pd.concat([filled, withheld], ignore_index=True)[out_cols]
+
+
 def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.DataFrame,
-                 all_ids: set) -> pd.DataFrame:
+                 all_ids: set, rec: pd.DataFrame = None) -> pd.DataFrame:
     """Tiered Avanti fk match — ported from v1's _match_fk, run against v2's OWN
     `sid` (STEP 6, replacing the source-table passthrough) for ALL students
     (b10/b12/jee/neet AND ncst — one unified pipeline, see _build_sid). Priority
@@ -1431,14 +1718,25 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     print(f"  step 6 (own matcher) — avanti fk: {out.fk_avanti_student_id.notna().sum():,} resolved, "
           f"{(out.match_confidence == 'ambiguous').sum():,} ambiguous "
           f"({sid_fallback.student_key.nunique():,} students unplaced by g12 fell back to the wide reference)")
+
+    if rec is not None:
+        # record pass — fill-only, for students with no candidate at all (see _RECORD_TIERS)
+        known = set(out.loc[out.fk_avanti_student_id.notna() | out.match_confidence.notna(), "student_key"])
+        blank = set(sid.student_key) - known
+        rp = _record_pass(rec, blank, avanti_g12, avanti_all)
+        out = pd.concat([out[~out.student_key.isin(set(rp.student_key))], rp], ignore_index=True)
+        tiers = rp.match_confidence.value_counts()
+        print(f"  step 6 record pass (fill-only) — {rp.fk_avanti_student_id.notna().sum():,} filled ("
+              + ", ".join(f"{t} {int(tiers.get(t, 0)):,}" for t in _RECORD_TIERS)
+              + f"), {int(tiers.get('ambiguous', 0)):,} withheld (records point to 2+ Avanti students)")
     return out
 
 
 # Tier order of _match_fk_v2's match_confidence values, best first — used to rank
-# the claimants of one Avanti id in _reconcile_shared_fk.
+# the claimants of one Avanti id in _reconcile_shared_fk. The record-pass tiers rank last.
 _CONF_PRI = {"direct_student_id": 1, "name_dob": 2, "name_dob_swapped": 3, "name_father": 4,
              "name_dob_strong": 5, "name_dob_fuzzy": 6, "roll10_crosswalk": 7,
-             "prod_nta_crosswalk": _PROD_NTA_PRI}
+             "prod_nta_crosswalk": _PROD_NTA_PRI, **_RECORD_TIERS}
 
 
 def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) -> tuple:
@@ -1644,7 +1942,7 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     # anything below is keyed on student_key, and `sid` is rebuilt on the merged keys.
     n2k = key.set_index("node_id")["student_key"]
     sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
-    fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids)
+    fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids, rec=_record_identities(nodes, n2k))
     key, fk_df = _reconcile_shared_fk(nodes, key, fk_df)
     n2k = key.set_index("node_id")["student_key"]
     sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
@@ -1803,8 +2101,16 @@ def main() -> None:
     from google.cloud import bigquery
     from google.cloud.bigquery import LoadJobConfig, WriteDisposition
 
-    argparse.ArgumentParser(
-        description="Build jnv_student_outcome_mapping (clean-slate rewrite, steps 1-8; replaces v1).").parse_args()
+    parser = argparse.ArgumentParser(
+        description="Build jnv_student_outcome_mapping (clean-slate rewrite, steps 1-8; replaces v1).")
+    parser.add_argument(
+        "--out-table", default=OUT_TABLE,
+        help="Table to write (project.dataset.table). The default is the production table. "
+             "Give a scratch table to check the impact of a change. Do not run "
+             "add_avanti_fk.py after a scratch run.")
+    out_table = parser.parse_args().out_table
+    if out_table != OUT_TABLE:
+        print(f"SCRATCH RUN: writes {out_table}. The production table does not change.\n")
 
     for f in (POOJITA, TENTH_SCORE, JEE_2025_RAW.local_path, JEE_2024_RAW.local_path, NEET_2024_RAW.local_path):
         if not f.exists():
@@ -1814,11 +2120,24 @@ def main() -> None:
     client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
     out = _resolve(client)
 
-    print(f"\nFull rebuild → {OUT_TABLE}: {len(out):,} rows, {out.student_key.nunique():,} students")
+    print(f"\nFull rebuild → {out_table}: {len(out):,} rows, {out.student_key.nunique():,} students")
     client.load_table_from_dataframe(
-        out, OUT_TABLE,
+        out, out_table,
         job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
     ).result()
+
+    # scratch run only: the links that _CheckedUnion refused, for review (expires in 30 days)
+    if out_table != OUT_TABLE and _REFUSED is not None and len(_REFUSED):
+        import datetime as dt
+        refused_table = f"{out_table}_refused"
+        client.load_table_from_dataframe(
+            _REFUSED, refused_table,
+            job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
+        ).result()
+        t = client.get_table(refused_table)
+        t.expires = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30)
+        client.update_table(t, ["expires"])
+        print(f"Refused links → {refused_table}: {len(_REFUSED):,} rows (expires in 30 days)")
 
     # coverage summary
     summary = f"""
@@ -1829,7 +2148,7 @@ def main() -> None:
             COUNTIF(board_12th_exam_year IS NOT NULL) AS has_b12,
             COUNTIF(jee_test_year IS NOT NULL) AS has_jee,
             COUNTIF(neet_test_year IS NOT NULL) AS has_neet
-        FROM `{OUT_TABLE}` GROUP BY 1 ORDER BY cohort_year"""
+        FROM `{out_table}` GROUP BY 1 ORDER BY cohort_year"""
     print(f"\n{'cohort':<7}{'rows':>9}{'students':>10}{'ncst':>8}{'b10':>9}{'b12':>9}{'jee':>9}{'neet':>9}")
     print("-" * 78)
     for r in client.query(summary).result():
