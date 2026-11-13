@@ -139,6 +139,32 @@ in-memory pass builds **all cohorts** (2021–2028); there is no per-year flag.
 board 10th/12th, dakshana + nvs NCST) on each table's grain. The output is one
 row per (student, attempt_year), 47 columns.
 
+Rules on every link (`_CheckedUnion`). Links are applied strongest first: crosswalk ids,
+entrance same-person, DOB + parents, the identity rules, then fuzzy names. A link that
+would break a rule is refused:
+
+- A student has at most one NCST, one 10th and one 12th record.
+- A student can have JEE and NEET records in more than one year, but one JEE and one
+  NEET record per year at most.
+- Every pair of records fits the journey years: NCST and 10th in the same year, 12th two
+  years after the 10th, JEE and NEET in the 12th year or later.
+
+Other rules:
+
+- **Twin check.** The DOB + parents rule does not link two records when the given names
+  differ (`name_distance.given_names_differ`). Twins have the same DOB and parents.
+- **Fuzzy names, last.** After the exact rules, the identity rules run again with an
+  Indian-name distance (`name_distance.py`), only between students that are still apart.
+  A fuzzy link never joins two students that have two different Avanti ids.
+- **Step 6 record pass.** When the student's identity matches no Avanti student, each
+  record's own name, DOB and father are tried (`record_name_dob`,
+  `record_name_dob_swapped`, `record_name_father`). It only fills an empty fk, and only
+  when one Avanti student matches.
+
+Scratch run: `--out-table <project.dataset.table>` writes the build to another table, and
+the refused links to `<table>_refused` (it expires in 30 days). Compare it with the
+production table before a production run.
+
 > ⚠️ **`fk_avanti_student_id` = `COALESCE(pk_student_id, apaar_id)`.** It's a
 > `pk_student_id` for most students, but an `apaar_id` for students who have no pk in
 > `dim_student` (only an apaar — mostly JNV NVS). Join back with
