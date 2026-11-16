@@ -81,11 +81,20 @@ python3 -m venv .venv
 
 ## BQ schema
 
-One table in `avantifellows.external_data_sources`:
+Two tables in `avantifellows.external_data_sources`:
 
 | Table | Grain | ~Rows | Columns |
 |---|---|---:|---:|
 | `nvs_fact_ncst_results` | (test_year, roll_no) | ~43k (2026) | 91 |
+| `nvs_fact_ncst_screening` | (test_year, roll_no) | 46,191 (2027) | 59 |
+
+`nvs_fact_ncst_screening` (added 16 Nov 2026) is the 2027 cycle's Screening stage and
+the three agencies' shortlist for the main test. It has its own scripts:
+`scripts/clean_screening.py` (pass-through with quality gates, no codemap), then
+`upload_to_gcs.py --screening` and `load_bq.py --screening`. Without `--screening`
+those two scripts touch only `nvs_fact_ncst_results`, as before. Its roll numbers do
+not overlap `nvs_fact_ncst_results` (2026 = the Dec 2025 main test, another cohort);
+the 13 Dec 2026 main-test results will join it on roll_no.
 
 The shared identity/demographic/coaching prefix (through `coaching_preference_3`,
 now including `father_name`/`mother_name`) shares names with

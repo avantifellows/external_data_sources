@@ -1,0 +1,201 @@
+tables:
+  avantifellows.external_data_sources.nvs_fact_ncst_screening:
+    claude_md_summary: "NCST 2027 SCREENING test (4 Oct 2026, the first stage): every registered Class X JNV student (46,191) with registration and test-day details, marks by subject (of 300), stream ranks, coaching preferences, and who was shortlisted for the NCST main test (11,993) by which agency (Avanti, ENF, Dakshana). Not the main NCST — that is nvs_fact_ncst_results."
+    description: |
+      The NCST 2027 Screening test, held by NVS on 4 Oct 2026 for every Class X JNV
+      student who registered, and the shortlist for the NCST main test (13 Dec 2026)
+      that Avanti Fellows, Dakshana and Ex-Navodaya Foundation (ENF) drew from it.
+      One row per registered student (test_year, roll_no): 46,191 rows, 43,244 present,
+      2,947 absent. Source: the combined shortlisting file the three agencies sent NVS
+      on 16 Nov 2026 (sheet "NCST List"). Phone numbers are not loaded.
+
+      GOTCHAS (read before writing SQL):
+      1. THIS IS THE SCREENING STAGE, NOT THE NCST. The main NCST results are in
+         nvs_fact_ncst_results (test_year '2026' = the Dec 2025 main test, a different
+         cohort: no roll_no in common). Screening total_score (raw, of 300) is NOT
+         comparable to total_normalized_score there. The 13 Dec 2026 main-test results,
+         once loaded, join to this table on roll_no.
+      2. test_year '2027' is NVS's name for the cycle ("NCST 2027"); the test was on
+         2026-10-04 (exam_date). test_year is a STRING.
+      3. FILTER attendance = 'Present' for anything about scores. Absent rows have NULL
+         marks. Every shortlisted student was present.
+      4. SHORTLISTS OVERLAP. A student can be on more than one agency's list: 1,585 are
+         on all three. Count the combined list with is_shortlisted (11,993), NEVER by
+         adding shortlisted_by_avanti (9,081) + shortlisted_by_enf (5,000) +
+         shortlisted_by_dakshana (4,405).
+      5. "SHORTLISTED BY AVANTI" IS NOT "GOING TO AVANTI". The shortlist decides who
+         sits the main test; seats are allotted after it, by the student's coaching
+         preference among the agencies whose CoEs they qualify for.
+      6. STREAM CHOICE: use the four stream_rank_* columns (the student's own ranking,
+         text "1"-"4"; "0" and "*" appear as written on the sheet; NULL for absentees and
+         blanks). DO NOT use nvs_first_choice: on paper sets B, C and D NVS labels every
+         student who ranked Medical 1 as 'Engineering/Medical' (10,702 of them); only set
+         A says 'Medical' (3,618). Counting nvs_first_choice = 'Medical' undercounts
+         Medical-first students about four times. It also has '0' for students who ranked
+         no stream.
+      7. MARKS: +5 per right answer, -2 per wrong. <subject>_score = positive + negative
+         marks (negative stored as negative). total_score = the five subjects, of 300;
+         it can be negative. The four paper sets (qp_set A-D) are NOT equated.
+         nvs_stream_score_fraction is NVS's (Physics + Chemistry + LR + Maths or Biology)
+         / 240, Maths for Engineering-first and Biology for Medical-first — recompute
+         from the subject columns rather than trust it for others.
+      8. TWO VERSIONS OF SOME FACTS. student_gender, category, physically_disabled and
+         annual_family_income are from REGISTRATION; test_day_* are what the student
+         wrote on the test-day sheet, and they disagree for some students. Income on the
+         test day is a bracket (A = under 1 lakh ... E = 4-5 lakh), not a number.
+         category is canonical (Gen / Gen-EWS / OBC / SC / ST, as in the results tables);
+         category_raw keeps the sheet's spelling.
+      9. coaching_preference_* values here are 'Avanti', 'Dakshana', 'Ex-Navodaya'
+         (shorter than in nvs_fact_ncst_results). Most present students put Dakshana
+         first (38,069 of 43,244).
+      10. cc_drn_code and test_day_school_code are carried as written; their meaning is
+          not confirmed (88% equal the student's own school_code). Use school_code for
+          the student's JNV.
+
+    coverage:
+      test_years: ["2027"]
+      exam_stages: ["screening"]
+      notes: |
+        Complete list of period values in this table, read from BigQuery on 2026-11-16.
+        One cycle only (NCST 2027, screening stage). Do not carry a range over from
+        nvs_fact_ncst_results or dakshana_fact_ncst_results.
+
+    core_columns:
+      test_year: {type: STRING, description: "NCST cycle, always '2027'. Part of the grain."}
+      exam_stage: {type: STRING, description: "Always 'screening'."}
+      exam_date: {type: STRING, description: "Test date, '2026-10-04'."}
+      roll_no: {type: STRING, description: "11-digit NCST roll number. Part of the grain; unique."}
+      student_full_name: {type: STRING, description: "Student's name (internal only)."}
+      student_gender: {type: STRING, description: "From registration: Male or Female."}
+      category_raw: {type: STRING, description: "Registration category as written (GEN, Gen, GEN-EWS, OBC-NCL, SC, ST)."}
+      category: {type: STRING, description: "Canonical: Gen / Gen-EWS / OBC / SC / ST."}
+      physically_disabled: {type: BOOLEAN, description: "From registration."}
+      staff_ward: {type: BOOLEAN, description: "Ward of NVS staff."}
+      annual_family_income: {type: FLOAT, description: "From registration, INR per year."}
+
+    location_columns:
+      school_code: {type: INTEGER, description: "The student's JNV (NVS school code)."}
+      school_name: {type: STRING}
+      school_district: {type: STRING}
+      state: {type: STRING, description: "The JNV's state."}
+
+    exam_columns:
+      attendance: {type: STRING, description: "Present or Absent."}
+      qp_set: {type: STRING, description: "Paper set A, B, C or D. Not equated."}
+      test_day_gender: {type: STRING, description: "As written on the test-day sheet (Male, Female, '*')."}
+      test_day_category: {type: STRING, description: "As written on the test-day sheet (Gen, Gen-EWS, OBC-NCL, SC, ST)."}
+      test_day_physically_disabled: {type: STRING, description: "As written on the test-day sheet (Yes, No, '*', '0')."}
+      test_day_income_bracket: {type: STRING, description: "Test-day income bracket letter A-E; see test_day_income_range."}
+      test_day_income_range: {type: STRING, description: "The bracket in INR, e.g. '0-100000'."}
+      test_day_school_code: {type: STRING, description: "School code on the test-day sheet, as written."}
+      cc_drn_code: {type: STRING, description: "NVS's CC-DRN code, as written; meaning not confirmed."}
+
+    academic_history_columns:
+      grade_9_maths_marks: {type: FLOAT, description: "Class IX annual exam, of 100. Self-reported via the school."}
+      grade_9_science_marks: {type: FLOAT, description: "Class IX annual exam, of 100."}
+      grade_9_maths_science_avg: {type: FLOAT}
+      grade_9_english_marks: {type: FLOAT, description: "Class IX annual exam, of 100."}
+
+    preference_columns:
+      coaching_preference_1: {type: STRING, description: "First coaching choice: Avanti / Dakshana / Ex-Navodaya."}
+      coaching_preference_2: {type: STRING}
+      coaching_preference_3: {type: STRING}
+      stream_rank_engineering: {type: STRING, description: "The student's rank for Engineering, '1'-'4' (also '0', '*'). Use these four for stream choice."}
+      stream_rank_medical: {type: STRING}
+      stream_rank_commerce: {type: STRING}
+      stream_rank_humanities: {type: STRING}
+      nvs_first_choice: {type: STRING, description: "NVS's label: Engineering, Medical, Engineering/Medical, Commerce, Humanities, '0'; NULL for absentees. Unreliable for Medical (gotcha 6): use stream_rank_*."}
+
+    score_columns:
+      physics_positive_marks: {type: FLOAT, description: "+5 per right answer."}
+      physics_negative_marks: {type: FLOAT, description: "-2 per wrong answer, stored negative."}
+      physics_score: {type: FLOAT, description: "positive + negative."}
+      chemistry_positive_marks: {type: FLOAT}
+      chemistry_negative_marks: {type: FLOAT}
+      chemistry_score: {type: FLOAT}
+      biology_positive_marks: {type: FLOAT}
+      biology_negative_marks: {type: FLOAT}
+      biology_score: {type: FLOAT}
+      maths_positive_marks: {type: FLOAT}
+      maths_negative_marks: {type: FLOAT}
+      maths_score: {type: FLOAT}
+      lr_positive_marks: {type: FLOAT, description: "Logical reasoning."}
+      lr_negative_marks: {type: FLOAT}
+      lr_score: {type: FLOAT}
+      total_score: {type: FLOAT, description: "Sum of the five subject scores, of 300. NULL if absent."}
+      nvs_stream_score_fraction: {type: FLOAT, description: "NVS's (P + C + LR + Maths or Biology) / 240. See gotcha 7."}
+
+    shortlist_columns:
+      final_status: {type: STRING, description: "Yes (shortlisted for the main test) / No / Absent."}
+      is_shortlisted: {type: BOOLEAN, description: "On the combined shortlist (11,993). Use this to count the list."}
+      shortlisted_by_avanti: {type: BOOLEAN, description: "On Avanti Fellows' list (9,081)."}
+      shortlisted_by_enf: {type: BOOLEAN, description: "On Ex-Navodaya Foundation's list (5,000)."}
+      shortlisted_by_dakshana: {type: BOOLEAN, description: "On Dakshana's list (4,405)."}
+      shortlisting_agency_count: {type: INTEGER, description: "How many agencies listed the student (0-3). Derived from the three flags; NVS's own Count column was wrong for 345 students and is not loaded."}
+
+example_queries:
+  - question: "How many students were shortlisted for the NCST main test, and by which agencies?"
+    sql: |
+      SELECT
+        COUNTIF(is_shortlisted)                 AS combined_shortlist,
+        COUNTIF(shortlisted_by_avanti)          AS avanti_list,
+        COUNTIF(shortlisted_by_enf)             AS enf_list,
+        COUNTIF(shortlisted_by_dakshana)        AS dakshana_list,
+        COUNTIF(shortlisting_agency_count = 3)  AS on_all_three
+      FROM `avantifellows.external_data_sources.nvs_fact_ncst_screening`
+
+  - question: "Share of present students shortlisted, by category and gender"
+    sql: |
+      SELECT
+        category,
+        student_gender,
+        COUNT(*)                                          AS present,
+        COUNTIF(is_shortlisted)                           AS shortlisted,
+        ROUND(100 * COUNTIF(is_shortlisted) / COUNT(*), 1) AS pct_shortlisted
+      FROM `avantifellows.external_data_sources.nvs_fact_ncst_screening`
+      WHERE attendance = 'Present'
+      GROUP BY category, student_gender
+      ORDER BY category, student_gender
+
+  - question: "Shortlisted students by state, with how many came only from Avanti's list"
+    sql: |
+      SELECT
+        state,
+        COUNTIF(is_shortlisted)                                        AS shortlisted,
+        COUNTIF(shortlisted_by_avanti AND shortlisting_agency_count = 1) AS avanti_only
+      FROM `avantifellows.external_data_sources.nvs_fact_ncst_screening`
+      GROUP BY state
+      ORDER BY shortlisted DESC
+      LIMIT 10
+
+  - question: "First stream choice of present students (Engineering ranked 1, Medical ranked 1, both, neither)"
+    sql: |
+      SELECT
+        CASE
+          WHEN stream_rank_engineering = '1' AND stream_rank_medical = '1' THEN 'Engineering and Medical tied'
+          WHEN stream_rank_engineering = '1' THEN 'Engineering'
+          WHEN stream_rank_medical = '1'     THEN 'Medical'
+          ELSE 'Neither ranked 1'
+        END                      AS first_choice,
+        COUNT(*)                 AS students,
+        ROUND(AVG(total_score), 1) AS avg_total_of_300
+      FROM `avantifellows.external_data_sources.nvs_fact_ncst_screening`
+      WHERE attendance = 'Present'
+      GROUP BY first_choice
+      ORDER BY students DESC
+
+  - question: "Average subject scores by paper set (sets are not equated)"
+    sql: |
+      SELECT
+        qp_set,
+        COUNT(*)                       AS students,
+        ROUND(AVG(physics_score), 1)   AS physics,
+        ROUND(AVG(chemistry_score), 1) AS chemistry,
+        ROUND(AVG(biology_score), 1)   AS biology,
+        ROUND(AVG(maths_score), 1)     AS maths,
+        ROUND(AVG(lr_score), 1)        AS lr,
+        ROUND(AVG(total_score), 1)     AS total
+      FROM `avantifellows.external_data_sources.nvs_fact_ncst_screening`
+      WHERE attendance = 'Present'
+      GROUP BY qp_set
+      ORDER BY qp_set
