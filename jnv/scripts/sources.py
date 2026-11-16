@@ -152,12 +152,35 @@ BOARD_RESULTS_12TH_CLEAN = Table(
     local_path=JNV_DIR / "clean" / "board_results_12th_clean.csv",
 )
 
-RAW_BOARD_RESULTS_12TH_FILES = [
-    RawFile("JNV1222.xlsx", "jnv1222",    subdir="board_results_12th"),
-    RawFile("JNV1223.xlsx", "jnv1223",    subdir="board_results_12th"),
-    RawFile("JNV1224.xlsx", "jnv1224",    subdir="board_results_12th"),
-    RawFile("JNV1225.xlsx", "Main Data",  subdir="board_results_12th"),
-]
+# Raw 12th-board Excel files keyed by exam_year — the single source of truth for
+# which years exist. Add a new year here (one line) and it flows through the whole
+# pipeline: clean_board_results_12th.py / upload_to_gcs.py / load_bq.py all resolve
+# years from this dict. The list alias below is kept for callers that iterate every
+# raw file (upload_to_gcs full run).
+BOARD_RESULTS_12TH_RAW_BY_YEAR = {
+    2022: RawFile("JNV1222.xlsx", "jnv1222",    subdir="board_results_12th"),
+    2023: RawFile("JNV1223.xlsx", "jnv1223",    subdir="board_results_12th"),
+    2024: RawFile("JNV1224.xlsx", "jnv1224",    subdir="board_results_12th"),
+    2025: RawFile("JNV1225.xlsx", "Main Data",  subdir="board_results_12th"),
+    2026: RawFile("JNV1226.xlsx", "jnv1226",    subdir="board_results_12th"),
+}
+RAW_BOARD_RESULTS_12TH_FILES = list(BOARD_RESULTS_12TH_RAW_BY_YEAR.values())
+
+
+def board_results_12th_clean_for_year(year) -> Table:
+    """Per-year clean artifact for the incremental (append-one-year) load path.
+
+    Reads/writes a year-scoped clean CSV + GCS parquet
+    (clean/by_year/jnv_fact_board_results_12th_<year>.parquet) but targets the
+    SAME BigQuery table, so load_bq.py can WRITE_APPEND a single year without
+    touching the years already loaded.
+    """
+    return Table(
+        name=f"jnv_fact_board_results_12th_{year}",
+        local_path=JNV_DIR / "clean" / f"board_results_12th_clean_{year}.csv",
+        gcs_name=f"by_year/jnv_fact_board_results_12th_{year}",
+        bq_name="jnv_fact_board_results_12th",
+    )
 
 # Legacy alias kept so upload_to_gcs.py and load_bq.py continue to work
 # until they are updated to use the new names.

@@ -24,9 +24,10 @@ internal JNV tracking, one file per year per exam.
   format (one row per student per subject), unpivoted from up to 7 subject
   slots per student. Supports an **incremental append-one-year** load (`--year`)
   so a new year lands without touching the years already in BigQuery.
-- **Board Results 12th pipeline** — CBSE 12th board results, 2022–2025. Long
+- **Board Results 12th pipeline** — CBSE 12th board results, 2022–2026. Long
   format, includes both main subjects (with marks) and internal assessment
   subjects (grade only — Work Experience, Health & PE, General Studies).
+  Supports the same **incremental append-one-year** load (`--year`) as the 10th.
 
 This is the **heavy transform** template — contrast with
 [`nirf/`](../nirf/CLAUDE.md) which is a thin pass-through. The clean step
@@ -229,6 +230,8 @@ python3 -m venv .venv
 # then add_avanti_fk.py). load_bq's --year is idempotent (re-run replaces that year).
 
 # ── Board Results 12th pipeline ───────────────────────────────────────────────
+# Full rebuild (all years → WRITE_TRUNCATE). This drops the post-load FK columns;
+# rerun add_avanti_fk.py after it.
 # 1. Clean raw Excel → CSV (wide → long unpivot, column renames)
 .venv/bin/python scripts/clean_board_results_12th.py
 
@@ -237,6 +240,16 @@ python3 -m venv .venv
 
 # 3. Load clean parquet from GCS → BigQuery
 .venv/bin/python scripts/load_bq.py --board-results-12th-only
+
+# Incremental — add ONE new year without touching the years already loaded.
+# Register the year's raw file in sources.py → BOARD_RESULTS_12TH_RAW_BY_YEAR first,
+# then (e.g. 2026):
+.venv/bin/python scripts/clean_board_results_12th.py --year 2026        # → per-year CSV
+.venv/bin/python scripts/upload_to_gcs.py --board-results-12th-only --year 2026
+.venv/bin/python scripts/load_bq.py --board-results-12th-only --year 2026   # DELETE year + WRITE_APPEND
+# The appended rows get NULL fk_avanti_student_id until the identity mapping is
+# rebuilt (the year must be in BOARD_YEARS in build_student_outcome_mapping.py),
+# then add_avanti_fk.py. load_bq's --year is idempotent (re-run replaces that year).
 
 # ── All six pipelines at once ─────────────────────────────────────────────────
 .venv/bin/python scripts/upload_to_gcs.py   # upload all raw + clean
@@ -286,7 +299,7 @@ bq --location=asia-south1 mk --dataset avantifellows:external_data_sources
 | `clean/board_results_10th_clean.csv` | No | Output of `clean_board_results_10th.py`. Gitignored. |
 | `clean/board_results_12th_clean.csv` | No | Output of `clean_board_results_12th.py`. Gitignored. |
 | `scripts/upload_to_gcs.py` | Yes | Converts Excel + CSV → parquet, uploads to GCS (all pipelines). |
-| `scripts/load_bq.py` | Yes | Loads clean parquet from GCS → BQ (WRITE_TRUNCATE). All pipelines. |
+| `scripts/load_bq.py` | Yes | Loads clean parquet from GCS → BQ (WRITE_TRUNCATE). All pipelines. Board tables also take `--year` (DELETE year + WRITE_APPEND). |
 | `schemas/` | Yes | YAML column documentation for BQ tables. |
 
 ## BQ schema
@@ -300,7 +313,7 @@ Six tables in `avantifellows.external_data_sources`:
 | `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
 | `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
 | `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.36M (2022–2026) |
-| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.2M |
+| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.5M (2022–2026) |
 
 Key column groups (full list in [`codemaps/mains/shared.py`](codemaps/mains/shared.py)):
 
@@ -449,8 +462,9 @@ and `codemaps/advanced/`.
 - **`marks_12_pct` and `marks_10_pct` are computed where missing.**
   `post_process` fills these from `obtained/total × 100` if the pct column
   is null but both mark columns are present.
-- **WRITE_TRUNCATE on every load.** The BQ table is fully replaced each
-  run. No incremental logic.
+- **WRITE_TRUNCATE on every load, except `--year` on the board tables.** A
+  full load replaces the BQ table. The 10th and 12th board tables also take
+  `--year`, which deletes that exam year and appends it again.
 
 ## Pitfalls
 
