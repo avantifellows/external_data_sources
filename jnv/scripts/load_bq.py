@@ -10,7 +10,7 @@ Reads (all six tables by default):
     gs://avantifellows-external-data/jnv/clean/jnv_fact_board_results_10th.parquet
     gs://avantifellows-external-data/jnv/clean/jnv_fact_board_results_12th.parquet
 
-Writes (WRITE_TRUNCATE):
+Writes (WRITE_TRUNCATE; with --year, the board tables get DELETE year + WRITE_APPEND):
     avantifellows.external_data_sources.jnv_fact_jee_results
     avantifellows.external_data_sources.jnv_fact_neet_results
     avantifellows.external_data_sources.jnv_fact_selection_test_results
@@ -28,13 +28,15 @@ Usage:
     python3 scripts/load_bq.py --ei-asset-test-only
     python3 scripts/load_bq.py --board-results-10th-only
     python3 scripts/load_bq.py --board-results-12th-only
+    python3 scripts/load_bq.py --board-results-10th-only --year 2026   # append one year
+    python3 scripts/load_bq.py --board-results-12th-only --year 2026   # append one year
 """
 
 import argparse
 
 from google.cloud import bigquery
 
-from sources import BOARD_RESULTS_10TH_CLEAN, BOARD_RESULTS_12TH_CLEAN, BQ_LOCATION, BQ_PROJECT, EI_ASSET_TEST_CLEAN, JEE_CLEAN, JNVST_CLEAN, NEET_CLEAN, board_results_10th_clean_for_year
+from sources import BOARD_RESULTS_10TH_CLEAN, BOARD_RESULTS_12TH_CLEAN, BQ_LOCATION, BQ_PROJECT, EI_ASSET_TEST_CLEAN, JEE_CLEAN, JNVST_CLEAN, NEET_CLEAN, board_results_10th_clean_for_year, board_results_12th_clean_for_year
 
 
 def _load(client: bigquery.Client, table) -> None:
@@ -60,9 +62,10 @@ def _load_append_year(client: bigquery.Client, table, year: int) -> None:
 
     Idempotent: any existing rows for `year` are deleted first, so re-running
     replaces just that year's rows. Other years are never read or rewritten.
-    The per-year clean parquet carries only the 34 base columns; the table's 3
-    post-load FK columns (all NULLABLE) fill NULL for the appended rows until the
-    identity mapping is rebuilt and add_avanti_fk.py is re-run.
+    The per-year clean parquet carries only the base columns; the table's 3
+    post-load FK columns (fk_avanti_student_id, match_confidence, match_count, all
+    NULLABLE) fill NULL for the appended rows until the identity mapping is rebuilt
+    and add_avanti_fk.py is re-run.
     """
     tid = table.bq_table_id
 
@@ -98,12 +101,13 @@ def main() -> None:
     group.add_argument("--board-results-10th-only",  action="store_true")
     group.add_argument("--board-results-12th-only",  action="store_true")
     parser.add_argument("--year", type=int, default=None,
-                        help="With --board-results-10th-only: append only this exam year "
-                             "(WRITE_APPEND, idempotent) instead of a full WRITE_TRUNCATE reload.")
+                        help="With --board-results-10th-only or --board-results-12th-only: "
+                             "append only this exam year (WRITE_APPEND, idempotent) instead "
+                             "of a full WRITE_TRUNCATE reload.")
     args = parser.parse_args()
 
-    if args.year is not None and not args.board_results_10th_only:
-        parser.error("--year is only supported with --board-results-10th-only")
+    if args.year is not None and not (args.board_results_10th_only or args.board_results_12th_only):
+        parser.error("--year is only supported with --board-results-10th-only or --board-results-12th-only")
 
     client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
 
@@ -121,7 +125,10 @@ def main() -> None:
         else:
             _load(client, BOARD_RESULTS_10TH_CLEAN)
     elif args.board_results_12th_only:
-        _load(client, BOARD_RESULTS_12TH_CLEAN)
+        if args.year is not None:
+            _load_append_year(client, board_results_12th_clean_for_year(args.year), args.year)
+        else:
+            _load(client, BOARD_RESULTS_12TH_CLEAN)
     else:
         _load(client, JEE_CLEAN)
         _load(client, NEET_CLEAN)
