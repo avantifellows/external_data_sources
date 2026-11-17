@@ -64,6 +64,11 @@ Output schema:
                                          PDF); NULL if not an NMC MBBS college.
                                          Non-NULL = this AISHE institution is NMC-listed.
   nmc_match_method      STRING        -- best NMC match strategy; NULL if no match
+  nmc_college_codes     ARRAY<STRING> -- NMC college codes on NMC's live list
+                                         (nmc_fact_mbbs_colleges) for this institution;
+                                         empty if not matched. Same strategies as NMC.
+                                         Join: ON l.college_code IN UNNEST(b.nmc_college_codes)
+  nmc_live_match_method STRING        -- the live-list match strategy; NULL if no match
                                          s1_name_exact       exact normalised full name + state
                                          s2_name_short       exact normalised short name + state
                                          s3_ratio            SequenceMatcher ratio ≥ 0.85 within state
@@ -108,6 +113,9 @@ NIRF_DCS_TABLE = "nirf_fact_dcs_institution"
 
 KCET_TABLE = "kcet_fact_cutoffs"
 NMC_TABLE  = "nmc_fact_mbbs_seats"
+# NMC's live college list (nmc/scripts/fetch_live.py): the colleges opened since
+# the 2024-25 PDF, each with NMC's college_code
+NMC_LIVE_TABLE = "nmc_fact_mbbs_colleges"
 
 NIRF_METHOD_PRIORITY = {"s0_manual": -1, "s1_id_extract": 0,
                         "s2_name_state_bridge": 1, "s3_name_state_direct": 2}
@@ -714,6 +722,37 @@ def _read_nmc(client) -> pd.DataFrame:
     return df
 
 
+def _read_nmc_live(client) -> pd.DataFrame:
+    """The live list in _match_nmc's shape: sl_no is a row number (the list has
+    none), district is empty (the list has none, so a name made only of shared
+    words is decided by the place in its name)."""
+    sql = f"""
+        SELECT college_code, college, state
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.{NMC_LIVE_TABLE}`
+        ORDER BY college_code
+    """
+    df = client.query(sql).to_dataframe()
+    df.insert(0, "sl_no", range(1, len(df) + 1))
+    df["district"] = None
+    df["norm_name"]       = _norm(df["college"])
+    df["short_norm_name"] = _short_norm(df["college"])
+    df["spaceless_name"]  = _spaceless(df["college"])
+    df["norm_state"]      = _norm_state(df["state"])
+    return df
+
+
+def _match_nmc_live(aishe: pd.DataFrame, live: pd.DataFrame) -> pd.DataFrame:
+    """aishe_code → nmc_college_codes (NMC's codes on the live list), by the same
+    strategies and checks as the 2024-25 list."""
+    m = _match_nmc(aishe, live)
+    code_of = live.set_index("college")["college_code"]
+    m = m.assign(nmc_college_code=m["nmc_college_name"].map(code_of))
+    return (m.groupby("aishe_code")
+             .agg(nmc_college_codes=("nmc_college_code", lambda x: sorted(set(x))),
+                  nmc_live_match_method=("nmc_match_method", "first"))
+             .reset_index())
+
+
 # ── NMC pair check ───────────────────────────────────────────────────────────
 # Words every medical college shares, plus address words NMC prints in the name.
 _PAIR_GENERIC = _GENERIC_TOKENS | {"GMC", "ESIC", "DISTRICT", "ALLOPATHIC", "CAMPUS", "NEAR",
@@ -1009,6 +1048,7 @@ def _build(
     josaa_per_aishe: pd.DataFrame,
     kcet_per_aishe: pd.DataFrame,
     nmc_per_aishe: pd.DataFrame,
+    nmc_live_per_aishe: pd.DataFrame,
 ) -> pd.DataFrame:
     result = (
         aishe[["aishe_code", "college_name"]]
@@ -1017,6 +1057,7 @@ def _build(
         .merge(josaa_per_aishe, on="aishe_code", how="left")
         .merge(kcet_per_aishe, on="aishe_code", how="left")
         .merge(nmc_per_aishe, on="aishe_code", how="left")
+        .merge(nmc_live_per_aishe, on="aishe_code", how="left")
         .sort_values("aishe_code")
         .reset_index(drop=True)
     )
@@ -1024,6 +1065,9 @@ def _build(
         lambda x: x if isinstance(x, list) else []
     )
     result["kcet_college_codes"] = result["kcet_college_codes"].apply(
+        lambda x: x if isinstance(x, list) else []
+    )
+    result["nmc_college_codes"] = result["nmc_college_codes"].apply(
         lambda x: x if isinstance(x, list) else []
     )
     return result
@@ -1077,8 +1121,16 @@ def main() -> None:
     nmc_per_aishe = _match_nmc(aishe, nmc)
     print(f"  {len(nmc_per_aishe):,} AISHE codes matched to an NMC college")
 
+    print("Reading NMC live list…")
+    nmc_live = _read_nmc_live(client)
+    print(f"  {len(nmc_live):,} colleges on NMC's live list")
+    print("Matching NMC live list → AISHE (state-filtered)…")
+    nmc_live_per_aishe = _match_nmc_live(aishe, nmc_live)
+    print(f"  {len(nmc_live_per_aishe):,} AISHE codes matched to a live NMC college")
+
     print("Assembling bridge_college_mapping…")
-    result = _build(aishe, nirf_per_aishe, josaa_per_aishe, kcet_per_aishe, nmc_per_aishe)
+    result = _build(aishe, nirf_per_aishe, josaa_per_aishe, kcet_per_aishe, nmc_per_aishe,
+                    nmc_live_per_aishe)
 
     n_nirf  = result["nirf_institute_ids"].apply(len).gt(0).sum()
     n_josaa = result["josaa_institute_name"].notna().sum()
@@ -1111,6 +1163,8 @@ def main() -> None:
         SchemaField("kcet_match_method",     "STRING",  mode="NULLABLE"),
         SchemaField("nmc_college_name",      "STRING",  mode="NULLABLE"),
         SchemaField("nmc_match_method",      "STRING",  mode="NULLABLE"),
+        SchemaField("nmc_college_codes",     "STRING",  mode="REPEATED"),
+        SchemaField("nmc_live_match_method", "STRING",  mode="NULLABLE"),
     ]
 
     print(f"\nWriting → {OUT_TABLE}…")
