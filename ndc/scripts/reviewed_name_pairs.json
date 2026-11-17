@@ -1,0 +1,69 @@
+{
+ "about": "Details-page names that differ from their list row's name but were checked by hand to be the same college (renamed, or an abbreviation). scripts/build_clean.py accepts exactly these pairs.",
+ "pairs": [
+  {
+   "details_name": "J N Kapoor DAV ( C ) Dental College",
+   "list_name": "D.A.V. Centenary Dental College, Yamuna nagar"
+  },
+  {
+   "details_name": "SGT Dental Dental College Hospital and Reserach Institute Budhera Gurugram Haryana",
+   "list_name": "Sri Govind Tricentenary Dental College, Hospital & Research Institute"
+  },
+  {
+   "details_name": "Government Dental College & Research Institute",
+   "list_name": "Govt. Dental College, Bangalore"
+  },
+  {
+   "details_name": "M S Ramaiah Dental College & Hospital( Presently Faculty of Dental Sciences)",
+   "list_name": "M.S. Ramaiah Dental College, Bangalore"
+  },
+  {
+   "details_name": "Maratha Mandal Nathajirao G. Halgekar Institute of Dental Science & Research Centre, Belgaum",
+   "list_name": "Maratha Mandal’s Dental College & Research Centre, Belgaum"
+  },
+  {
+   "details_name": "Vokkaligara Sangha Dental College",
+   "list_name": "V.S. Dental College, Bangalore"
+  },
+  {
+   "details_name": "SREE ANJANEYA INSTITUTE OF DENTAL SCIENCES",
+   "list_name": "Sree Anjaneya Medical Trust, Calicut"
+  },
+  {
+   "details_name": "JMF's ACPM Dental College, Dhule",
+   "list_name": "Annasaheb Chudaman Patil Memorial Dental College, Dhule"
+  },
+  {
+   "details_name": "Bharti Vidyapeeth",
+   "list_name": "Bharati Vidyapeeth Dental College & Hospital, Navi Mumbai"
+  },
+  {
+   "details_name": "Mahatma Gandhi Vidyamandir’s, Karmaveer Bhausaheb Hiray, Dental College and Hospital, Panchavati, Nashik - 422003.",
+   "list_name": "Mahatma Gandhi Vidya Mandir’s Dental College & Hospital, Nashik"
+  },
+  {
+   "details_name": "Saraswati Dhanwantari Dental College & Hospital & Post Graduate Research Institute",
+   "list_name": "Saraswati Danwantri Dental College & Hospital, Parbhani"
+  },
+  {
+   "details_name": "DR.G.D.POL FOUNDATION Y.M.T DENTAL COLLEGE & HOSPITAL",
+   "list_name": "Yerala Medical Trust & Research Centre’s Dental College & Hospital, Navi Mumbai"
+  },
+  {
+   "details_name": "RUHS college of Dental Sciences",
+   "list_name": "Govt. Dental College & Hospital, Jaipur"
+  },
+  {
+   "details_name": "Faculty of Dental Sciences, King George's Medical University, U.P. Lucknow",
+   "list_name": "Faculty of Dental Sciences, Lucknow"
+  },
+  {
+   "details_name": "Kanti Devi Dental College & Hospital",
+   "list_name": "K.D. Dental College, Mathura"
+  },
+  {
+   "details_name": "Faculty of Dental Sciences, Uttar Pradesh University of Medical Sciences",
+   "list_name": "U.P. Rural Institute of Medical Sciences & Research, Saifai"
+  }
+ ]
+}
