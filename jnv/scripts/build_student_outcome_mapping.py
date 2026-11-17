@@ -841,8 +841,8 @@ def _key_group_edges(frame: pd.DataFrame, key: str, name: dict = None,
 # in word order and in sorted word order. Then the rule's year gap and the same
 # component-level unambiguity check as the exact pass.
 # Each fuzzy edge then goes through _CheckedUnion like every other union (one record per
-# stage, years that fit), and joins two students only when they hold at most one Avanti id
-# between them (_round2_fuzzy).
+# stage, years that fit), and is refused when step 6 gives the two students two different
+# Avanti ids (_round2_fuzzy).
 FUZZY_FATHER_OK = {"same", "spelling variant", "initial or dropped word", "joined or split words"}
 _FUZZY_OPTS = frozenset({"placeholders", "abbrev", "prefix", "span"})
 _FUZZY_COLS = ["node_id", "yr", "norm_name", "norm_father", "dob"]
@@ -902,18 +902,30 @@ def _fuzzy_rule_edges(fk: dict, left: str, right: str, keys: list, lo: int, hi: 
     return list(zip(m.node_id_l, m.node_id_r))
 
 
-def _round2_fuzzy(cu, nodes: dict) -> None:
+def _student_avanti_ids(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dict) -> dict:
+    """component root -> the Avanti id that step 6 gives the student as it is now, before the
+    fuzzy round. The same matcher as step 6 (_build_sid + _match_fk_v2), on this build's own
+    inputs (source records, crosswalks, dim_student)."""
+    uf = cu.uf
+    n2k = pd.Series({n: uf.find(n) for n in uf.parent}, name="student_key")
+    sid = _build_sid(nodes, n2k, refs, ncst24, avanti["prod_nta"])
+    fk = _match_fk_v2(sid, avanti["g12"], avanti["all"], avanti["all_ids"],
+                      rec=_record_identities(nodes, n2k))
+    fk = fk[fk.fk_avanti_student_id.notna()]
+    return {k: {v} for k, v in zip(fk.student_key, fk.fk_avanti_student_id)}
+
+
+def _round2_fuzzy(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dict) -> None:
     """Round 2: add the fuzzy-name edges, last. Each edge goes through _CheckedUnion (one
-    record per stage, years that fit), and is refused when the two students hold two
-    different Avanti ids."""
+    record per stage, years that fit). A fuzzy edge is also refused when step 6 gives the two
+    students two different Avanti ids (_student_avanti_ids). The build does not read
+    fk_avanti_student_id from the source tables, because add_avanti_fk.py writes it from this
+    table."""
     uf = cu.uf
     comp = {n: uf.find(n) for n in uf.parent}
-    comp_stages = {root: {s for s, _ in recs} for root, recs in cu.recs.items()}
-    fks = {}   # component root -> Avanti ids of the student
-    for st in STAGES:
-        for nid, f in zip(nodes[st].node_id, nodes[st].fk_avanti_id):
-            if nid in comp and isinstance(f, str) and f:
-                fks.setdefault(comp[nid], set()).add(f)
+    comp_stages = {root: {r[0] for r in recs} for root, recs in cu.recs.items()}
+    print("    step 6 matcher on the students before the fuzzy round:")
+    ids = _student_avanti_ids(cu, nodes, refs, ncst24, avanti)   # root -> {Avanti id}
 
     fk = _fuzzy_keys(nodes)
     cands = []
@@ -923,19 +935,20 @@ def _round2_fuzzy(cu, nodes: dict) -> None:
         print(f"    fuzzy {left}->{right} {'+'.join(keys)}: {len(e):,} candidates")
         cands += e
 
-    fmt = lambda recs: " ".join(sorted(f"{s}:{y}" for s, y in recs))
+    fmt = lambda recs: " ".join(sorted(f"{r[0]}:{r[1]}" for r in recs))
     before, added = len(cu.refused), 0
     for a, b in cands:
         ra, rb = uf.find(a), uf.find(b)
         if ra == rb:
             continue
-        if len(fks.get(ra, set()) | fks.get(rb, set())) > 1:
-            cu.refused.append(("fuzzy names", "two Avanti ids", a, b, fmt(cu.recs[ra]), fmt(cu.recs[rb])))
+        ia, ib = ids.get(ra, set()), ids.get(rb, set())
+        if ia and ib and not ia & ib:
+            cu.refused.append(("fuzzy names", "two different Avanti ids",
+                               a, b, fmt(cu.recs[ra]), fmt(cu.recs[rb])))
             continue
         cu.union(a, b, "fuzzy names")
-        root = uf.find(a)
-        if root == uf.find(b):
-            fks[root] = fks.pop(ra, set()) | fks.pop(rb, set())
+        if uf.find(a) == uf.find(b):
+            ids[uf.find(a)] = ids.pop(ra, set()) | ids.pop(rb, set())
             added += 1
     print(f"    {'fuzzy names':<22}{len(cands):>9,} edges, {len(cu.refused) - before:>6,} refused")
     print(f"  round-2 fuzzy edges:    {added:>8,}")
@@ -1029,9 +1042,19 @@ _PARENT_STOP = {"NA", "N/A", "NULL", "NONE", "FATHER", "MOTHER", "NAME", "XXX", 
 _PARENT_DOB_BLOCK_MAX = 12   # (dob, father, mother) block bigger than this => placeholder, skip
 # Twin check: two records with the same DOB and parents whose names pass
 # _name_subset or _name_similar can still be twins with close given names (a shared surname
-# makes the whole names look alike). nd.given_names_differ refuses the pair when each name
-# keeps a word that has no partner in the other name. The refused pairs go to _REFUSED.
+# makes the whole names look alike). The check runs only when the (dob, father, mother) block
+# shows a second person: two records of one stage and one year. Then nd.given_names_differ
+# refuses the pair when each name keeps a word that has no partner in the other name.
+# Without a second person, a spelling difference is one person (a typo), and the pair links.
+# The refused pairs go to _REFUSED.
 _TWIN_REFUSED = []
+
+
+def _stage_year(node_id: str) -> tuple:
+    """(stage, year) of a node id: 'b10:<yr>:<roll>' -> ('b10', '<yr>');
+    'ncst:<source>:<yr>:<roll>' -> ('ncst', '<yr>') (both NCST sources are one stage)."""
+    parts = node_id.split(":")
+    return (parts[0], parts[2] if parts[0] == "ncst" else parts[1])
 
 
 def _parent_dob_edges(nodes: dict) -> list[tuple]:
@@ -1048,7 +1071,8 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
     mother signal (unused elsewhere) and a spelling-variant path the token gate can't
     reach — without the recall-killing 1:1 guard, because the block key is already
     highly specific. Skips placeholder parent tokens and oversized (garbage) blocks.
-    The name gates still pass twins whose given names are close; the twin check
+    The name gates still pass twins whose given names are close. When the block shows a
+    second person (two records of one stage and one year), the twin check
     (nd.given_names_differ) refuses those pairs and keeps them in _TWIN_REFUSED."""
     cols = ["node_id", "norm_name", "norm_father", "norm_mother", "dob"]
     alln = pd.concat([nodes[s][cols] for s in STAGES], ignore_index=True)
@@ -1064,11 +1088,13 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
         recs = list(zip(grp.node_id, grp.norm_name))
         if len(recs) < 2 or len(recs) > _PARENT_DOB_BLOCK_MAX:
             continue
+        stage_years = [_stage_year(n) for n in grp.node_id]
+        second_person = len(set(stage_years)) < len(stage_years)
         for i in range(len(recs)):
             for j in range(i + 1, len(recs)):
                 na, nb = recs[i][1], recs[j][1]
                 if _name_subset(na, nb) or _name_similar(na, nb):
-                    if nd.given_names_differ(na, nb):
+                    if second_person and nd.given_names_differ(na, nb):
                         _TWIN_REFUSED.append((recs[i][0], recs[j][0]))
                     else:
                         edges.append((recs[i][0], recs[j][0]))
@@ -1102,6 +1128,12 @@ class _UnionFind:
 #   • JEE and NEET may repeat (a repeater sits again in a later year), but at most
 #     one JEE and one NEET record per year;
 #   • every pair of the student's records fits the journey years (_JOURNEY_YEARS).
+#     A JEE or NEET record may sit one year before the 12th year (an early attempt,
+#     in grade 11). An exact link may join an early attempt when the father or the
+#     mother of the early record agrees with a parent on the 10th, 12th or NCST record
+#     of the other student (two people can share a name and DOB). A fuzzy link may not
+#     make an exam early: it joins only when each early exam already has a 10th,
+#     12th or NCST year in its own student.
 # A link that would break a rule is refused. Edges are applied strongest first:
 # crosswalk ids, entrance same-person edges, DOB/parent edges (round 0), then the
 # identity rules (round 1). Refused links are kept in _REFUSED (a scratch run writes
@@ -1115,22 +1147,40 @@ _JOURNEY_YEARS = {
 }
 _ONE_PER_STUDENT = {"ncst", "b10", "b12"}
 _ONE_PER_YEAR = {"jee", "neet"}
+_EARLY_YEARS = 1   # a JEE or NEET record may sit this many years before the 12th year
 _REFUSED = None
 
 
-def _years_fit(recs_a: list, recs_b: list) -> bool:
-    """True when every (stage, yr) of one student fits every (stage, yr) of the other."""
-    for s1, y1 in recs_a:
-        for s2, y2 in recs_b:
+def _years_fit(recs_a: list, recs_b: list, early_ok: bool, parents_agree=None) -> str | None:
+    """None when every (stage, yr) of one student fits every (stage, yr) of the other, else
+    the reason. recs are (stage, yr, node_id). A JEE or NEET record one year before the 12th
+    year (an early attempt) fits when its own student already has a 10th, 12th or NCST year
+    (the link makes no new early exam), or on an exact link (early_ok) when
+    parents_agree(early node, the 10th / 12th / NCST nodes of the other student) is True."""
+    anchors = ([n for s, _, n in recs_a if s in _ONE_PER_STUDENT],
+               [n for s, _, n in recs_b if s in _ONE_PER_STUDENT])
+    for s1, y1, n1 in recs_a:
+        for s2, y2, n2 in recs_b:
+            # the later stage of the pair is the JEE or NEET record, when there is one
             if (s1, s2) in _JOURNEY_YEARS:
-                (lo, hi), gap = _JOURNEY_YEARS[(s1, s2)], y2 - y1
+                (lo, hi), gap, later, own, other = _JOURNEY_YEARS[(s1, s2)], y2 - y1, n2, anchors[1], anchors[0]
+                later_stage = s2
             elif (s2, s1) in _JOURNEY_YEARS:
-                (lo, hi), gap = _JOURNEY_YEARS[(s2, s1)], y1 - y2
+                (lo, hi), gap, later, own, other = _JOURNEY_YEARS[(s2, s1)], y1 - y2, n1, anchors[0], anchors[1]
+                later_stage = s1
             else:
                 continue
-            if gap < lo or (hi is not None and gap > hi):
-                return False
-    return True
+            if lo <= gap and (hi is None or gap <= hi):
+                continue
+            if later_stage not in _ONE_PER_YEAR or gap != lo - _EARLY_YEARS:
+                return "years do not fit"
+            if own:
+                continue                       # already an early attempt of its own student
+            if not early_ok:
+                return "exam one year early on a fuzzy link"
+            if parents_agree is not None and not parents_agree(later, other):
+                return "early exam, parents do not agree"
+    return None
 
 
 class _CheckedUnion:
@@ -1138,31 +1188,48 @@ class _CheckedUnion:
 
     def __init__(self, uf: _UnionFind, nodes: dict):
         self.uf = uf
-        self.recs = {}   # root -> [(stage, yr)] (yr None when the record has no year)
+        self.recs = {}      # root -> [(stage, yr, node_id)] (yr None when the record has no year)
+        self.parents = {}   # node_id -> (norm_father, norm_mother)
         for st in STAGES:
-            for nid, yr in zip(nodes[st].node_id, nodes[st].yr):
+            df = nodes[st]
+            fathers = df.norm_father if "norm_father" in df else [None] * len(df)
+            mothers = df.norm_mother if "norm_mother" in df else [None] * len(df)
+            for nid, yr, fa, mo in zip(df.node_id, df.yr, fathers, mothers):
                 if nid in uf.parent:
-                    self.recs[nid] = [(st, int(yr) if pd.notna(yr) else None)]
+                    self.recs[nid] = [(st, int(yr) if pd.notna(yr) else None, nid)]
+                    self.parents[nid] = (fa if isinstance(fa, str) and fa else None,
+                                         mo if isinstance(mo, str) and mo else None)
         self.refused = []
 
-    @staticmethod
-    def _why_not(ra: list, rb: list) -> str | None:
-        if {s for s, _ in ra if s in _ONE_PER_STUDENT} & {s for s, _ in rb if s in _ONE_PER_STUDENT}:
+    def _parents_agree(self, node: str, others: list) -> bool:
+        """True when the father or the mother of `node` agrees with that parent of one of
+        `others` (nd.father_check_v2, the check of the fuzzy round)."""
+        fa, mo = self.parents.get(node, (None, None))
+        for o in others:
+            fo, mo_o = self.parents.get(o, (None, None))
+            if fa and fo and nd.father_check_v2(fa, fo, _FUZZY_OPTS) in FUZZY_FATHER_OK:
+                return True
+            if mo and mo_o and nd.father_check_v2(mo, mo_o, _FUZZY_OPTS) in FUZZY_FATHER_OK:
+                return True
+        return False
+
+    def _why_not(self, ra: list, rb: list, early_ok: bool) -> str | None:
+        if {r[0] for r in ra if r[0] in _ONE_PER_STUDENT} & {r[0] for r in rb if r[0] in _ONE_PER_STUDENT}:
             return "second NCST, 10th or 12th record"
-        if ({(s, y) for s, y in ra if s in _ONE_PER_YEAR and y is not None}
-                & {(s, y) for s, y in rb if s in _ONE_PER_YEAR and y is not None}):
+        if ({(r[0], r[1]) for r in ra if r[0] in _ONE_PER_YEAR and r[1] is not None}
+                & {(r[0], r[1]) for r in rb if r[0] in _ONE_PER_YEAR and r[1] is not None}):
             return "two JEE or two NEET records in one year"
-        if not _years_fit([r for r in ra if r[1] is not None], [r for r in rb if r[1] is not None]):
-            return "years do not fit"
-        return None
+        return _years_fit([r for r in ra if r[1] is not None], [r for r in rb if r[1] is not None],
+                          early_ok, self._parents_agree)
 
     def union(self, a: str, b: str, edge_type: str) -> None:
         ra, rb = self.uf.find(a), self.uf.find(b)
         if ra == rb:
             return
-        why = self._why_not(self.recs[ra], self.recs[rb])
+        # every link is exact except the fuzzy-name round
+        why = self._why_not(self.recs[ra], self.recs[rb], early_ok=edge_type != "fuzzy names")
         if why:
-            fmt = lambda recs: " ".join(sorted(f"{s}:{y}" for s, y in recs))
+            fmt = lambda recs: " ".join(sorted(f"{r[0]}:{r[1]}" for r in recs))
             self.refused.append((edge_type, why, a, b, fmt(self.recs[ra]), fmt(self.recs[rb])))
             return
         self.uf.union(a, b)
@@ -1171,7 +1238,7 @@ class _CheckedUnion:
         self.recs[root] = self.recs[root] + self.recs.pop(other)
 
 
-def _cluster(nodes: dict, refs: dict, ncst24: pd.DataFrame) -> pd.DataFrame:
+def _cluster(nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dict) -> pd.DataFrame:
     """Run the two-round union-find and return node_id → student_key. Every union goes
     through _CheckedUnion (one record per stage, years that fit)."""
     global _REFUSED
@@ -1199,7 +1266,7 @@ def _cluster(nodes: dict, refs: dict, ncst24: pd.DataFrame) -> pd.DataFrame:
     print(f"  round-1 identity edges: {len(soft):>8,}")
 
     # Round 2 — fuzzy-name edges, last, through the same checks as every other union.
-    _round2_fuzzy(cu, nodes)
+    _round2_fuzzy(cu, nodes, refs, ncst24, avanti)
 
     twin_rows = [("DOB + parents", "given names differ (twin check)", a, b, "", "")
                  for a, b in _TWIN_REFUSED]
@@ -1759,7 +1826,10 @@ def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) ->
 
     Claimants are taken best tier first. Each is merged in only if it adds stages the
     accepted set does not already have AND its years fit one journey (every pre-entrance
-    stage implies the same cohort_year; no entrance sitting before that cohort).
+    stage implies the same cohort_year; no entrance sitting before that cohort, except an
+    early attempt one year before it that a claimant already has). A merge makes no new
+    early attempt: an early attempt needs the parent check of _CheckedUnion, and step 6b
+    has no parents.
 
     Returns (key, fk_df) with merged student_keys remapped (root = smallest key, as in
     _cluster) and fk_df re-keyed to one row per surviving student_key."""
@@ -1785,7 +1855,13 @@ def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) ->
         if len(cohort) > 1:
             return False
         ent = acc["entrance"] | p["entrance"]
-        return not (cohort and ent and min(ent) < min(cohort))
+        if not (cohort and ent) or min(ent) >= min(cohort):
+            return True
+        c = min(cohort)
+        if min(ent) < c - _EARLY_YEARS:
+            return False
+        # an early attempt fits only when its part already had the cohort (no new early exam)
+        return not [y for part in (acc, p) if not part["cohort"] for y in part["entrance"] if y < c]
 
     has = fk_df[fk_df.fk_avanti_student_id.notna()].copy()
     has["pri"] = has.match_confidence.map(_CONF_PRI).fillna(99)
@@ -2087,7 +2163,8 @@ def _resolve(client) -> pd.DataFrame:
     dim_pt = _read_dim_passthrough(client)
     prod_nta = _read_prod_nta_crosswalk(client)
     print("Steps 2–3 — edges + union-find ...")
-    key = _cluster(nodes, refs, ncst24)
+    key = _cluster(nodes, refs, ncst24, {"g12": avanti_g12, "all": avanti_all,
+                                          "all_ids": all_ids, "prod_nta": prod_nta})
     print("Steps 4–7 — cohort_year + avanti fk + explode to (student × attempt_year) + outcome marks ...")
     return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks,
                        dim_pt, prod_nta)

@@ -129,7 +129,8 @@ a name gate on the direct-id crosswalks and ambiguous matches withheld
 an Avanti id claimed by more than one component either merges them (complementary
 stages, one consistent journey — e.g. a 10th-board component and a JEE component
 no roll bridge joined) or stays only with the best-tier claimant, the rest marked
-`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). So an
+`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). Step 6b keeps
+an early attempt that a student already has, but does not make a new one. So an
 fk sits on exactly one `student_key`, and the build asserts it. **It runs entirely in pandas**: the sources are read from BQ
 already aggregated, resolution happens as DataFrame merges, and the finished
 table is uploaded (no server-side CTE graph → no planner-complexity errors). One
@@ -148,14 +149,25 @@ would break a rule is refused:
   NEET record per year at most.
 - Every pair of records fits the journey years: NCST and 10th in the same year, 12th two
   years after the 10th, JEE and NEET in the 12th year or later.
+- Early attempt: a JEE or NEET record can be one year before the 12th year (the student sat
+  the exam in grade 11). An exact link can join it when the father or the mother of the
+  early record agrees with a parent on the student's 10th, 12th or NCST record (two people
+  can share a name and DOB). A fuzzy link can join two students only when it makes no new
+  early exam. In the table, an early attempt is a row whose
+  `jee_test_year` or `neet_test_year` is `cohort_year - 1`. Two or more years before the 12th
+  year is refused.
 
 Other rules:
 
-- **Twin check.** The DOB + parents rule does not link two records when the given names
-  differ (`name_distance.given_names_differ`). Twins have the same DOB and parents.
+- **Twin check.** Twins have the same DOB and parents. When the records with one DOB and
+  parents show a second person (two records of one stage and one year), the DOB + parents
+  rule does not link two records whose given names differ
+  (`name_distance.given_names_differ`). Without a second person, a spelling difference is a
+  typo, and the records link.
 - **Fuzzy names, last.** After the exact rules, the identity rules run again with an
   Indian-name distance (`name_distance.py`), only between students that are still apart.
-  A fuzzy link never joins two students that have two different Avanti ids.
+  A fuzzy link is refused when the step 6 matcher, run on the students before the fuzzy
+  round, gives the two students two different Avanti ids.
 - **Step 6 record pass.** When the student's identity matches no Avanti student, each
   record's own name, DOB and father are tried (`record_name_dob`,
   `record_name_dob_swapped`, `record_name_father`). It only fills an empty fk, and only
