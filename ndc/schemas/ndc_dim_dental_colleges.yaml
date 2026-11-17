@@ -1,0 +1,22 @@
+description: One row per BDS dental college on the National Dental Commission's college search (fetched 2026-11-17).
+rows: 330
+grain: (fetched_on, ndc_id)
+columns:
+  - {name: fetched_on, type: STRING, description: Date of the fetch.}
+  - {name: ndc_id, type: STRING, description: "NDC's id for the college (the Id of its details page). Key."}
+  - {name: list_sl_no, type: INTEGER, description: Row number on the list page.}
+  - {name: college, type: STRING, description: "Name as the list prints it, usually '<name>, <city>'."}
+  - {name: college_short, type: STRING, description: Name as the college's details page prints it (may be fuller or older).}
+  - {name: state, type: STRING}
+  - {name: city, type: STRING}
+  - {name: pin, type: STRING}
+  - {name: address_line1, type: STRING}
+  - {name: address_line2, type: STRING}
+  - {name: established, type: STRING, description: "As printed, e.g. '2013-14'."}
+  - {name: year_established, type: INTEGER, description: First year of `established`.}
+  - {name: college_type, type: STRING, description: "'Private' or 'Govt.'"}
+  - {name: admin_authority, type: STRING, description: "Body that runs it: Society, Trust, Government, ..."}
+  - {name: hospital_attached, type: STRING}
+  - {name: hospital_type, type: STRING, description: "e.g. 'Own Medical College'."}
+  - {name: website, type: STRING}
+  - {name: bds_permitted_seats_2025_26, type: INTEGER, description: "Permitted BDS seats for 2025-26 from the list page. Sums to 27,914."}

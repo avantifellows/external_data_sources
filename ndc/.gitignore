@@ -1,0 +1,3 @@
+# NDC pages and the clean tables — staged to GCS, never git.
+raw/
+clean/

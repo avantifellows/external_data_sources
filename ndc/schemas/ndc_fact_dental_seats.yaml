@@ -1,0 +1,14 @@
+description: Seats per dental college x course x speciality for academic year 2026-27, from each college's NDC details page.
+rows: 2347
+grain: (ndc_id, course, speciality, academic_year)
+columns:
+  - {name: fetched_on, type: STRING}
+  - {name: ndc_id, type: STRING, description: Joins ndc_dim_dental_colleges.ndc_id.}
+  - {name: course, type: STRING, description: "BDS, MDS or PG Diploma."}
+  - {name: speciality, type: STRING, description: "MDS / PG Diploma speciality; NULL for BDS."}
+  - {name: academic_year, type: STRING, description: "'2026-27' only (older years are incomplete on the fetched page and dropped)."}
+  - {name: approved_seats, type: INTEGER}
+  - {name: recognised_seats, type: INTEGER}
+  - {name: intake_capacity, type: INTEGER}
+  - {name: permitted_seats, type: INTEGER, description: "Seats the college may fill. 2026-27: BDS 27,464, MDS 7,640."}
+  - {name: admitted_seats, type: INTEGER, description: "Students admitted so far (0 early in the year)."}
