@@ -65,3 +65,20 @@ class RawFile:
 RAW_NCST_FILES = [
     RawFile("NCST 2026.xlsx", "NCST Data"),
 ]
+
+# ── NCST Screening (Class X, first stage) ─────────────────────────────────────
+# NCST 2027 Screening test, 4 Oct 2026. Source: the combined shortlisting file Dakshana sent NVS
+# (Academic wing) on 16 Nov 2026 for all three agencies, as downloaded by Avanti (Surya) that day.
+# Only the "NCST List" sheet is read; its JDST (Class XII) sheets are Dakshana's own test.
+# The raw archive in GCS drops the phone columns (PHONE_COLUMNS): nothing reads them.
+
+SCREENING_CLEAN = Table(
+    name="nvs_fact_ncst_screening",
+    local_path=NVS_DIR / "clean" / "nvs_fact_ncst_screening.parquet",
+)
+
+PHONE_COLUMNS = ["Mobile Number", "Alternate Mobile Number", "MobileNo"]
+
+RAW_SCREENING_FILES = [
+    RawFile("NCST 2027 Phase 1 Shortlisting_Combined - NVS.xlsx", "NCST List", subdir="ncst_screening"),
+]

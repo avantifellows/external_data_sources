@@ -20,10 +20,15 @@ from pathlib import Path
 from google.cloud import bigquery
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.sources import BQ_LOCATION, BQ_PROJECT, NCST_CLEAN
+from scripts.sources import BQ_LOCATION, BQ_PROJECT, NCST_CLEAN, SCREENING_CLEAN
 
 
 def main() -> None:
+    # --screening loads only nvs_fact_ncst_screening; without it, only nvs_fact_ncst_results (whose
+    # WRITE_TRUNCATE drops the Avanti fk columns: re-key them after, see CLAUDE.md).
+    global NCST_CLEAN
+    if "--screening" in sys.argv:
+        NCST_CLEAN = SCREENING_CLEAN
     client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
 
     job_config = bigquery.LoadJobConfig(

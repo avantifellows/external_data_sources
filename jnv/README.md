@@ -8,8 +8,8 @@ Produces six BigQuery tables:
 - `avantifellows.external_data_sources.jnv_fact_neet_results` (2021–2025)
 - `avantifellows.external_data_sources.jnv_fact_selection_test_results` (2018)
 - `avantifellows.external_data_sources.jnv_fact_ei_asset_test_results`
-- `avantifellows.external_data_sources.jnv_fact_board_results_10th` (2022–2025)
-- `avantifellows.external_data_sources.jnv_fact_board_results_12th` (2022–2025)
+- `avantifellows.external_data_sources.jnv_fact_board_results_10th` (2022–2026)
+- `avantifellows.external_data_sources.jnv_fact_board_results_12th` (2022–2026)
 
 See [`CLAUDE.md`](CLAUDE.md) for full pipeline orientation, design decisions, and pitfalls.
 
@@ -85,7 +85,7 @@ python3 -m venv .venv
 
 ```bash
 # 1. Drop raw Excel files into raw/board_results_10th/ and raw/board_results_12th/
-#    (filenames must match sources.py → RAW_BOARD_RESULTS_10TH_FILES / RAW_BOARD_RESULTS_12TH_FILES)
+#    (filenames must match sources.py → BOARD_RESULTS_10TH_RAW_BY_YEAR / BOARD_RESULTS_12TH_RAW_BY_YEAR)
 
 # 2. Clean → CSV (wide → long unpivot, column renames)
 .venv/bin/python scripts/clean_board_results_10th.py
@@ -98,6 +98,12 @@ python3 -m venv .venv
 # 4. Load clean parquet from GCS → BigQuery
 .venv/bin/python scripts/load_bq.py --board-results-10th-only
 .venv/bin/python scripts/load_bq.py --board-results-12th-only
+
+# Add ONE new year without touching the years already loaded (both board tables).
+# Register the year in sources.py first, then (e.g. 12th, 2026):
+.venv/bin/python scripts/clean_board_results_12th.py --year 2026
+.venv/bin/python scripts/upload_to_gcs.py --board-results-12th-only --year 2026
+.venv/bin/python scripts/load_bq.py --board-results-12th-only --year 2026   # DELETE year + WRITE_APPEND
 ```
 
 ## Output
@@ -108,8 +114,8 @@ python3 -m venv .venv
 | `jnv_fact_neet_results` | (test_year, application_no) | ~114k |
 | `jnv_fact_selection_test_results` | (district_rank, roll_no) | ~46k |
 | `jnv_fact_ei_asset_test_results` | (id) | ~1.6k |
-| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.1M |
-| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.2M |
+| `jnv_fact_board_results_10th` | (exam_year, roll_number, subject_code) | ~1.36M |
+| `jnv_fact_board_results_12th` | (exam_year, roll_number, subject_code) | ~1.5M |
 
 Plus the cross-exam identity map `jnv_student_outcome_mapping` (one row per
 student × entrance attempt; see [`student_journey_mapping.md`](student_journey_mapping.md)).

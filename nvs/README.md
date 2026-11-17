@@ -54,8 +54,34 @@ python3 -m venv .venv
 | Table | Grain | ~Rows | Columns |
 |---|---|---:|---:|
 | `nvs_fact_ncst_results` | (test_year, roll_no) | ~43k | 86 |
+| `nvs_fact_ncst_screening` | (test_year, roll_no) | 46,191 | 59 |
 
-### Column groups
+## NCST Screening (`nvs_fact_ncst_screening`, from the 2027 cycle)
+
+From the 2027 cycle NCST has two stages: a **Screening** test (4 Oct 2026, every
+registered Class X student) and the main NCST (13 Dec 2026) for the students the three
+agencies shortlist. `nvs_fact_ncst_screening` holds the screening stage: 46,191
+registered (43,244 present), marks by subject (of 300; +5/−2, four paper sets not
+equated), stream ranks, coaching preferences, and the shortlist — `is_shortlisted`
+(11,993) and one flag per agency (Avanti 9,081, ENF 5,000, Dakshana 4,405; they
+overlap). Internal only: student-level, with names. Phone numbers are dropped at intake,
+from the clean table and from the raw archive.
+
+Source: the combined shortlisting file the agencies sent NVS on 16 Nov 2026
+(`raw/NCST 2027 Phase 1 Shortlisting_Combined - NVS.xlsx`, sheet "NCST List").
+
+```bash
+python scripts/clean_screening.py          # raw/ → clean/nvs_fact_ncst_screening.parquet, with gates
+python scripts/upload_to_gcs.py --screening   # raw sheet (no phones) + clean → GCS
+python scripts/load_bq.py --screening         # GCS → BQ (WRITE_TRUNCATE, this table only)
+```
+
+The gates in `clean_screening.py` fail the build unless rows, attendance, marks,
+totals and the per-agency counts reconcile with the file. See
+`schemas/nvs_fact_ncst_screening.yaml` for gotchas (do not use NVS's `1st_choice`
+for Medical; do not add the agency flags).
+
+### Column groups (nvs_fact_ncst_results)
 
 | Group | Columns | Notes |
 |---|---|---|

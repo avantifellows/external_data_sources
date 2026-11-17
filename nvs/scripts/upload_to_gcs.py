@@ -26,7 +26,19 @@ from google.cloud import storage
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from codemaps.ncst.shared import apply_dtypes
-from scripts.sources import GCS_BUCKET, NCST_CLEAN, RAW_NCST_FILES
+from scripts.sources import GCS_BUCKET, NCST_CLEAN, PHONE_COLUMNS, RAW_NCST_FILES, RAW_SCREENING_FILES, SCREENING_CLEAN
+
+
+def upload_screening(client: storage.Client) -> None:
+    """NCST Screening: the raw sheet (phone columns dropped) and the clean parquet from clean_screening.py."""
+    print("Uploading NCST Screening ...")
+    for raw in RAW_SCREENING_FILES:
+        df = pd.read_excel(raw.local_path, sheet_name=raw.sheet, dtype=str).drop(columns=PHONE_COLUMNS)
+        _upload(client, df, raw.gcs_path)
+    if not SCREENING_CLEAN.local_path.exists():
+        print(f"  ERROR: {SCREENING_CLEAN.local_path} not found. Run clean_screening.py first.")
+        sys.exit(1)
+    _upload(client, pd.read_parquet(SCREENING_CLEAN.local_path), SCREENING_CLEAN.gcs_path)
 
 
 def _upload(client: storage.Client, df: pd.DataFrame, gcs_path: str) -> None:
@@ -63,11 +75,14 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--raw-only",   action="store_true")
     group.add_argument("--clean-only", action="store_true")
+    group.add_argument("--screening",  action="store_true", help="NCST Screening only (raw + clean)")
     args = parser.parse_args()
 
     client = storage.Client()
 
-    if args.raw_only:
+    if args.screening:
+        upload_screening(client)
+    elif args.raw_only:
         upload_raw(client)
     elif args.clean_only:
         upload_clean(client)
