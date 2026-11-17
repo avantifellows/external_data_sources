@@ -129,3 +129,25 @@ the clean fact is loaded to BQ — the raw PDF on GCS is for traceability.
 - **`year_of_inception` is the first 4-digit run in the cell.** Two rows have
   the management value wrapping into the year column (`Govt. Societ` | `y 2024`);
   the 4-digit extraction recovers the year cleanly.
+
+## Live college list → `nmc_fact_mbbs_colleges`
+
+The PDF above is a dated snapshot. NMC's site keeps the current list ("List of
+College Teaching MBBS"), filled from a JSON endpoint (`LIVE_URL` in
+`scripts/sources.py`) that returns every college in one response, each with
+NMC's `college_code`.
+
+```
+python3 scripts/fetch_live.py     # → raw/nmc_mbbs_colleges_<date>.json (dated, never overwritten)
+python3 scripts/clean_live.py     # → clean/mbbs_colleges.parquet (newest raw file)
+python3 scripts/upload_to_gcs.py  # raw + clean to gs://avantifellows-external-data/nmc/
+python3 scripts/load_bq.py --table nmc_fact_mbbs_colleges
+```
+
+`clean_live.py` fails unless rows = NMC's total, codes are unique and seats sum
+to NMC's own `total_seats`. Fetch of 2026-11-17: 839 colleges, 140,664 seats
+(447 government). States are normalised (`Chattisgarh` → `Chhattisgarh`;
+`state_raw` keeps NMC's spelling). There is no district column.
+
+Credentials: the upload needs the gcs-handler key (the BigQuery-only key can't
+write to the bucket); the load job also runs under it.

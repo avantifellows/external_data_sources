@@ -3,3 +3,5 @@ raw/*.pdf
 raw/*.PDF
 # Parsed parquet — regenerable via clean_nmc.py.
 clean/*.parquet
+# Live college list responses (fetch_live.py) — staged to GCS, not git.
+raw/*.json
