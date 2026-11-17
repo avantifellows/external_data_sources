@@ -39,6 +39,28 @@ PDF_URL = (
     "Revised%20UG%20Seat%20Matrix%202024-25%20on%2031-03-2025.pdf"
 )
 
+# ─── Live college list (the NMC site's "List of College Teaching MBBS") ──────
+# The seat-matrix PDF above is one dated snapshot (780 colleges, 2024-25). NMC
+# keeps the current list on its site, served to the page as JSON by the URL
+# below: every college with its NMC code, management, university, year of
+# inception and currently approved MBBS seats. fetch_live.py saves the full
+# response, dated, into raw/; clean_live.py turns it into one row per college.
+LIVE_URL = "https://nmc.org.in/college-courses/list?page=1&per_page=2000"
+LIVE_PAGE = (
+    "https://www.nmc.org.in/page/"
+    "information-desk-for-students-to-study-in-india-list-of-college-teaching-mbbs"
+)
+# set by fetch_live.py; clean_live.py reads the newest raw/nmc_mbbs_colleges_*.json
+LIVE_GLOB = "nmc_mbbs_colleges_*.json"
+
+
+def latest_live_raw() -> Path:
+    files = sorted(RAW.glob(LIVE_GLOB))
+    if not files:
+        raise SystemExit("no raw live list: run scripts/fetch_live.py")
+    return files[-1]
+
+
 # ─── GCS ──────────────────────────────────────────────────────────────────────
 GCS_BUCKET = "avantifellows-external-data"
 GCS_PREFIX = "nmc"
@@ -79,6 +101,11 @@ TABLES: list[Table] = [
         parquet="mbbs_seats.parquet",
         grain="(snapshot, sl_no) — one row per MBBS medical college",
     ),
+    Table(
+        bq_name="nmc_fact_mbbs_colleges",
+        parquet="mbbs_colleges.parquet",
+        grain="(fetched_on, college_code) — one row per MBBS college on NMC's live list",
+    ),
 ]
 
 
@@ -96,4 +123,4 @@ class RawFile:
         return f"gs://{GCS_BUCKET}/{self.gcs_path}"
 
 
-RAW_FILES: list[RawFile] = [RawFile(PDF)]
+RAW_FILES: list[RawFile] = [RawFile(PDF)] + [RawFile(p) for p in sorted(RAW.glob(LIVE_GLOB))]

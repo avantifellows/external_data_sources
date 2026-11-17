@@ -32,14 +32,15 @@ def upload_raw(client, dry_run: bool) -> None:
     print(f"Raw → gs://{GCS_BUCKET}/{GCS_PREFIX}/raw/ ...")
     for rf in RAW_FILES:
         if not rf.local_path.exists():
-            raise SystemExit(f"missing raw PDF: {rf.local_path}")
+            raise SystemExit(f"missing raw file: {rf.local_path}")
         size_mb = rf.local_path.stat().st_size / 1e6
         msg = f"{rf.local_path.name} ({size_mb:.1f} MB) → {rf.gcs_uri}"
         if dry_run:
             print(f"  [dry-run] {msg}")
             continue
         client.bucket(GCS_BUCKET).blob(rf.gcs_path).upload_from_filename(
-            str(rf.local_path), content_type="application/pdf"
+            str(rf.local_path),
+            content_type="application/json" if rf.local_path.suffix == ".json" else "application/pdf",
         )
         print(f"  ✓ {msg}")
 
@@ -48,7 +49,7 @@ def upload_clean(client, dry_run: bool) -> None:
     print(f"Clean → gs://{GCS_BUCKET}/{GCS_PREFIX}/clean/ ...")
     for t in TABLES:
         if not t.local_path.exists():
-            raise SystemExit(f"missing local parquet: {t.local_path}\nRun clean_nmc.py first.")
+            raise SystemExit(f"missing local parquet: {t.local_path}\nRun clean_nmc.py / clean_live.py first.")
         size_mb = t.local_path.stat().st_size / 1e6
         msg = f"{t.parquet} ({size_mb:.2f} MB) → {t.gcs_uri}"
         if dry_run:
