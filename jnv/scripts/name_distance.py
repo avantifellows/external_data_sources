@@ -10,6 +10,7 @@ name_limit(a, b)      the largest distance that counts as the same name, by name
 same_name(a, b)       name_distance <= name_limit
 father_check(a, b)    'missing' | 'same' | 'spelling variant' | 'initial or dropped word' | 'different'
 given_names_differ(a, b)  True when two student names with the same DOB and parents look like twins
+one_letter_typo(a, b)  True when two names differ by one letter in one long word (a typo)
 """
 import re
 from functools import lru_cache
@@ -313,6 +314,23 @@ def given_names_differ(a, b) -> bool:
     return not any(_given_partner(x, y) for x in la for y in lb)
 
 
+# Gender check: the shortest word in which one other letter is a typo, not a second name.
+TYPO_MIN_LEN = 6
+
+
+def one_letter_typo(a, b) -> bool:
+    """True when two names differ in one word only, and the two forms of that word have the same
+    length (TYPO_MIN_LEN or more letters) and one other letter: a typo, not two people. Raw words
+    (before normalise), because normalise can change the length of one form only."""
+    wa, wb = _raw_words(a), _raw_words(b)
+    la = [w for w in wa if w not in wb]
+    lb = [w for w in wb if w not in wa]
+    if len(la) != 1 or len(lb) != 1:
+        return False
+    x, y = la[0], lb[0]
+    return len(x) == len(y) >= TYPO_MIN_LEN and sum(p != q for p, q in zip(x, y)) == 1
+
+
 if __name__ == "__main__":
     # self-test: made-up names that show each spelling pattern
     father_cases = [
@@ -387,6 +405,17 @@ if __name__ == "__main__":
         got = given_names_differ(a, b)
         bad += got != want
         print(f"twin {a + ' / ' + b:<46}{got}" + ("" if got == want else f"   <-- expected {want}"))
+    typo_cases = [
+        ("ANITA SURESH DESHPANDE", "ANITA SURESH DESHPANDR", True),  # one letter in a long word
+        ("ROHIT VERMA", "ROHIT VERNA", False),                       # 5 letters: too short
+        ("ANKIT VERMA", "ANKITA VERMA", False),                      # added letter: two names
+        ("KARAN SINGH", "KIRAN SINGH", False),                       # 5 letters: too short
+        ("SUNITA RAMESH JADHAV", "SUNITA RAKESH YADAV", False),      # two words differ
+    ]
+    for a, b, want in typo_cases:
+        got = one_letter_typo(a, b)
+        bad += got != want
+        print(f"typo {a + ' / ' + b:<46}{got}" + ("" if got == want else f"   <-- expected {want}"))
     for f, want in [("SHRI RAMESH KUMAR", "R"), ("N RAMA RAO", "N"), (None, None), ("PHOOL SINGH", "F")]:
         got = father_first_letter(f)
         bad += got != want

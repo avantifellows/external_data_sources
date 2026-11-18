@@ -135,7 +135,11 @@ a name gate on the direct-id crosswalks and ambiguous matches withheld
 an Avanti id claimed by more than one component either merges them (complementary
 stages, one consistent journey — e.g. a 10th-board component and a JEE component
 no roll bridge joined) or stays only with the best-tier claimant, the rest marked
-`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). Step 6b keeps
+`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). When two or
+more claimants share the best tier, a tie-breaker gives each one point for each fact that
+agrees with the Avanti student in `dim_student` or `dim_student_historical`: school (a 10th or
+12th school code), cohort, DOB and father. The claimant with the most points keeps the id. If
+the top score is shared or zero, no claimant keeps the id. Step 6b keeps
 an early attempt that a student already has, but does not make a new one. So an
 fk sits on exactly one `student_key`, and the build asserts it. **It runs entirely in pandas**: the sources are read from BQ
 already aggregated, resolution happens as DataFrame merges, and the finished
@@ -170,6 +174,12 @@ Other rules:
   rule does not link two records whose given names differ
   (`name_distance.given_names_differ`). Without a second person, a spelling difference is a
   typo, and the records link.
+- **Gender check.** Two names are two people when the genders differ and the given names
+  differ (`name_distance.given_names_differ`), unless the names are one typo apart (one word,
+  same length, one other letter: `name_distance.one_letter_typo`). Then two records do not
+  link, and step 6 does not give a student the Avanti id of the other person on the tiers
+  that do not need equal names (direct id, strong and fuzzy names, the crosswalk ids). A
+  gender difference alone refuses nothing: it can be a data-entry error.
 - **Fuzzy names, last.** After the exact rules, the identity rules run again with an
   Indian-name distance (`name_distance.py`), only between students that are still apart.
   A fuzzy link is refused when the step 6 matcher, run on the students before the fuzzy
@@ -178,6 +188,18 @@ Other rules:
   record's own name, DOB and father are tried (`record_name_dob`,
   `record_name_dob_swapped`, `record_name_father`). It only fills an empty fk, and only
   when one Avanti student matches.
+- **Step 6 forward tie-breaker.** When a match tier gives the student 2+ Avanti ids (often one
+  person with two `dim_student` ids, enrolled again under a new id), the id with the most
+  points (school, cohort, DOB and father, as in step 6b) gets the link, and `match_count` is
+  the number of ids. If the top score is shared or zero, the match stays `ambiguous`. A
+  pick is a last resort: a unique match on any tier comes first, and in step 6b a pick
+  ranks below every unique match.
+- **Step 6 school pass.** After the record pass, a student with no candidate can match on a
+  10th or 12th record (`name_part_dob_school`): the record DOB is the Avanti DOB, the board
+  school code is an Avanti school code, the name words of the shorter name are all in the
+  other name (a record often has the given name only), and the gender check does not say two
+  people. A given name and a DOB alone are not enough: other students share them. It only
+  fills an empty fk.
 
 Scratch run: `--out-table <project.dataset.table>` writes the build to another table, and
 the refused links to `<table>_refused` (it expires in 30 days). Compare it with the
