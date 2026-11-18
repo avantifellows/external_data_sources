@@ -917,8 +917,10 @@ def _student_avanti_ids(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avant
     uf = cu.uf
     n2k = pd.Series({n: uf.find(n) for n in uf.parent}, name="student_key")
     sid = _build_sid(nodes, n2k, refs, ncst24, avanti["prod_nta"])
+    tie = avanti.get("tie")
     fk = _match_fk_v2(sid, avanti["g12"], avanti["all"], avanti["all_ids"],
-                      rec=_record_identities(nodes, n2k))
+                      rec=_record_identities(nodes, n2k), tie=tie,
+                      facts=_student_facts(nodes, n2k, tie) if tie is not None else None)
     fk = fk[fk.fk_avanti_student_id.notna()]
     return {k: {v} for k, v in zip(fk.student_key, fk.fk_avanti_student_id)}
 
@@ -1451,6 +1453,58 @@ def _read_tie_facts(client) -> dict:
     return {"avanti": avanti, "school": school}
 
 
+def _student_facts(nodes: dict, n2k: pd.Series, tie: dict) -> dict:
+    """student_key -> the facts that the tie-breakers score (_tie_points): "schools" (10th / 12th
+    school codes), "cohort" (12th year, else 10th or NCST year + 2, else the first JEE / NEET
+    year), "dobs" and "fathers" (of every record)."""
+    k_of = n2k.to_dict()
+    f = {}
+    for st in STAGES:
+        df = nodes[st]
+        yrs = pd.to_numeric(df.yr, errors="coerce")
+        for n, y, d, fa in zip(df.node_id, yrs, df.dob, df.norm_father):
+            k = k_of.get(n)
+            if k is None:
+                continue
+            x = f.setdefault(k, {"schools": set(), "pre": set(), "ent": set(), "dobs": set(), "fathers": set()})
+            sc = tie["school"].get(n)
+            if sc:
+                x["schools"].add(sc)
+            if pd.notna(y):
+                (x["ent"] if st in ("jee", "neet") else x["pre"]).add(int(y) + (0 if st in ("b12", "jee", "neet") else 2))
+            if isinstance(d, str) and d:
+                x["dobs"].add(d)
+            if isinstance(fa, str) and fa:
+                x["fathers"].add(fa)
+    for x in f.values():
+        x["cohort"] = min(x["pre"]) if x["pre"] else (min(x["ent"]) if x["ent"] else None)
+    return f
+
+
+def _tie_points(f: dict | None, av: dict | None) -> dict:
+    """The tie-breaker points of a student (facts f, _student_facts) against an Avanti student
+    (av, _read_tie_facts): school, cohort, DOB and father, 1 each."""
+    if f is None or av is None:
+        return {"school": 0, "cohort": 0, "dob": 0, "father": 0}
+    return {
+        "school": int(bool(f["schools"] & av["schools"])),
+        "cohort": int(f["cohort"] is not None and f["cohort"] in av["cohorts"]),
+        "dob": int(bool(f["dobs"] & av["dobs"])),
+        "father": int(any(nd.father_check_v2(a, b, _FUZZY_OPTS) in FUZZY_FATHER_OK
+                          for a in f["fathers"] for b in av["fathers"])),
+    }
+
+
+def _pick_by_points(f: dict | None, ids: list, tie: dict | None):
+    """Of 2+ Avanti ids, the one with the most _tie_points; None when the top score is shared
+    or zero."""
+    if tie is None or f is None:
+        return None
+    pts = [sum(_tie_points(f, tie["avanti"].get(str(i))).values()) for i in ids]
+    top = max(pts)
+    return ids[pts.index(top)] if top > 0 and pts.count(top) == 1 else None
+
+
 def _read_dim_passthrough(client) -> pd.DataFrame:
     """Grade-12 JNV `dim_student` students, to seed the ones with NO exam/board/NCST
     record as size-1 'dim-only' rows — roster completeness for enrolled students whose
@@ -1663,7 +1717,7 @@ def _record_identities(nodes: dict, n2k: pd.Series) -> pd.DataFrame:
     """One row per source record: its own name, DOB and father, with its student_key."""
     parts = []
     for st in STAGES:
-        df = nodes[st][["node_id", "norm_name", "norm_father", "dob"]].copy()
+        df = nodes[st][["node_id", "norm_name", "norm_father", "dob", "gender"]].copy()
         df["student_key"] = df.node_id.map(n2k)
         parts.append(df.dropna(subset=["student_key"]))
     return pd.concat(parts, ignore_index=True)
@@ -1684,31 +1738,80 @@ def _record_candidates(r: pd.DataFrame, avanti: pd.DataFrame) -> pd.DataFrame:
                       c.assign(conf="record_name_father")[cols]], ignore_index=True)
 
 
-def _record_pass(rec: pd.DataFrame, blank: set, avanti_g12: pd.DataFrame,
-                 avanti_all: pd.DataFrame) -> pd.DataFrame:
-    """Match the students in `blank` on each record's own identity. Returns rows in the
-    _match_fk_v2 output shape: one Avanti id -> filled; two or more -> 'ambiguous'."""
+def _settle_candidates(cand: pd.DataFrame, tiers: dict, pick) -> pd.DataFrame:
+    """Candidate rows (student_key, pk_student_id, conf) -> one row per student in the
+    _match_fk_v2 output shape. One Avanti id -> filled (its best tier); two or more -> the
+    forward tie-breaker pick(student_key, ids), else 'ambiguous'. match_count = the ids."""
     out_cols = ["student_key", "fk_avanti_student_id", "match_confidence", "match_count"]
+    if cand.empty:
+        return pd.DataFrame(columns=out_cols)
+    cand = cand.assign(pri=cand.conf.map(tiers))
+    best = (cand.sort_values(["student_key", "pk_student_id", "pri"])
+                .drop_duplicates(["student_key", "pk_student_id"]).set_index(["student_key", "pk_student_id"]).conf)
+    ids = cand.groupby("student_key")["pk_student_id"].agg(lambda x: sorted(set(x)))
+    rows = []
+    for k, v in ids.items():
+        fk = v[0] if len(v) == 1 else (pick(k, v) if pick is not None else None)
+        rows.append((k, fk if fk is not None else pd.NA,
+                     best[(k, fk)] if fk is not None else "ambiguous", len(v)))
+    return pd.DataFrame(rows, columns=out_cols)
+
+
+def _record_pass(rec: pd.DataFrame, blank: set, avanti_g12: pd.DataFrame,
+                 avanti_all: pd.DataFrame, pick=None) -> pd.DataFrame:
+    """Match the students in `blank` on each record's own identity. Returns rows in the
+    _match_fk_v2 output shape: one Avanti id -> filled; two or more -> the forward
+    tie-breaker (pick), else 'ambiguous'."""
     r = rec[rec.student_key.isin(blank)]
     g12 = _record_candidates(r, avanti_g12)
     wide = _record_candidates(r[~r.student_key.isin(set(g12.student_key))], avanti_all)
     cand = pd.concat([g12, wide], ignore_index=True).drop_duplicates()
-    if cand.empty:
-        return pd.DataFrame(columns=out_cols)
-    cand["pri"] = cand.conf.map(_RECORD_TIERS)
-    best = cand.sort_values(["student_key", "pri"]).drop_duplicates("student_key").set_index("student_key")
-    n_ids = cand.groupby("student_key")["pk_student_id"].nunique()
-    one = n_ids[n_ids == 1].index
-    many = n_ids[n_ids > 1]
-    filled = pd.DataFrame({"student_key": one, "fk_avanti_student_id": best.loc[one, "pk_student_id"].values,
-                           "match_confidence": best.loc[one, "conf"].values, "match_count": 1})
-    withheld = pd.DataFrame({"student_key": many.index, "fk_avanti_student_id": pd.NA,
-                             "match_confidence": "ambiguous", "match_count": many.values})
-    return pd.concat([filled, withheld], ignore_index=True)[out_cols]
+    return _settle_candidates(cand, _RECORD_TIERS, pick)
+
+
+# ── STEP 6 school pass ────────────────────────────────────────────────────────
+# Fill-only, after the record pass, for students that still have no candidate at all. A 10th
+# or 12th record often has the given name only (HIMANSHI) where dim_student has the full name
+# (HIMANSHI BISHNOI), so no name tier matches. A given name and a DOB alone are not enough
+# (other students in India share them), so the school code must agree too:
+#   • the record DOB is the Avanti DOB, and the record's board school code is an Avanti school;
+#   • the name words of the shorter name are all in the other name (_name_part_ok);
+#   • the gender check (_gender_conflict) does not say two people;
+#   • one Avanti id, or the forward tie-breaker for two or more.
+_SCHOOL_TIERS = {"name_part_dob_school": 12}
+
+
+def _name_part_ok(a, b) -> bool:
+    """True when the name words (3+ letters) of the shorter name are all in the longer name, and
+    one of them is not a common filler word (KUMAR, SINGH, ...)."""
+    if not (isinstance(a, str) and isinstance(b, str)):
+        return False
+    ta, tb = _am_strong_tokens(a), _am_strong_tokens(b)
+    short, long = sorted((ta, tb), key=len)
+    return short <= long and bool({nd.normalise(t) for t in short} - nd.FILLERS)
+
+
+def _school_pass(rec: pd.DataFrame, blank: set, avanti_all: pd.DataFrame, tie: dict,
+                 pick=None) -> pd.DataFrame:
+    """Match the students in `blank` on a 10th / 12th record's DOB, school code and name part."""
+    r = rec[rec.student_key.isin(blank) & rec.node_id.str.match(r"b1[02]:")
+            & _present(rec.dob) & _present(rec.norm_name)].copy()
+    r["school"] = r.node_id.map(tie["school"])
+    r = r[_present(r.school)]
+    sch = pd.DataFrame([(fk, sc) for fk, a in tie["avanti"].items() for sc in a["schools"]],
+                       columns=["pk_student_id", "school"])
+    av = avanti_all[["pk_student_id", "norm_name", "dob", "gender"]].drop_duplicates().merge(sch, on="pk_student_id")
+    m = r.merge(av, on=["dob", "school"], suffixes=("", "_av"))
+    if len(m):
+        m = m[[_name_part_ok(a, b) and not _gender_conflict(g, a, ga, b)
+               for a, b, g, ga in zip(m.norm_name, m.norm_name_av, m.gender, m.gender_av)]]
+    cand = m.assign(conf="name_part_dob_school")[["student_key", "pk_student_id", "conf"]].drop_duplicates()
+    return _settle_candidates(cand, _SCHOOL_TIERS, pick)
 
 
 def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.DataFrame,
-                 all_ids: set, rec: pd.DataFrame = None) -> pd.DataFrame:
+                 all_ids: set, rec: pd.DataFrame = None, tie: dict | None = None,
+                 facts: dict | None = None) -> pd.DataFrame:
     """Tiered Avanti fk match — ported from v1's _match_fk, run against v2's OWN
     `sid` (STEP 6, replacing the source-table passthrough) for ALL students
     (b10/b12/jee/neet AND ncst — one unified pipeline, see _build_sid). Priority
@@ -1717,6 +1820,13 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     DOB-blocked strong name -> DOB-blocked fuzzy name (last resort) -> 10th-score
     crosswalk id (fill-only). Ambiguous (>1 distinct candidate) is withheld
     (fk=NULL), matching this build's precision-first posture throughout.
+
+    Forward tie-breaker: when a tier matches the student to 2+ Avanti ids (often one person
+    with two dim_student ids, enrolled again under a new id), the one id with the most
+    _tie_points (school, cohort, DOB, father; `tie` and `facts`) gets it, with match_count =
+    the number of ids. A shared or zero top score stays 'ambiguous'. A pick is a last resort:
+    a unique match on any tier comes first, and in step 6b a pick ranks below every unique
+    match.
 
     Gender check (_gender_conflict) on the tiers that do not need equal names: direct id,
     strong name, fuzzy name and the two crosswalk ids drop an Avanti student whose gender and
@@ -1734,6 +1844,19 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     fallback confines avanti_all to exactly the students g12 can't place, who by
     construction have no grade-12 id to be ambiguous against."""
     cand_cols = ["student_key", "fk", "pri", "conf", "cnt"]
+
+    def pick(k, ids):
+        return _pick_by_points(facts.get(k) if facts is not None else None, ids, tie)
+
+    def _settle(m: pd.DataFrame, pri: int, conf: str) -> pd.DataFrame:
+        """Candidate rows (student_key, pk_student_id) -> one row per student: one id, or
+        the forward tie-breaker for 2+ ids (else fk NA); cnt = the number of ids."""
+        if m.empty:
+            return pd.DataFrame(columns=cand_cols)
+        ids = m.groupby("student_key")["pk_student_id"].agg(lambda x: sorted(set(x)))
+        fks = [v[0] if len(v) == 1 else pick(k, v) for k, v in ids.items()]
+        return pd.DataFrame({"student_key": ids.index, "fk": [pd.NA if f is None else f for f in fks],
+                             "pri": pri, "conf": conf, "cnt": [len(v) for v in ids]})
 
     # pk -> {dim_student JNV names} — used ONLY to name-gate the direct-id tier
     # below. Built from avanti_all (broadest JNV frame) so a direct id whose only
@@ -1782,10 +1905,7 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
             m = sid[sid.norm_name.notna() & sid.dob.notna()].merge(
                 avanti[["pk_student_id", "norm_name", right_dob_col]],
                 left_on=["norm_name", "dob"], right_on=["norm_name", right_dob_col])
-            g = m.groupby("student_key").agg(cnt=("pk_student_id", "nunique"),
-                                             cand=("pk_student_id", "first")).reset_index()
-            return pd.DataFrame({"student_key": g.student_key,
-                                 "fk": g.cand.where(g.cnt == 1), "pri": pri, "conf": conf, "cnt": g.cnt})
+            return _settle(m, pri, conf)
 
         nd = _name_match("dob", 2, "name_dob")
         nds = _name_match("dob_swapped", 3, "name_dob_swapped")
@@ -1799,10 +1919,7 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
             cs = sid[sid.norm_name.notna() & _present(sid.norm_father) & ~sid.student_key.isin(already)]
             av = avanti[_present(avanti.norm_father)]
             m = cs.merge(av[["pk_student_id", "norm_name", "norm_father"]], on=["norm_name", "norm_father"])
-            g = m.groupby("student_key").agg(cnt=("pk_student_id", "nunique"),
-                                             cand=("pk_student_id", "first")).reset_index()
-            return pd.DataFrame({"student_key": g.student_key, "fk": g.cand.where(g.cnt == 1),
-                                 "pri": 4, "conf": "name_father", "cnt": g.cnt})
+            return _settle(m, 4, "name_father")
 
         def _blocked_match(pred, pri, conf, already):
             cs = sid[sid.norm_name.notna() & sid.dob.notna() & ~sid.student_key.isin(already)]
@@ -1810,16 +1927,17 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
             if len(mm):
                 mm = mm[[pred(n, a) and not _gender_conflict(g, n, ga, a)
                          for n, a, g, ga in zip(mm.norm_name, mm.norm_name_av, mm.gender, mm.gender_av)]]
-            g = mm.groupby("student_key").agg(cnt=("pk_student_id", "nunique"),
-                                              cand=("pk_student_id", "first")).reset_index()
-            return pd.DataFrame({"student_key": g.student_key, "fk": g.cand.where(g.cnt == 1),
-                                 "pri": pri, "conf": conf, "cnt": g.cnt})
+            return _settle(mm, pri, conf)
 
-        resolved = set(pd.concat([direct, nd, nds]).loc[lambda d: d.fk.notna(), "student_key"])
+        # resolved = one Avanti id; a forward tie-breaker pick still lets the lower tiers try
+        # for a unique match, which comes first (see the final selection below)
+        def _unique(d):
+            return set(d.loc[d.fk.notna() & (pd.to_numeric(d.cnt, errors="coerce") == 1), "student_key"])
+        resolved = _unique(pd.concat([direct, nd, nds]))
         nf = _father_match(resolved)
-        resolved = resolved | set(nf.loc[nf.fk.notna(), "student_key"])
+        resolved = resolved | _unique(nf)
         st = _blocked_match(_am_strong_ok, 5, "name_dob_strong", resolved)
-        resolved = resolved | set(st.loc[st.fk.notna(), "student_key"])
+        resolved = resolved | _unique(st)
         fz = _blocked_match(_am_fuzzy_ok, 6, "name_dob_fuzzy", resolved)
 
         x10 = pd.DataFrame(columns=cand_cols)
@@ -1875,7 +1993,10 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     cand = pd.concat([g12_cand, wide_cand], ignore_index=True)
 
     cand["fk_isnull"] = cand.fk.isna()
-    cand = cand.sort_values(["student_key", "fk_isnull", "pri"]).drop_duplicates("student_key", keep="first")
+    # a unique match on any tier comes before a forward tie-breaker pick (a last resort)
+    cand["picked"] = cand.fk.notna() & (pd.to_numeric(cand.cnt, errors="coerce") > 1)
+    cand = (cand.sort_values(["student_key", "fk_isnull", "picked", "pri"])
+                .drop_duplicates("student_key", keep="first"))
     cand["match_confidence"] = cand.conf.where(cand.fk.notna(),
                                                other=pd.Series("ambiguous", index=cand.index).where(cand.cnt > 1))
     out = cand.rename(columns={"fk": "fk_avanti_student_id", "cnt": "match_count"})[
@@ -1888,12 +2009,21 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
         # record pass — fill-only, for students with no candidate at all (see _RECORD_TIERS)
         known = set(out.loc[out.fk_avanti_student_id.notna() | out.match_confidence.notna(), "student_key"])
         blank = set(sid.student_key) - known
-        rp = _record_pass(rec, blank, avanti_g12, avanti_all)
+        rp = _record_pass(rec, blank, avanti_g12, avanti_all, pick)
         out = pd.concat([out[~out.student_key.isin(set(rp.student_key))], rp], ignore_index=True)
         tiers = rp.match_confidence.value_counts()
         print(f"  step 6 record pass (fill-only) — {rp.fk_avanti_student_id.notna().sum():,} filled ("
               + ", ".join(f"{t} {int(tiers.get(t, 0)):,}" for t in _RECORD_TIERS)
               + f"), {int(tiers.get('ambiguous', 0)):,} withheld (records point to 2+ Avanti students)")
+        if tie is not None:
+            # school pass — fill-only, for students that still have no candidate (see _SCHOOL_TIERS)
+            sp = _school_pass(rec, blank - set(rp.student_key), avanti_all, tie, pick)
+            out = pd.concat([out[~out.student_key.isin(set(sp.student_key))], sp], ignore_index=True)
+            print(f"  step 6 school pass (fill-only) — {sp.fk_avanti_student_id.notna().sum():,} filled, "
+                  f"{(sp.match_confidence == 'ambiguous').sum():,} withheld (2+ Avanti students)")
+    n_pick = int((out.fk_avanti_student_id.notna() & (pd.to_numeric(out.match_count, errors="coerce") > 1)).sum())
+    print(f"  step 6 forward tie-breaker — {n_pick:,} students got one of 2+ Avanti ids, "
+          f"{(out.match_confidence == 'ambiguous').sum():,} stay ambiguous")
     return out
 
 
@@ -1901,7 +2031,7 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
 # the claimants of one Avanti id in _reconcile_shared_fk. The record-pass tiers rank last.
 _CONF_PRI = {"direct_student_id": 1, "name_dob": 2, "name_dob_swapped": 3, "name_father": 4,
              "name_dob_strong": 5, "name_dob_fuzzy": 6, "roll10_crosswalk": 7,
-             "prod_nta_crosswalk": _PROD_NTA_PRI, **_RECORD_TIERS}
+             "prod_nta_crosswalk": _PROD_NTA_PRI, **_RECORD_TIERS, **_SCHOOL_TIERS}
 
 
 _TIES = None   # scratch run: the 6b ties and their points (written to <out_table>_ties)
@@ -1970,37 +2100,19 @@ def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame,
         return not [y for part in (acc, p) if not part["cohort"] for y in part["entrance"] if y < c]
 
     has = fk_df[fk_df.fk_avanti_student_id.notna()].copy()
-    has["pri"] = has.match_confidence.map(_CONF_PRI).fillna(99)
+    # a forward tie-breaker pick (match_count > 1) ranks below every unique match
+    has["pri"] = (has.match_confidence.map(_CONF_PRI).fillna(99)
+                  + 100 * (pd.to_numeric(has.match_count, errors="coerce") > 1))
     shared = has[has.duplicated("fk_avanti_student_id", keep=False)]
 
-    # tie-breaker inputs: the records of each student, and each record's DOB and father
+    # tie-breaker inputs: the facts of each student (school, cohort, DOBs, fathers)
     global _TIES
     _TIES = []
-    k2n, attr = {}, {}
-    if tie is not None:
-        for n, k in n2k.items():
-            k2n.setdefault(k, []).append(n)
-        for st in STAGES:
-            df = nodes[st]
-            for n, d, f in zip(df.node_id, df.dob, df.norm_father):
-                attr[n] = (d if isinstance(d, str) and d else None, f if isinstance(f, str) and f else None)
+    facts = _student_facts(nodes, n2k, tie) if tie is not None else {}
 
     def points(k, fk) -> dict:
         """The tie-breaker points of claimant k against the Avanti student fk."""
-        av = tie["avanti"].get(str(fk)) if tie is not None else None
-        if av is None:
-            return {"school": 0, "cohort": 0, "dob": 0, "father": 0}
-        ns = k2n.get(k, [])
-        p = prof.get(k, {"cohort": set(), "entrance": set()})
-        coh = min(p["cohort"]) if p["cohort"] else (min(p["entrance"]) if p["entrance"] else None)
-        recs = [attr.get(n, (None, None)) for n in ns]
-        return {
-            "school": int(any(tie["school"].get(n) in av["schools"] for n in ns if tie["school"].get(n))),
-            "cohort": int(coh is not None and coh in av["cohorts"]),
-            "dob": int(any(d in av["dobs"] for d, _ in recs if d)),
-            "father": int(any(nd.father_check_v2(f, af, _FUZZY_OPTS) in FUZZY_FATHER_OK
-                              for _, f in recs if f for af in av["fathers"])),
-        }
+        return _tie_points(facts.get(k), tie["avanti"].get(str(fk)) if tie is not None else None)
 
     def merge_from(first, keys):
         """Accept the claimants that fit with `first` (in tier order); return (accepted, rejected)."""
@@ -2180,7 +2292,9 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     # anything below is keyed on student_key, and `sid` is rebuilt on the merged keys.
     n2k = key.set_index("node_id")["student_key"]
     sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
-    fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids, rec=_record_identities(nodes, n2k))
+    facts = _student_facts(nodes, n2k, tie) if tie is not None else None
+    fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids, rec=_record_identities(nodes, n2k),
+                         tie=tie, facts=facts)
     key, fk_df = _reconcile_shared_fk(nodes, key, fk_df, tie)
     n2k = key.set_index("node_id")["student_key"]
     sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
@@ -2327,7 +2441,7 @@ def _resolve(client) -> pd.DataFrame:
     tie = _read_tie_facts(client)
     print("Steps 2–3 — edges + union-find ...")
     key = _cluster(nodes, refs, ncst24, {"g12": avanti_g12, "all": avanti_all,
-                                          "all_ids": all_ids, "prod_nta": prod_nta})
+                                          "all_ids": all_ids, "prod_nta": prod_nta, "tie": tie})
     print("Steps 4–7 — cohort_year + avanti fk + explode to (student × attempt_year) + outcome marks ...")
     return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks,
                        dim_pt, prod_nta, tie)

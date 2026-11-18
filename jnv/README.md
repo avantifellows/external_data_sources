@@ -188,6 +188,18 @@ Other rules:
   record's own name, DOB and father are tried (`record_name_dob`,
   `record_name_dob_swapped`, `record_name_father`). It only fills an empty fk, and only
   when one Avanti student matches.
+- **Step 6 forward tie-breaker.** When a match tier gives the student 2+ Avanti ids (often one
+  person with two `dim_student` ids, enrolled again under a new id), the id with the most
+  points (school, cohort, DOB and father, as in step 6b) gets the link, and `match_count` is
+  the number of ids. If the top score is shared or zero, the match stays `ambiguous`. A
+  pick is a last resort: a unique match on any tier comes first, and in step 6b a pick
+  ranks below every unique match.
+- **Step 6 school pass.** After the record pass, a student with no candidate can match on a
+  10th or 12th record (`name_part_dob_school`): the record DOB is the Avanti DOB, the board
+  school code is an Avanti school code, the name words of the shorter name are all in the
+  other name (a record often has the given name only), and the gender check does not say two
+  people. A given name and a DOB alone are not enough: other students share them. It only
+  fills an empty fk.
 
 Scratch run: `--out-table <project.dataset.table>` writes the build to another table, and
 the refused links to `<table>_refused` (it expires in 30 days). Compare it with the
