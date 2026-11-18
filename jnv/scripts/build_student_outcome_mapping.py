@@ -335,13 +335,15 @@ _DOB = ("COALESCE(SAFE.PARSE_DATE('%d-%m-%Y', dob),"
         " SAFE.PARSE_DATE('%Y-%m-%d', dob),"
         " SAFE.PARSE_DATE('%d%m%Y', dob),"
         " SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(dob, 1, 10)))")
+# gender: MALE or FEMALE, else NULL (the gender check of _CheckedUnion and step 6)
+_GENDER = lambda c: f"IF(UPPER(TRIM({c})) IN ('MALE', 'FEMALE'), UPPER(TRIM({c})), NULL)"
 
 
 def _finish_nodes(df: pd.DataFrame, stage: str, id_parts: list[str]) -> pd.DataFrame:
     """Common post-processing: stringify, blank→NA on identity cols, build node_id."""
     for c in df.columns:
         df[c] = _S(df[c])
-    for c in ("dob", "norm_father", "norm_mother", "norm_name", "fk_avanti_id"):
+    for c in ("dob", "norm_father", "norm_mother", "norm_name", "fk_avanti_id", "gender"):
         if c in df:
             df[c] = _blank_to_na(df[c])
     df["stage"] = stage
@@ -362,6 +364,7 @@ def _read_nodes(client) -> dict:
                 FORMAT_DATE('%Y-%m-%d',
                     ANY_VALUE(SAFE.PARSE_DATE('%d%m%Y', LPAD(date_of_birth, 8, '0')))) AS dob,
                 ANY_VALUE(roll_number_10th)      AS roll_number_10th,
+                ANY_VALUE({_GENDER('gender')})   AS gender,
                 ANY_VALUE(fk_avanti_student_id)  AS fk_avanti_id
             FROM `{ext}.jnv_fact_board_results_12th`
             WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
@@ -373,6 +376,7 @@ def _read_nodes(client) -> dict:
                     ANY_VALUE(SAFE.PARSE_DATE('%d%m%Y', LPAD(date_of_birth, 8, '0')))) AS dob,
                 ANY_VALUE({_NNC('father_name')}) AS norm_father,
                 ANY_VALUE({_NNC('mother_name')}) AS norm_mother,
+                ANY_VALUE({_GENDER('gender')})   AS gender,
                 ANY_VALUE(fk_avanti_student_id)  AS fk_avanti_id
             FROM `{ext}.jnv_fact_board_results_10th`
             WHERE roll_number IS NOT NULL AND student_name IS NOT NULL
@@ -383,6 +387,7 @@ def _read_nodes(client) -> dict:
                 FORMAT_DATE('%Y-%m-%d', ANY_VALUE({_DOB})) AS dob,
                 ANY_VALUE({_NNC('father_name')}) AS norm_father,
                 ANY_VALUE({_NNC('mother_name')}) AS norm_mother,
+                ANY_VALUE({_GENDER('student_gender')}) AS gender,
                 ANY_VALUE(fk_avanti_student_id)  AS fk_avanti_id
             FROM `{ext}.jnv_fact_jee_results`
             WHERE application_no IS NOT NULL
@@ -393,6 +398,7 @@ def _read_nodes(client) -> dict:
                 FORMAT_DATE('%Y-%m-%d', ANY_VALUE({_DOB})) AS dob,
                 ANY_VALUE({_NNC('father_name')}) AS norm_father,
                 ANY_VALUE({_NNC('mother_name')}) AS norm_mother,
+                ANY_VALUE({_GENDER('student_gender')}) AS gender,
                 ANY_VALUE(fk_avanti_student_id)  AS fk_avanti_id
             FROM `{ext}.jnv_fact_neet_results`
             WHERE application_no IS NOT NULL
@@ -402,12 +408,14 @@ def _read_nodes(client) -> dict:
                 roll_no AS roll, {_NNC('student_full_name')} AS norm_name,
                 {_NNC('father_name')} AS norm_father, {_NNC('mother_name')} AS norm_mother,
                 FORMAT_DATE('%Y-%m-%d', SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(dob, 1, 10))) AS dob,
+                {_GENDER('student_gender')} AS gender,
                 fk_avanti_student_id AS fk_avanti_id
             FROM `{ext}.dakshana_fact_ncst_results` WHERE roll_no IS NOT NULL
             UNION ALL
             SELECT 'nvs', CAST(test_year AS STRING), roll_no,
                 {_NNC('student_full_name')}, {_NNC('father_name')}, {_NNC('mother_name')},
                 FORMAT_DATE('%Y-%m-%d', SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(dob, 1, 10))),
+                {_GENDER('student_gender')},
                 fk_avanti_student_id
             FROM `{ext}.nvs_fact_ncst_results` WHERE roll_no IS NOT NULL""",
     }
@@ -1183,22 +1191,39 @@ def _years_fit(recs_a: list, recs_b: list, early_ok: bool, parents_agree=None) -
     return None
 
 
+def _gender_conflict(g_a, n_a, g_b, n_b) -> bool:
+    """True when two people are named: the genders differ AND the given names differ
+    (nd.given_names_differ), and the names are not one typo apart (nd.one_letter_typo). A
+    gender alone can be a data-entry error, and twins can have one DOB and one surname.
+    Used on two records (_CheckedUnion) and on a student and an Avanti student (step 6)."""
+    if not (isinstance(g_a, str) and isinstance(g_b, str) and g_a and g_b and g_a != g_b):
+        return False
+    if not (isinstance(n_a, str) and isinstance(n_b, str) and n_a and n_b):
+        return False
+    return nd.given_names_differ(n_a, n_b) and not nd.one_letter_typo(n_a, n_b)
+
+
 class _CheckedUnion:
-    """Union-find wrapper: refuses a union when the joined student would break a rule above."""
+    """Union-find wrapper: refuses a union when the joined student would break a rule above,
+    or when a record of one student and a record of the other are two people (_gender_conflict)."""
 
     def __init__(self, uf: _UnionFind, nodes: dict):
         self.uf = uf
         self.recs = {}      # root -> [(stage, yr, node_id)] (yr None when the record has no year)
         self.parents = {}   # node_id -> (norm_father, norm_mother)
+        self.who = {}       # node_id -> (gender, norm_name), for records with both
         for st in STAGES:
             df = nodes[st]
             fathers = df.norm_father if "norm_father" in df else [None] * len(df)
             mothers = df.norm_mother if "norm_mother" in df else [None] * len(df)
-            for nid, yr, fa, mo in zip(df.node_id, df.yr, fathers, mothers):
+            genders = df.gender if "gender" in df else [None] * len(df)
+            for nid, yr, fa, mo, g, nm in zip(df.node_id, df.yr, fathers, mothers, genders, df.norm_name):
                 if nid in uf.parent:
                     self.recs[nid] = [(st, int(yr) if pd.notna(yr) else None, nid)]
                     self.parents[nid] = (fa if isinstance(fa, str) and fa else None,
                                          mo if isinstance(mo, str) and mo else None)
+                    if isinstance(g, str) and g and isinstance(nm, str) and nm:
+                        self.who[nid] = (g, nm)
         self.refused = []
 
     def _parents_agree(self, node: str, others: list) -> bool:
@@ -1219,6 +1244,10 @@ class _CheckedUnion:
         if ({(r[0], r[1]) for r in ra if r[0] in _ONE_PER_YEAR and r[1] is not None}
                 & {(r[0], r[1]) for r in rb if r[0] in _ONE_PER_YEAR and r[1] is not None}):
             return "two JEE or two NEET records in one year"
+        wa = [self.who[n] for _, _, n in ra if n in self.who]
+        wb = [self.who[n] for _, _, n in rb if n in self.who]
+        if any(_gender_conflict(ga, na, gb, nb) for ga, na in wa for gb, nb in wb):
+            return "gender and given names differ"
         return _years_fit([r for r in ra if r[1] is not None], [r for r in rb if r[1] is not None],
                           early_ok, self._parents_agree)
 
@@ -1343,14 +1372,14 @@ def _read_avanti_reference(client) -> tuple:
             FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
             {name} AS norm_name, {fname} AS norm_father,
             FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped,
-            CAST(student_grade AS STRING) AS student_grade
+            CAST(student_grade AS STRING) AS student_grade, {_GENDER('student_gender')} AS gender
         FROM `avantifellows.production_dbt_final.dim_student`  WHERE {filt}
         UNION ALL
         SELECT DISTINCT COALESCE(pk_student_id, apaar_id) AS pk_student_id,
             FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS dob,
             {name} AS norm_name, {fname} AS norm_father,
             FORMAT_DATE('%Y-%m-%d', {swap}) AS dob_swapped,
-            CAST(student_grade AS STRING) AS student_grade
+            CAST(student_grade AS STRING) AS student_grade, {_GENDER('student_gender')} AS gender
         FROM `avantifellows.production_dbt_final.dim_student_historical` WHERE {filt}
     """
     avanti = client.query(sql).to_dataframe().drop_duplicates()
@@ -1493,7 +1522,7 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame,
     to the coalesce fixes that with no separate code path. Direct ids reuse the
     SAME crosswalks (jee25/jee24/neet24/roll10x/ncst24) v2 already loads."""
     def assign(stage):
-        df = nodes[stage][["node_id", "norm_name", "norm_father", "norm_mother", "dob"]].copy()
+        df = nodes[stage][["node_id", "norm_name", "norm_father", "norm_mother", "dob", "gender"]].copy()
         df["student_key"] = df.node_id.map(n2k)
         df["src"] = stage
         return df.dropna(subset=["student_key"])
@@ -1505,6 +1534,9 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame,
     sid["dob"] = _coalesce_by_source(contrib, "dob", _COALESCE_DOB_ORDER)
     sid["norm_father"] = _coalesce_by_source(contrib, "norm_father", _COALESCE_FATHER_ORDER)
     sid["norm_mother"] = _coalesce_by_source(contrib, "norm_mother", _COALESCE_MOTHER_ORDER)
+    # gender: the one gender of the student's records; NA when they have none or both
+    g = contrib.loc[_present(contrib.gender), ["student_key", "gender"]].drop_duplicates()
+    sid["gender"] = g.drop_duplicates("student_key", keep=False).set_index("student_key").gender
     sid = sid.reset_index()
 
     # direct avanti id — jee (jee25+jee24) then neet (neet24) then b10 then ncst;
@@ -1686,6 +1718,11 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     crosswalk id (fill-only). Ambiguous (>1 distinct candidate) is withheld
     (fk=NULL), matching this build's precision-first posture throughout.
 
+    Gender check (_gender_conflict) on the tiers that do not need equal names: direct id,
+    strong name, fuzzy name and the two crosswalk ids drop an Avanti student whose gender and
+    given names both differ from the student's. In the strong and fuzzy tiers this is done
+    before the count, so a twin of the other gender does not make the match ambiguous.
+
     Runs the SAME cascade against two candidate pools in a g12-primary →
     wide-fallback order, not two independent resolvers: EVERYONE is matched against
     avanti_g12 first, and only students that frame places nowhere (no candidate row
@@ -1703,6 +1740,15 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
     # dim_student rows are pre-grade-12 is still checkable.
     name_by_pk = (avanti_all.loc[_present(avanti_all.norm_name)]
                   .groupby("pk_student_id")["norm_name"].agg(set).to_dict())
+    # pk -> its one gender (NA when dim_student has none or both), for the gender check
+    gp = avanti_all.loc[_present(avanti_all.gender), ["pk_student_id", "gender"]].drop_duplicates()
+    gender_by_pk = gp.drop_duplicates("pk_student_id", keep=False).set_index("pk_student_id").gender.to_dict()
+
+    def _two_people(gender, rec_name, fk) -> bool:
+        """Gender check (_gender_conflict) of a student against the Avanti student fk, on
+        every name dim_student has for fk. Used on the tiers that do not need equal names."""
+        names = name_by_pk.get(fk)
+        return bool(names) and all(_gender_conflict(gender, rec_name, gender_by_pk.get(fk), n) for n in names)
 
     def _direct_ok(rec_name, fk) -> bool:
         """Keep a direct crosswalk id only if the student it points to actually
@@ -1726,7 +1772,9 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
 
     def _match_one(sid, avanti):
         d0 = sid[_present(sid.source_avanti_student_id) & sid.source_avanti_student_id.isin(all_ids)]
-        d0 = d0[[_direct_ok(n, f) for n, f in zip(d0.norm_name, d0.source_avanti_student_id)]]
+        if len(d0):   # a list mask on an empty frame drops its columns (see the prod_nta tier)
+            d0 = d0[[_direct_ok(n, f) and not _two_people(g, n, f)
+                     for n, f, g in zip(d0.norm_name, d0.source_avanti_student_id, d0.gender)]]
         direct = pd.DataFrame({"student_key": d0.student_key, "fk": d0.source_avanti_student_id,
                                "pri": 1, "conf": "direct_student_id", "cnt": 1})
 
@@ -1758,8 +1806,10 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
 
         def _blocked_match(pred, pri, conf, already):
             cs = sid[sid.norm_name.notna() & sid.dob.notna() & ~sid.student_key.isin(already)]
-            mm = cs.merge(avanti[["pk_student_id", "norm_name", "dob"]], on="dob", suffixes=("", "_av"))
-            mm = mm[[pred(n, a) for n, a in zip(mm.norm_name, mm.norm_name_av)]]
+            mm = cs.merge(avanti[["pk_student_id", "norm_name", "dob", "gender"]], on="dob", suffixes=("", "_av"))
+            if len(mm):
+                mm = mm[[pred(n, a) and not _gender_conflict(g, n, ga, a)
+                         for n, a, g, ga in zip(mm.norm_name, mm.norm_name_av, mm.gender, mm.gender_av)]]
             g = mm.groupby("student_key").agg(cnt=("pk_student_id", "nunique"),
                                               cand=("pk_student_id", "first")).reset_index()
             return pd.DataFrame({"student_key": g.student_key, "fk": g.cand.where(g.cnt == 1),
@@ -1775,6 +1825,8 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
         x10 = pd.DataFrame(columns=cand_cols)
         if "roll10_avanti_id" in sid:
             xr = sid[_present(sid.roll10_avanti_id) & sid.roll10_avanti_id.isin(all_ids)]
+            if len(xr):
+                xr = xr[[not _two_people(g, n, f) for n, f, g in zip(xr.norm_name, xr.roll10_avanti_id, xr.gender)]]
             x10 = pd.DataFrame({"student_key": xr.student_key, "fk": xr.roll10_avanti_id,
                                 "pri": 7, "conf": "roll10_crosswalk", "cnt": 1})
 
@@ -1791,7 +1843,8 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
             # frame loses its columns and the construction below raises. Empty is a real
             # case (no production rows for these apps / crosswalk unavailable).
             if len(xr):
-                xr = xr[[_direct_ok(n, f) for n, f in zip(xr.norm_name, xr.prod_nta_avanti_id)]]
+                xr = xr[[_direct_ok(n, f) and not _two_people(g, n, f)
+                         for n, f, g in zip(xr.norm_name, xr.prod_nta_avanti_id, xr.gender)]]
             if len(xr):
                 xp = pd.DataFrame({"student_key": xr.student_key, "fk": xr.prod_nta_avanti_id,
                                    "pri": _PROD_NTA_PRI, "conf": "prod_nta_crosswalk", "cnt": 1})

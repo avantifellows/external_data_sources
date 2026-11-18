@@ -174,6 +174,12 @@ Other rules:
   rule does not link two records whose given names differ
   (`name_distance.given_names_differ`). Without a second person, a spelling difference is a
   typo, and the records link.
+- **Gender check.** Two names are two people when the genders differ and the given names
+  differ (`name_distance.given_names_differ`), unless the names are one typo apart (one word,
+  same length, one other letter: `name_distance.one_letter_typo`). Then two records do not
+  link, and step 6 does not give a student the Avanti id of the other person on the tiers
+  that do not need equal names (direct id, strong and fuzzy names, the crosswalk ids). A
+  gender difference alone refuses nothing: it can be a data-entry error.
 - **Fuzzy names, last.** After the exact rules, the identity rules run again with an
   Indian-name distance (`name_distance.py`), only between students that are still apart.
   A fuzzy link is refused when the step 6 matcher, run on the students before the fuzzy
