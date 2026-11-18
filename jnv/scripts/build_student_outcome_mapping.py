@@ -1377,6 +1377,51 @@ def _read_avanti_reference(client) -> tuple:
     return avanti_g12, avanti_all, all_ids
 
 
+def _read_tie_facts(client) -> dict:
+    """STEP 6b tie-breaker inputs (see _reconcile_shared_fk).
+    avanti: Avanti id -> {"schools", "cohorts", "dobs", "fathers"} (sets), from dim_student
+            (school code through dim_school) and dim_student_historical (school_code). The
+            Avanti cohort is the academic year end + 12 - grade (the student's 12th year).
+    school: 10th / 12th node id -> the board school code."""
+    fname = r"UPPER(TRIM(REGEXP_REPLACE(COALESCE(s.father_name,''), r'\s+', ' ')))"
+    cohort = ("SAFE_CAST(SUBSTR(CAST(s.academic_year AS STRING), 6, 4) AS INT64) + 12"
+              " - SAFE_CAST(s.student_grade AS INT64)")
+    av = client.query(f"""
+        SELECT COALESCE(s.pk_student_id, s.apaar_id) AS fk, CAST(sc.school_code AS STRING) AS school,
+               {cohort} AS cohort, FORMAT_DATE('%Y-%m-%d', DATE(s.date_of_birth)) AS dob, {fname} AS father
+        FROM `avantifellows.production_dbt_final.dim_student` s
+        LEFT JOIN `avantifellows.production_dbt_final.dim_school` sc ON sc.pk_school_id = s.fk_school_id
+        WHERE COALESCE(s.pk_student_id, s.apaar_id) IS NOT NULL
+        UNION ALL
+        SELECT COALESCE(s.pk_student_id, s.apaar_id), CAST(s.school_code AS STRING),
+               {cohort}, FORMAT_DATE('%Y-%m-%d', DATE(s.date_of_birth)), {fname}
+        FROM `avantifellows.production_dbt_final.dim_student_historical` s
+        WHERE COALESCE(s.pk_student_id, s.apaar_id) IS NOT NULL""").to_dataframe()
+    avanti = {}
+    for fk, school, coh, dob, father in av.itertuples(index=False, name=None):
+        a = avanti.setdefault(str(fk), {"schools": set(), "cohorts": set(), "dobs": set(), "fathers": set()})
+        if isinstance(school, str) and school.strip():
+            a["schools"].add(school.strip())
+        if pd.notna(coh):
+            a["cohorts"].add(int(coh))
+        if isinstance(dob, str) and dob:
+            a["dobs"].add(dob)
+        if isinstance(father, str) and father:
+            a["fathers"].add(father)
+    ext = f"{BQ_PROJECT}.{BQ_DATASET}"
+    sch = client.query(f"""
+        SELECT CONCAT('b10:', CAST(exam_year AS STRING), ':', roll_number) AS node_id,
+               ANY_VALUE(CAST(school_code AS STRING)) AS school
+        FROM `{ext}.jnv_fact_board_results_10th` GROUP BY 1
+        UNION ALL
+        SELECT CONCAT('b12:', CAST(exam_year AS STRING), ':', roll_number),
+               ANY_VALUE(CAST(school_code AS STRING))
+        FROM `{ext}.jnv_fact_board_results_12th` GROUP BY 1""").to_dataframe()
+    school = {n: s.strip() for n, s in zip(sch.node_id, sch.school) if isinstance(s, str) and s.strip()}
+    print(f"  tie-breaker facts: {len(avanti):,} Avanti ids, {len(school):,} board records with a school code")
+    return {"avanti": avanti, "school": school}
+
+
 def _read_dim_passthrough(client) -> pd.DataFrame:
     """Grade-12 JNV `dim_student` students, to seed the ones with NO exam/board/NCST
     record as size-1 'dim-only' rows — roster completeness for enrolled students whose
@@ -1806,7 +1851,11 @@ _CONF_PRI = {"direct_student_id": 1, "name_dob": 2, "name_dob_swapped": 3, "name
              "prod_nta_crosswalk": _PROD_NTA_PRI, **_RECORD_TIERS}
 
 
-def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) -> tuple:
+_TIES = None   # scratch run: the 6b ties and their points (written to <out_table>_ties)
+
+
+def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame,
+                         tie: dict | None = None) -> tuple:
     """STEP 6b — enforce ONE student_key per Avanti id.
 
     _match_fk_v2 withholds an fk when one student matches >1 Avanti id, but never
@@ -1821,8 +1870,12 @@ def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) ->
         different schools) each matched to the one id, e.g. two "KAJAL, 2008-07-16".
         At most one is the Avanti student. → the id stays with the claimant of the
         strictly best tier; the others lose it (match_confidence='shared_fk_conflict').
-        If the best tier is itself a tie between conflicting claimants, nobody keeps
-        it — precision-first, as for forward ambiguity.
+        If the best tier is itself a tie between conflicting claimants, the tie-breaker
+        gives each tied claimant points against the Avanti student (`tie` facts): school
+        (a 10th or 12th school code is the Avanti school code), cohort (its cohort is the
+        Avanti cohort), DOB (a record DOB is the Avanti DOB) and father (a record father
+        agrees, nd.father_check_v2). The one claimant with the most points keeps the id.
+        When the top score is shared or zero, nobody keeps it (precision-first).
 
     Claimants are taken best tier first. Each is merged in only if it adds stages the
     accepted set does not already have AND its years fit one journey (every pre-entrance
@@ -1867,22 +1920,76 @@ def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) ->
     has["pri"] = has.match_confidence.map(_CONF_PRI).fillna(99)
     shared = has[has.duplicated("fk_avanti_student_id", keep=False)]
 
-    remap, conflict = {}, set()
-    for _, g in shared.sort_values(["pri", "student_key"]).groupby("fk_avanti_student_id"):
-        keys, pris = g.student_key.tolist(), g.pri.tolist()
-        acc = {f: set(v) for f, v in prof[keys[0]].items()}
-        accepted, rejected = [keys[0]], []
-        for k, pr in zip(keys[1:], pris[1:]):
+    # tie-breaker inputs: the records of each student, and each record's DOB and father
+    global _TIES
+    _TIES = []
+    k2n, attr = {}, {}
+    if tie is not None:
+        for n, k in n2k.items():
+            k2n.setdefault(k, []).append(n)
+        for st in STAGES:
+            df = nodes[st]
+            for n, d, f in zip(df.node_id, df.dob, df.norm_father):
+                attr[n] = (d if isinstance(d, str) and d else None, f if isinstance(f, str) and f else None)
+
+    def points(k, fk) -> dict:
+        """The tie-breaker points of claimant k against the Avanti student fk."""
+        av = tie["avanti"].get(str(fk)) if tie is not None else None
+        if av is None:
+            return {"school": 0, "cohort": 0, "dob": 0, "father": 0}
+        ns = k2n.get(k, [])
+        p = prof.get(k, {"cohort": set(), "entrance": set()})
+        coh = min(p["cohort"]) if p["cohort"] else (min(p["entrance"]) if p["entrance"] else None)
+        recs = [attr.get(n, (None, None)) for n in ns]
+        return {
+            "school": int(any(tie["school"].get(n) in av["schools"] for n in ns if tie["school"].get(n))),
+            "cohort": int(coh is not None and coh in av["cohorts"]),
+            "dob": int(any(d in av["dobs"] for d, _ in recs if d)),
+            "father": int(any(nd.father_check_v2(f, af, _FUZZY_OPTS) in FUZZY_FATHER_OK
+                              for _, f in recs if f for af in av["fathers"])),
+        }
+
+    def merge_from(first, keys):
+        """Accept the claimants that fit with `first` (in tier order); return (accepted, rejected)."""
+        acc = {f: set(v) for f, v in prof[first].items()}
+        accepted, rejected = [first], []
+        for k in keys:
+            if k == first:
+                continue
             if fits(acc, prof[k]):
                 accepted.append(k)
                 for f in acc:
                     acc[f] |= prof[k][f]
             else:
-                rejected.append((k, pr))
-        if any(pr == pris[0] for _, pr in rejected):
-            conflict.update(keys)                    # tie at the best tier → nobody keeps it
-            continue
-        conflict.update(k for k, _ in rejected)
+                rejected.append(k)
+        return accepted, rejected
+
+    remap, conflict = {}, set()
+    n_ties, n_decided = 0, 0
+    for fk, g in shared.sort_values(["pri", "student_key"]).groupby("fk_avanti_student_id"):
+        keys, pris = g.student_key.tolist(), g.pri.tolist()
+        accepted, rejected = merge_from(keys[0], keys)
+        pri_of = dict(zip(keys, pris))
+        if any(pri_of[k] == pris[0] for k in rejected):
+            # tie at the best tier: the tie-breaker, else nobody keeps the id
+            n_ties += 1
+            conf_of = dict(zip(g.student_key, g.match_confidence))
+            best = [k for k in keys if pri_of[k] == pris[0]]
+            pts = {k: points(k, fk) for k in best}
+            top = max(sum(v.values()) for v in pts.values())
+            winners = [k for k in best if sum(pts[k].values()) == top]
+            decided = top > 0 and len(winners) == 1
+            for k in best:
+                _TIES.append({"fk_avanti_student_id": str(fk), "student_key": k,
+                              "match_confidence": conf_of[k], **pts[k],
+                              "points": sum(pts[k].values()), "decided": decided,
+                              "keeps_id": decided and k == winners[0]})
+            if not decided:
+                conflict.update(keys)
+                continue
+            n_decided += 1
+            accepted, rejected = merge_from(winners[0], [winners[0]] + [k for k in keys if k != winners[0]])
+        conflict.update(rejected)
         root = min(accepted)
         remap.update({k: root for k in accepted if k != root})
 
@@ -1900,6 +2007,8 @@ def _reconcile_shared_fk(nodes: dict, key: pd.DataFrame, fk_df: pd.DataFrame) ->
     print(f"  step 6b — Avanti ids claimed by >1 student_key: "
           f"{shared.fk_avanti_student_id.nunique():,}; merged {len(remap):,} components into "
           f"their id's student; withheld the id from {len(conflict):,} conflicting claimants")
+    print(f"  step 6b tie-breaker — {n_ties:,} ties at the best tier: {n_decided:,} decided "
+          f"(school, cohort, DOB, father points), {n_ties - n_decided:,} left (nobody keeps the id)")
     left = fk_df.loc[fk_df.fk_avanti_student_id.notna(), "fk_avanti_student_id"]
     if left.duplicated().any():
         raise AssertionError(f"{int(left.duplicated().sum())} Avanti ids still sit on >1 student_key")
@@ -2012,14 +2121,14 @@ def _one_per_student(assigned: pd.DataFrame, val_cols: list[str]) -> pd.DataFram
 
 def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataFrame,
                 avanti_all: pd.DataFrame, all_ids: set, ncst24: pd.DataFrame,
-                marks: dict, dim_pt: pd.DataFrame, prod_nta: dict) -> pd.DataFrame:
+                marks: dict, dim_pt: pd.DataFrame, prod_nta: dict, tie: dict | None = None) -> pd.DataFrame:
     # ── STEP 6 — Avanti fk via v2's own tiered matcher (not the source-table passthrough),
     # then 6b: one student_key per Avanti id. 6b can MERGE components, so it runs before
     # anything below is keyed on student_key, and `sid` is rebuilt on the merged keys.
     n2k = key.set_index("node_id")["student_key"]
     sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
     fk_df = _match_fk_v2(sid, avanti_g12, avanti_all, all_ids, rec=_record_identities(nodes, n2k))
-    key, fk_df = _reconcile_shared_fk(nodes, key, fk_df)
+    key, fk_df = _reconcile_shared_fk(nodes, key, fk_df, tie)
     n2k = key.set_index("node_id")["student_key"]
     sid = _build_sid(nodes, n2k, refs, ncst24, prod_nta)
 
@@ -2162,12 +2271,13 @@ def _resolve(client) -> pd.DataFrame:
     marks = _read_marks(client)
     dim_pt = _read_dim_passthrough(client)
     prod_nta = _read_prod_nta_crosswalk(client)
+    tie = _read_tie_facts(client)
     print("Steps 2–3 — edges + union-find ...")
     key = _cluster(nodes, refs, ncst24, {"g12": avanti_g12, "all": avanti_all,
                                           "all_ids": all_ids, "prod_nta": prod_nta})
     print("Steps 4–7 — cohort_year + avanti fk + explode to (student × attempt_year) + outcome marks ...")
     return _build_rows(nodes, key, refs, avanti_g12, avanti_all, all_ids, ncst24, marks,
-                       dim_pt, prod_nta)
+                       dim_pt, prod_nta, tie)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2215,6 +2325,19 @@ def main() -> None:
         t.expires = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30)
         client.update_table(t, ["expires"])
         print(f"Refused links → {refused_table}: {len(_REFUSED):,} rows (expires in 30 days)")
+
+    # scratch run only: the step 6b ties and their tie-breaker points, for review (expires in 30 days)
+    if out_table != OUT_TABLE and _TIES:
+        import datetime as dt
+        ties_table = f"{out_table}_ties"
+        client.load_table_from_dataframe(
+            pd.DataFrame(_TIES), ties_table,
+            job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
+        ).result()
+        t = client.get_table(ties_table)
+        t.expires = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30)
+        client.update_table(t, ["expires"])
+        print(f"Ties → {ties_table}: {len(_TIES):,} rows (expires in 30 days)")
 
     # coverage summary
     summary = f"""

@@ -135,7 +135,11 @@ a name gate on the direct-id crosswalks and ambiguous matches withheld
 an Avanti id claimed by more than one component either merges them (complementary
 stages, one consistent journey — e.g. a 10th-board component and a JEE component
 no roll bridge joined) or stays only with the best-tier claimant, the rest marked
-`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). Step 6b keeps
+`match_confidence = 'shared_fk_conflict'` (step 6b, `_reconcile_shared_fk`). When two or
+more claimants share the best tier, a tie-breaker gives each one point for each fact that
+agrees with the Avanti student in `dim_student` or `dim_student_historical`: school (a 10th or
+12th school code), cohort, DOB and father. The claimant with the most points keeps the id. If
+the top score is shared or zero, no claimant keeps the id. Step 6b keeps
 an early attempt that a student already has, but does not make a new one. So an
 fk sits on exactly one `student_key`, and the build asserts it. **It runs entirely in pandas**: the sources are read from BQ
 already aggregated, resolution happens as DataFrame merges, and the finished
