@@ -151,8 +151,8 @@ board 10th/12th, dakshana + nvs NCST) on each table's grain. The output is one
 row per (student, attempt_year), 47 columns.
 
 Rules on every link (`_CheckedUnion`). Links are applied strongest first: crosswalk ids,
-entrance same-person, DOB + parents, the identity rules, then fuzzy names. A link that
-would break a rule is refused:
+entrance same-person, DOB + parents, the identity rules, fuzzy names, then the father's
+name as a middle word. A link that would break a rule is refused:
 
 - A student has at most one NCST, one 10th and one 12th record.
 - A student can have JEE and NEET records in more than one year, but one JEE and one
@@ -169,6 +169,11 @@ would break a rule is refused:
 
 Other rules:
 
+- **One word written twice.** Some forms (the NCST form, and the Avanti enrolment forms)
+  write the first name twice when the student has no surname. A name that is one word of 4
+  or more letters written twice counts as that word once (`ASHA ASHA` → `ASHA`), in the
+  records and in the Avanti names (`_one_word_once`). A shorter doubled word stays as it is,
+  because it can be one name written with a space.
 - **Twin check.** Twins have the same DOB and parents. When the records with one DOB and
   parents show a second person (two records of one stage and one year), the DOB + parents
   rule does not link two records whose given names differ
@@ -184,6 +189,14 @@ Other rules:
   Indian-name distance (`name_distance.py`), only between students that are still apart.
   A fuzzy link is refused when the step 6 matcher, run on the students before the fuzzy
   round, gives the two students two different Avanti ids.
+- **Father's name as a middle word, after the fuzzy names.** Some records add the father's
+  first name to the student's name as a middle word (`ASHA RAMESH PATIL`, father
+  `RAMESH PATIL`), and other records of the same student do not (`ASHA PATIL`). Two records
+  of students that are still apart link when one name is the other name with the father's
+  first name as a middle word (not the first or the last word), the fathers match, a 10th and
+  a 12th record have the same school code, the years fit a name + father identity rule, and
+  each student has only one such pair. The link goes through the same checks as a fuzzy link
+  (no new early exam, no two different Avanti ids).
 - **Step 6 record pass.** When the student's identity matches no Avanti student, each
   record's own name, DOB and father are tried (`record_name_dob`,
   `record_name_dob_swapped`, `record_name_father`). It only fills an empty fk, and only
@@ -201,9 +214,10 @@ Other rules:
   people. A given name and a DOB alone are not enough: other students share them. It only
   fills an empty fk.
 
-Scratch run: `--out-table <project.dataset.table>` writes the build to another table, and
-the refused links to `<table>_refused` (it expires in 30 days). Compare it with the
-production table before a production run.
+Scratch run: `--out-table <project.dataset.table>` writes the build to another table, the
+refused links to `<table>_refused`, the step 6b ties to `<table>_ties` and the middle-name
+links to `<table>_middle_name` (these expire in 30 days; set an expiry on the build table by
+hand). Compare it with the production table before a production run.
 
 > ⚠️ **`fk_avanti_student_id` = `COALESCE(pk_student_id, apaar_id)`.** It's a
 > `pk_student_id` for most students, but an `apaar_id` for students who have no pk in

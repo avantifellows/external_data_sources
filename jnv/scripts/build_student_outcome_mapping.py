@@ -339,6 +339,19 @@ _DOB = ("COALESCE(SAFE.PARSE_DATE('%d-%m-%Y', dob),"
 _GENDER = lambda c: f"IF(UPPER(TRIM({c})) IN ('MALE', 'FEMALE'), UPPER(TRIM({c})), NULL)"
 
 
+def _one_word_once(name):
+    """A name that is one word written twice is that word once: 'ASHA ASHA' -> 'ASHA'. Some
+    forms (the NCST form, and the Avanti enrolment forms) write the first name twice when the
+    student has no surname. The word must have 4 or more letters: a short doubled word can be one
+    name written with a space ('TIN TIN' is 'TINTIN'). Every other name stays as it is. Applied to
+    the records (_finish_nodes) and to the Avanti names (_read_avanti_reference), so that both
+    sides compare the same form."""
+    if not isinstance(name, str):
+        return name
+    w = name.split(" ")
+    return w[0] if len(w) == 2 and w[0] == w[1] and len(w[0]) >= 4 else name
+
+
 def _finish_nodes(df: pd.DataFrame, stage: str, id_parts: list[str]) -> pd.DataFrame:
     """Common post-processing: stringify, blank→NA on identity cols, build node_id."""
     for c in df.columns:
@@ -346,6 +359,8 @@ def _finish_nodes(df: pd.DataFrame, stage: str, id_parts: list[str]) -> pd.DataF
     for c in ("dob", "norm_father", "norm_mother", "norm_name", "fk_avanti_id", "gender"):
         if c in df:
             df[c] = _blank_to_na(df[c])
+    if "norm_name" in df:
+        df["norm_name"] = df["norm_name"].map(_one_word_once).astype("string")
     df["stage"] = stage
     df["yr"] = pd.to_numeric(df["yr_s"], errors="coerce").astype("Int64")
     df["node_id"] = stage + ":" + df[id_parts].agg(":".join, axis=1)
@@ -926,11 +941,11 @@ def _student_avanti_ids(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avant
 
 
 def _round2_fuzzy(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dict) -> None:
-    """Round 2: add the fuzzy-name edges, last. Each edge goes through _CheckedUnion (one
-    record per stage, years that fit). A fuzzy edge is also refused when step 6 gives the two
-    students two different Avanti ids (_student_avanti_ids). The build does not read
-    fk_avanti_student_id from the source tables, because add_avanti_fk.py writes it from this
-    table."""
+    """Round 2: add the fuzzy-name edges, then the middle-name edges (_middle_name_edges), last.
+    Each edge goes through _CheckedUnion (one record per stage, years that fit). An edge is
+    also refused when step 6 gives the two students two different Avanti ids
+    (_student_avanti_ids). The build does not read fk_avanti_student_id from the source
+    tables, because add_avanti_fk.py writes it from this table."""
     uf = cu.uf
     comp = {n: uf.find(n) for n in uf.parent}
     comp_stages = {root: {r[0] for r in recs} for root, recs in cu.recs.items()}
@@ -962,6 +977,102 @@ def _round2_fuzzy(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dic
             added += 1
     print(f"    {'fuzzy names':<22}{len(cands):>9,} edges, {len(cu.refused) - before:>6,} refused")
     print(f"  round-2 fuzzy edges:    {added:>8,}")
+
+    # The father's first name as a middle word, after the fuzzy edges, with the same checks.
+    comp = {n: uf.find(n) for n in uf.parent}
+    comp_stages = {root: {r[0] for r in recs} for root, recs in cu.recs.items()}
+    school = (avanti.get("tie") or {}).get("school", {})
+    cands = []
+    for left, right, keys, lo, hi in IDENTITY_RULES:
+        if "norm_father" in keys:
+            e = _middle_name_edges(fk, left, right, lo, hi, comp, comp_stages, school)
+            print(f"    middle name {left}->{right}: {len(e):,} candidates")
+            cands += e
+    global _MIDDLE
+    _MIDDLE = []
+    before, added = len(cu.refused), 0
+    for a, b in cands:
+        ra, rb = uf.find(a), uf.find(b)
+        if ra == rb:
+            continue
+        ia, ib = ids.get(ra, set()), ids.get(rb, set())
+        if ia and ib and not ia & ib:
+            cu.refused.append((_MIDDLE_EDGE, "two different Avanti ids",
+                               a, b, fmt(cu.recs[ra]), fmt(cu.recs[rb])))
+            continue
+        recs_a, recs_b = fmt(cu.recs[ra]), fmt(cu.recs[rb])
+        cu.union(a, b, _MIDDLE_EDGE)
+        if uf.find(a) == uf.find(b):
+            ids[uf.find(a)] = ids.pop(ra, set()) | ids.pop(rb, set())
+            _MIDDLE.append({"node_a": a, "node_b": b, "student_a_records": recs_a, "student_b_records": recs_b})
+            added += 1
+    print(f"    {_MIDDLE_EDGE:<22}{len(cands):>9,} edges, {len(cu.refused) - before:>6,} refused")
+    print(f"  middle-name edges:      {added:>8,}")
+
+
+# The father's first name as a middle word. Some records write the student's name with the
+# father's first name as a middle word ('ASHA RAMESH PATIL', father 'RAMESH PATIL'), and other
+# records of the same student do not ('ASHA PATIL'). The name rules see two names, so the
+# records stay apart when they have no DOB in common. This pass links a record of one student
+# and a record of another student that are still apart (as in the fuzzy pass) when:
+#   • one name is the other name with the father's first name added as a middle word (not the
+#     first or the last word), spaces ignored;
+#   • the fathers match (nd.father_check_v2 in FUZZY_FATHER_OK);
+#   • a 10th and a 12th record have the same school code;
+#   • the years fit a name + father IDENTITY_RULE, and each student has only one such pair.
+# The link then goes through _CheckedUnion (no early exam, as for a fuzzy link) and the
+# "two different Avanti ids" check of the fuzzy round.
+_MIDDLE_EDGE = "father's name as middle"
+_INEXACT_EDGES = {"fuzzy names", _MIDDLE_EDGE}
+_MIDDLE = None   # scratch run: the middle-name links (written to <out_table>_middle_name)
+
+
+def _without_father_word(name, father) -> str | None:
+    """The name without the father's first name where it is a middle word, spaces removed.
+    None when the name has no such word."""
+    if not (isinstance(name, str) and isinstance(father, str)):
+        return None
+    words = nd._raw_words(name)
+    fwords = nd._strip_honorific(nd._raw_words(father))
+    if len(words) < 3 or not fwords or len(fwords[0]) < 2:
+        return None
+    keep = [w for i, w in enumerate(words) if not (0 < i < len(words) - 1 and w == fwords[0])]
+    return "".join(keep) if len(keep) < len(words) else None
+
+
+def _middle_name_edges(fk: dict, left: str, right: str, lo: int, hi: int,
+                       comp: dict, comp_stages: dict, school: dict) -> list[tuple]:
+    """Middle-name candidates of one name + father IDENTITY_RULE between students that are
+    still apart: the left student has no `right` record, the right student has no `left` record."""
+    def prep(df, other):
+        df = df[df.norm_father.notna()]
+        df = df[df.node_id.map(lambda n: other not in comp_stages[comp[n]]).astype(bool)].copy()
+        df["full"] = ["".join(nd._raw_words(n)) for n in df.norm_name]
+        df["core"] = [_without_father_word(n, f) for n, f in zip(df.norm_name, df.norm_father)]
+        return df[["node_id", "yr", "norm_father", "full", "core"]]
+    L, R = prep(fk[left], right), prep(fk[right], left)
+    m = pd.concat([L[L.core.notna()].merge(R, left_on="core", right_on="full", suffixes=("_l", "_r")),
+                   L.merge(R[R.core.notna()], left_on="full", right_on="core", suffixes=("_l", "_r"))],
+                  ignore_index=True)
+    if m.empty:
+        return []
+    gap = m.yr_r - m.yr_l
+    m = m[(gap >= lo) & (gap <= hi)].drop_duplicates(["node_id_l", "node_id_r"])
+    m = m.assign(comp_l=m.node_id_l.map(comp), comp_r=m.node_id_r.map(comp))
+    m = m[m.comp_l != m.comp_r]
+    ok = [nd.father_check_v2(a, b, _FUZZY_OPTS) in FUZZY_FATHER_OK
+          for a, b in zip(m.norm_father_l, m.norm_father_r)]
+    m = m[pd.Series(ok, index=m.index, dtype=bool)]
+    if {left, right} == {"b10", "b12"}:
+        same = [school.get(a) is not None and school.get(a) == school.get(b)
+                for a, b in zip(m.node_id_l, m.node_id_r)]
+        m = m[pd.Series(same, index=m.index, dtype=bool)]
+    if m.empty:
+        return []
+    lc = m.groupby("comp_l")["comp_r"].transform("nunique")
+    rc = m.groupby("comp_r")["comp_l"].transform("nunique")
+    m = m[(lc == 1) & (rc == 1)]
+    return list(zip(m.node_id_l, m.node_id_r))
 
 
 def _identity_edges(nodes: dict, comp: dict) -> list[tuple]:
@@ -1257,8 +1368,8 @@ class _CheckedUnion:
         ra, rb = self.uf.find(a), self.uf.find(b)
         if ra == rb:
             return
-        # every link is exact except the fuzzy-name round
-        why = self._why_not(self.recs[ra], self.recs[rb], early_ok=edge_type != "fuzzy names")
+        # every link is exact except the fuzzy-name round and the middle-name pass
+        why = self._why_not(self.recs[ra], self.recs[rb], early_ok=edge_type not in _INEXACT_EDGES)
         if why:
             fmt = lambda recs: " ".join(sorted(f"{r[0]}:{r[1]}" for r in recs))
             self.refused.append((edge_type, why, a, b, fmt(self.recs[ra]), fmt(self.recs[rb])))
@@ -1388,6 +1499,8 @@ def _read_avanti_reference(client) -> tuple:
     avanti["norm_father"] = avanti["norm_father"].where(_present(avanti["norm_father"]))
     for c in avanti.columns:
         avanti[c] = _S(avanti[c])
+    avanti["norm_name"] = avanti["norm_name"].map(_one_word_once).astype("string")
+    avanti = avanti.drop_duplicates()
 
     avanti_all = avanti.drop(columns=["student_grade"])
     avanti_g12 = (avanti[avanti.student_grade == "12"]
@@ -2414,7 +2527,8 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     ex_nd = exam_rows[["student_name", "student_dob"]].dropna()
     present_nd |= set(zip(ex_nd.student_name, ex_nd.student_dob))
     cand = dim_pt[~dim_pt.fk_avanti_student_id.astype(str).isin(resolved)].copy()
-    cand = cand[[(nm, db) not in present_nd for nm, db in zip(cand.student_name, cand.student_dob)]].copy()
+    cand = cand[[(_one_word_once(nm), db) not in present_nd
+                 for nm, db in zip(cand.student_name, cand.student_dob)]].copy()
     cand["student_key"] = "dim:" + cand.fk_avanti_student_id.astype(str)
     cand["match_confidence"], cand["match_count"] = "dim_passthrough", 1
     for f in ("has_ncst_data", "has_10th_data", "has_12th_data",
@@ -2505,6 +2619,19 @@ def main() -> None:
         t.expires = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30)
         client.update_table(t, ["expires"])
         print(f"Ties → {ties_table}: {len(_TIES):,} rows (expires in 30 days)")
+
+    # scratch run only: the middle-name links, for review (expires in 30 days)
+    if out_table != OUT_TABLE and _MIDDLE:
+        import datetime as dt
+        middle_table = f"{out_table}_middle_name"
+        client.load_table_from_dataframe(
+            pd.DataFrame(_MIDDLE), middle_table,
+            job_config=LoadJobConfig(write_disposition=WriteDisposition.WRITE_TRUNCATE),
+        ).result()
+        t = client.get_table(middle_table)
+        t.expires = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30)
+        client.update_table(t, ["expires"])
+        print(f"Middle-name links → {middle_table}: {len(_MIDDLE):,} rows (expires in 30 days)")
 
     # coverage summary
     summary = f"""
