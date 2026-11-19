@@ -89,3 +89,15 @@ python3 scripts/load_bq.py
 | `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 13,604 | year, domicile_pool, category_code, college_code |
 
 Column docs: [`schemas/kcet_fact_cutoffs.yaml`](schemas/kcet_fact_cutoffs.yaml).
+
+## Other streams (Pharma, Agriculture) — 2025 Third Round
+
+`scripts/parse_streams_2025.py` parses KEA's per-stream lists (same layout as
+engineering; `PROF_CODE_<B|H|N|F|V|S>_<R|H>_11092025english.pdf`, 12 PDFs in
+raw/) into `raw/KA_streams_2025_cutoffs_R3.csv`: 1,768 ranks, 199 colleges,
+15 courses (B-Pharma, Pharm-D, B.Sc. Agriculture and allied, Food Science,
+B.V.Sc, Agricultural Engineering). Category headers are read per table; ranks
+can be halves and some wrap across lines ("105579.\n5"). The "(Pract.)" lists
+(P, Q, T) rank on the practical exam, not KCET, and are not parsed.
+college-predictor's `scripts/merge_kcet_2025_engineering.py --streams-src`
+reads the CSV. Not yet loaded to BQ (kcet_fact_cutoffs is engineering only).
