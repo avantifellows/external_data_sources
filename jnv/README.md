@@ -152,7 +152,7 @@ row per (student, attempt_year), 47 columns.
 
 Rules on every link (`_CheckedUnion`). Links are applied strongest first: crosswalk ids,
 entrance same-person, DOB + parents, the identity rules, fuzzy names, then the father's
-name as a middle word. A link that would break a rule is refused:
+name as an extra word. A link that would break a rule is refused:
 
 - A student has at most one NCST, one 10th and one 12th record.
 - A student can have JEE and NEET records in more than one year, but one JEE and one
@@ -178,7 +178,10 @@ Other rules:
   parents show a second person (two records of one stage and one year), the DOB + parents
   rule does not link two records whose given names differ
   (`name_distance.given_names_differ`). Without a second person, a spelling difference is a
-  typo, and the records link.
+  typo, and the records link. Twins with close given names (`ANKIT` and `ANKITA`) pass the
+  check, so inside one DOB + parents group the closest names join first (the same name,
+  then the higher character similarity), then the record ids. Each twin then keeps their own
+  records, and every build gives the same result.
 - **Gender check.** Two names are two people when the genders differ and the given names
   differ (`name_distance.given_names_differ`), unless the names are one typo apart (one word,
   same length, one other letter: `name_distance.one_letter_typo`). Then two records do not
@@ -189,14 +192,18 @@ Other rules:
   Indian-name distance (`name_distance.py`), only between students that are still apart.
   A fuzzy link is refused when the step 6 matcher, run on the students before the fuzzy
   round, gives the two students two different Avanti ids.
-- **Father's name as a middle word, after the fuzzy names.** Some records add the father's
-  first name to the student's name as a middle word (`ASHA RAMESH PATIL`, father
-  `RAMESH PATIL`), and other records of the same student do not (`ASHA PATIL`). Two records
-  of students that are still apart link when one name is the other name with the father's
-  first name as a middle word (not the first or the last word), the fathers match, a 10th and
-  a 12th record have the same school code, the years fit a name + father identity rule, and
-  each student has only one such pair. The link goes through the same checks as a fuzzy link
-  (no new early exam, no two different Avanti ids).
+- **Father's name as an extra word, after the fuzzy names.** Some records add the father's
+  first name to the student's name as one more word (`ASHA RAMESH PATIL`, or
+  `PATIL ASHA RAMESH` when the surname comes first; father `RAMESH PATIL`), and other records
+  of the same student do not (`ASHA PATIL`). Two records of students that are still apart
+  link when one name is the other name with one more word (3 or more words, at any
+  position), and that word is the first word of the father's name of one of the two records.
+  For a name + DOB identity rule, the DOBs must be the same, and the fathers must not differ
+  when both records have one (the NCST 2022 records have a DOB and no father). For a
+  name + father identity rule, the fathers must match, and a 10th and a 12th record must have
+  the same school code. The years must fit the identity rule, and each student can have only
+  one such pair. The link goes through the same checks as a fuzzy link (no new early exam,
+  no two different Avanti ids).
 - **Step 6 record pass.** When the student's identity matches no Avanti student, each
   record's own name, DOB and father are tried (`record_name_dob`,
   `record_name_dob_swapped`, `record_name_father`). It only fills an empty fk, and only
@@ -213,9 +220,20 @@ Other rules:
   other name (a record often has the given name only), and the gender check does not say two
   people. A given name and a DOB alone are not enough: other students share them. It only
   fills an empty fk.
+- **Step 6 strong record pass.** Last, after the school pass, for a student that still has
+  no candidate (`record_name_dob_strong`). The student's identity takes the name of one
+  record. When that name has fewer words than the `dim_student` name (`PATEL KIRANBHAI`,
+  `dim_student` `PATEL KIRAN NARESHBHAI`), another record of the student can still match
+  (`PATEL KIRANBHAI NARESHBHAI`). Each record's own name and DOB are tried: the DOB is the
+  Avanti DOB, the names pass the strong name test (two shared words, or one name inside the
+  other), the first name word of one name is in the other name (a close spelling or a prefix
+  counts), the gender check does not say two people, and the school codes agree when the
+  student has a 10th or 12th school code and the Avanti student has a board school code.
+  Names that share only the middle and last words (`AMIT PRATAP SINGH`,
+  `VIVEK PRATAP SINGH`) are two people. It only fills an empty fk.
 
 Scratch run: `--out-table <project.dataset.table>` writes the build to another table, the
-refused links to `<table>_refused`, the step 6b ties to `<table>_ties` and the middle-name
+refused links to `<table>_refused`, the step 6b ties to `<table>_ties` and the father's-word
 links to `<table>_middle_name` (these expire in 30 days; set an expiry on the build table by
 hand). Compare it with the production table before a production run.
 

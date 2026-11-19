@@ -941,7 +941,7 @@ def _student_avanti_ids(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avant
 
 
 def _round2_fuzzy(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dict) -> None:
-    """Round 2: add the fuzzy-name edges, then the middle-name edges (_middle_name_edges), last.
+    """Round 2: add the fuzzy-name edges, then the father's-word edges (_middle_name_edges), last.
     Each edge goes through _CheckedUnion (one record per stage, years that fit). An edge is
     also refused when step 6 gives the two students two different Avanti ids
     (_student_avanti_ids). The build does not read fk_avanti_student_id from the source
@@ -978,20 +978,20 @@ def _round2_fuzzy(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dic
     print(f"    {'fuzzy names':<22}{len(cands):>9,} edges, {len(cu.refused) - before:>6,} refused")
     print(f"  round-2 fuzzy edges:    {added:>8,}")
 
-    # The father's first name as a middle word, after the fuzzy edges, with the same checks.
+    # The father's first name as an extra word, after the fuzzy edges, with the same checks.
     comp = {n: uf.find(n) for n in uf.parent}
     comp_stages = {root: {r[0] for r in recs} for root, recs in cu.recs.items()}
     school = (avanti.get("tie") or {}).get("school", {})
     cands = []
-    for left, right, keys, lo, hi in IDENTITY_RULES:
-        if "norm_father" in keys:
-            e = _middle_name_edges(fk, left, right, lo, hi, comp, comp_stages, school)
-            print(f"    middle name {left}->{right}: {len(e):,} candidates")
-            cands += e
+    # name + DOB rules first (stronger), then name + father rules
+    for left, right, keys, lo, hi in sorted(IDENTITY_RULES, key=lambda r: "dob" not in r[2]):
+        e = _middle_name_edges(fk, left, right, keys, lo, hi, comp, comp_stages, school)
+        print(f"    father's word {left}->{right} {'+'.join(keys)}: {len(e):,} candidates")
+        cands += e
     global _MIDDLE
     _MIDDLE = []
     before, added = len(cu.refused), 0
-    for a, b in cands:
+    for a, b, info in cands:
         ra, rb = uf.find(a), uf.find(b)
         if ra == rb:
             continue
@@ -1004,64 +1004,110 @@ def _round2_fuzzy(cu, nodes: dict, refs: dict, ncst24: pd.DataFrame, avanti: dic
         cu.union(a, b, _MIDDLE_EDGE)
         if uf.find(a) == uf.find(b):
             ids[uf.find(a)] = ids.pop(ra, set()) | ids.pop(rb, set())
-            _MIDDLE.append({"node_a": a, "node_b": b, "student_a_records": recs_a, "student_b_records": recs_b})
+            _MIDDLE.append({"node_a": a, "node_b": b, **info,
+                            "student_a_records": recs_a, "student_b_records": recs_b})
             added += 1
     print(f"    {_MIDDLE_EDGE:<22}{len(cands):>9,} edges, {len(cu.refused) - before:>6,} refused")
-    print(f"  middle-name edges:      {added:>8,}")
+    print(f"  father's-word edges:    {added:>8,}")
 
 
-# The father's first name as a middle word. Some records write the student's name with the
-# father's first name as a middle word ('ASHA RAMESH PATIL', father 'RAMESH PATIL'), and other
-# records of the same student do not ('ASHA PATIL'). The name rules see two names, so the
-# records stay apart when they have no DOB in common. This pass links a record of one student
-# and a record of another student that are still apart (as in the fuzzy pass) when:
-#   • one name is the other name with the father's first name added as a middle word (not the
-#     first or the last word), spaces ignored;
-#   • the fathers match (nd.father_check_v2 in FUZZY_FATHER_OK);
-#   • a 10th and a 12th record have the same school code;
-#   • the years fit a name + father IDENTITY_RULE, and each student has only one such pair.
+# The father's first name as an extra word. Some records write the student's name with the
+# father's first name as one more word ('ASHA RAMESH PATIL' or 'PATIL ASHA RAMESH', father
+# 'RAMESH PATIL'), and other records of the same student do not ('ASHA PATIL', 'PATIL ASHA').
+# The name rules see two names, so the records stay apart. This pass links a record of one
+# student and a record of another student that are still apart (as in the fuzzy pass) when:
+#   • one name is the other name with one more word, spaces ignored, and that word is the
+#     first word of the father's name of one of the two records (any position in the name;
+#     the name with the word has 3 or more words);
+#   • for a name + DOB rule: the DOBs are the same, and the fathers do not differ
+#     (nd.father_check_v2) when both records have a father;
+#   • for a name + father rule: the fathers match (nd.father_check_v2 in FUZZY_FATHER_OK),
+#     and a 10th and a 12th record have the same school code;
+#   • the years fit the IDENTITY_RULE, and each student has only one such pair for the rule.
 # The link then goes through _CheckedUnion (no early exam, as for a fuzzy link) and the
 # "two different Avanti ids" check of the fuzzy round.
-_MIDDLE_EDGE = "father's name as middle"
+_MIDDLE_EDGE = "father's name as a word"
 _INEXACT_EDGES = {"fuzzy names", _MIDDLE_EDGE}
-_MIDDLE = None   # scratch run: the middle-name links (written to <out_table>_middle_name)
+_MIDDLE = None   # scratch run: the father's-word links (written to <out_table>_middle_name)
 
 
-def _without_father_word(name, father) -> str | None:
-    """The name without the father's first name where it is a middle word, spaces removed.
-    None when the name has no such word."""
-    if not (isinstance(name, str) and isinstance(father, str)):
+def _father_first_word(father) -> str | None:
+    """The first word of the father's name after the honorifics, or None (fewer than 2 letters)."""
+    if not isinstance(father, str):
         return None
-    words = nd._raw_words(name)
     fwords = nd._strip_honorific(nd._raw_words(father))
-    if len(words) < 3 or not fwords or len(fwords[0]) < 2:
-        return None
-    keep = [w for i, w in enumerate(words) if not (0 < i < len(words) - 1 and w == fwords[0])]
-    return "".join(keep) if len(keep) < len(words) else None
+    return fwords[0] if fwords and len(fwords[0]) >= 2 else None
 
 
-def _middle_name_edges(fk: dict, left: str, right: str, lo: int, hi: int,
+def _names_without_one_word(name) -> list[tuple]:
+    """(word, position, name without the word, spaces removed) for each word of a name of 3 or
+    more words. Position is 'first', 'middle' or 'last'. A word that is in the name two times
+    gives one row for each place; when the two names without it are the same ('ASHA RAMESH
+    RAMESH'), only the first row stays."""
+    if not isinstance(name, str):
+        return []
+    words = nd._raw_words(name)
+    if len(words) < 3:
+        return []
+    out, seen = [], set()
+    for i, w in enumerate(words):
+        core = "".join(words[:i] + words[i + 1:])
+        if (w, core) in seen:
+            continue
+        seen.add((w, core))
+        pos = "first" if i == 0 else "last" if i == len(words) - 1 else "middle"
+        out.append((w, pos, core))
+    return out
+
+
+def _middle_name_edges(fk: dict, left: str, right: str, keys: list, lo: int, hi: int,
                        comp: dict, comp_stages: dict, school: dict) -> list[tuple]:
-    """Middle-name candidates of one name + father IDENTITY_RULE between students that are
-    still apart: the left student has no `right` record, the right student has no `left` record."""
+    """Father's-word candidates of one IDENTITY_RULE between students that are still apart: the
+    left student has no `right` record, the right student has no `left` record. Returns
+    (left node, right node, {"rule", "position"}) for each link."""
+    dob_rule = "dob" in keys
+    cols = ["node_id", "yr", "norm_father", "fw"] + (["dob"] if dob_rule else [])
+
     def prep(df, other):
-        df = df[df.norm_father.notna()]
+        df = df[_present(df.dob)] if dob_rule else df[df.norm_father.notna()]
         df = df[df.node_id.map(lambda n: other not in comp_stages[comp[n]]).astype(bool)].copy()
         df["full"] = ["".join(nd._raw_words(n)) for n in df.norm_name]
-        df["core"] = [_without_father_word(n, f) for n, f in zip(df.norm_name, df.norm_father)]
-        return df[["node_id", "yr", "norm_father", "full", "core"]]
+        df["fw"] = [_father_first_word(f) for f in df.norm_father]   # object dtype: None, not NA
+        return df
+
+    def with_word(df):
+        """One row per (record, word that can be taken away)."""
+        rows = [(n, w, p, c) for n, name in zip(df.node_id, df.norm_name)
+                for w, p, c in _names_without_one_word(name)]
+        words = pd.DataFrame(rows, columns=["node_id", "word", "pos", "core"])
+        return df[cols].merge(words, on="node_id")
+
+    def pairs(big, small, big_is_left):
+        """Pairs where the `big` name, less one word, is the `small` name."""
+        on = ["dob"] if dob_rule else []
+        m = with_word(big).merge(small[cols + ["full"]], left_on=on + ["core"],
+                                 right_on=on + ["full"], suffixes=("_b", "_s"))
+        m = m[(m.word == m.fw_b) | (m.word == m.fw_s)]
+        b, s = ("_l", "_r") if big_is_left else ("_r", "_l")
+        return pd.DataFrame({"node_id" + b: m.node_id_b, "node_id" + s: m.node_id_s,
+                             "yr" + b: m.yr_b, "yr" + s: m.yr_s,
+                             "norm_father" + b: m.norm_father_b, "norm_father" + s: m.norm_father_s,
+                             "pos": m.pos})
+
     L, R = prep(fk[left], right), prep(fk[right], left)
-    m = pd.concat([L[L.core.notna()].merge(R, left_on="core", right_on="full", suffixes=("_l", "_r")),
-                   L.merge(R[R.core.notna()], left_on="full", right_on="core", suffixes=("_l", "_r"))],
-                  ignore_index=True)
+    m = pd.concat([pairs(L, R, True), pairs(R, L, False)], ignore_index=True)
     if m.empty:
         return []
     gap = m.yr_r - m.yr_l
     m = m[(gap >= lo) & (gap <= hi)].drop_duplicates(["node_id_l", "node_id_r"])
     m = m.assign(comp_l=m.node_id_l.map(comp), comp_r=m.node_id_r.map(comp))
     m = m[m.comp_l != m.comp_r]
-    ok = [nd.father_check_v2(a, b, _FUZZY_OPTS) in FUZZY_FATHER_OK
-          for a, b in zip(m.norm_father_l, m.norm_father_r)]
+    if dob_rule:
+        ok = [not (isinstance(a, str) and isinstance(b, str)) or nd.father_check_v2(a, b, _FUZZY_OPTS) != "different"
+              for a, b in zip(m.norm_father_l, m.norm_father_r)]
+    else:
+        ok = [nd.father_check_v2(a, b, _FUZZY_OPTS) in FUZZY_FATHER_OK
+              for a, b in zip(m.norm_father_l, m.norm_father_r)]
     m = m[pd.Series(ok, index=m.index, dtype=bool)]
     if {left, right} == {"b10", "b12"}:
         same = [school.get(a) is not None and school.get(a) == school.get(b)
@@ -1072,7 +1118,8 @@ def _middle_name_edges(fk: dict, left: str, right: str, lo: int, hi: int,
     lc = m.groupby("comp_l")["comp_r"].transform("nunique")
     rc = m.groupby("comp_r")["comp_l"].transform("nunique")
     m = m[(lc == 1) & (rc == 1)]
-    return list(zip(m.node_id_l, m.node_id_r))
+    rule = "+".join(keys)
+    return [(a, b, {"rule": rule, "position": p}) for a, b, p in zip(m.node_id_l, m.node_id_r, m.pos)]
 
 
 def _identity_edges(nodes: dict, comp: dict) -> list[tuple]:
@@ -1205,12 +1252,13 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
               & ~sub.ff.isin(_PARENT_STOP) & ~sub.mf.isin(_PARENT_STOP)]
     global _TWIN_REFUSED
     edges, _TWIN_REFUSED = [], []
-    for _, grp in sub.groupby(["dob", "ff", "mf"], sort=False):
+    for _, grp in sub.groupby(["dob", "ff", "mf"], sort=True):
         recs = list(zip(grp.node_id, grp.norm_name))
         if len(recs) < 2 or len(recs) > _PARENT_DOB_BLOCK_MAX:
             continue
         stage_years = [_stage_year(n) for n in grp.node_id]
         second_person = len(set(stage_years)) < len(stage_years)
+        pairs = []
         for i in range(len(recs)):
             for j in range(i + 1, len(recs)):
                 na, nb = recs[i][1], recs[j][1]
@@ -1218,8 +1266,19 @@ def _parent_dob_edges(nodes: dict) -> list[tuple]:
                     if second_person and nd.given_names_differ(na, nb):
                         _TWIN_REFUSED.append((recs[i][0], recs[j][0]))
                     else:
-                        edges.append((recs[i][0], recs[j][0]))
+                        pairs.append((_pair_order(na, nb), *sorted((recs[i][0], recs[j][0]))))
+        # The first union of a record wins (one record per stage), and twins with close given
+        # names ('ANKIT'/'ANKITA') pass the twin check. So the closest names join first, then
+        # the record ids, and the result does not depend on the order of the rows.
+        edges += [(a, b) for _, a, b in sorted(pairs)]
     return edges
+
+
+def _pair_order(na: str, nb: str) -> tuple:
+    """Sort key of a name pair, closest first: the same name (spaces ignored), then the
+    higher character similarity."""
+    x, y = _despace(na), _despace(nb)
+    return (x != y, -difflib.SequenceMatcher(None, x, y).ratio())
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1851,6 +1910,72 @@ def _record_candidates(r: pd.DataFrame, avanti: pd.DataFrame) -> pd.DataFrame:
                       c.assign(conf="record_name_father")[cols]], ignore_index=True)
 
 
+# ── STEP 6 strong record pass ─────────────────────────────────────────────────
+# Fill-only, last, for students that still have no candidate at all after the record pass
+# and the school pass. A student's identity takes the name of one record. When that name has
+# fewer words than the dim_student name ('PATEL KIRANBHAI', dim_student 'PATEL KIRAN
+# NARESHBHAI'), the strong name tier fails, but another record of the student ('PATEL
+# KIRANBHAI NARESHBHAI') can match. This pass takes each record's own name and DOB:
+#   • the DOB is the Avanti DOB, and the names pass the strong name test (_am_strong_ok);
+#   • the first name word of one name is in the other name (_first_word_ok): names that
+#     share only the middle and last words ('AMIT PRATAP SINGH', 'VIVEK PRATAP SINGH') are
+#     two people;
+#   • the gender check (_gender_conflict) does not say two people;
+#   • when the student has a 10th or 12th school code and the Avanti student has a board school
+#     code, one of them agrees (a common name and a DOB alone can be another student);
+#   • grade-12 frame first, the all-grade frame for students it does not place;
+#   • one Avanti id, or the forward tie-breaker for two or more.
+_STRONG_RECORD_TIERS = {"record_name_dob_strong": 13}
+
+
+def _first_word_ok(a, b) -> bool:
+    """True when the first name word (3 or more letters) of one name is a word of the other
+    name, or a close spelling or a prefix of one ('KAVITA' ~ 'KAVITHA', 'ROHAN' ~
+    'ROHANBHAI')."""
+    ta = [t for t in re.split(r"[^A-Za-z]+", str(a).upper()) if len(t) > 2]
+    tb = [t for t in re.split(r"[^A-Za-z]+", str(b).upper()) if len(t) > 2]
+
+    def close(x, y):
+        return (x == y or nd._word_match(x, y) == "word"
+                or (min(len(x), len(y)) >= 4 and (x.startswith(y) or y.startswith(x))))
+    return bool(ta and tb) and (any(close(ta[0], y) for y in tb) or any(close(tb[0], x) for x in ta))
+
+
+def _record_strong_candidates(r: pd.DataFrame, avanti: pd.DataFrame, tie: dict | None) -> pd.DataFrame:
+    """The strong record pass tests on each record's own name and DOB. One row per
+    (student_key, Avanti id, tier)."""
+    cols = ["student_key", "pk_student_id", "conf"]
+    rd = r[_present(r.norm_name) & _present(r.dob)]
+    m = rd.merge(avanti.loc[_present(avanti.dob), ["pk_student_id", "norm_name", "dob", "gender"]],
+                 on="dob", suffixes=("", "_av"))
+    if len(m):   # a list mask on an empty frame drops its columns
+        m = m[[_am_strong_ok(n, a) and _first_word_ok(n, a) and not _gender_conflict(g, n, ga, a)
+               for n, a, g, ga in zip(m.norm_name, m.norm_name_av, m.gender, m.gender_av)]]
+    if len(m) and tie is not None:
+        # school veto: the student's 10th/12th school codes and the Avanti board school codes, when
+        # both are known, must have one in common. Only Avanti codes that are 10th/12th board
+        # codes count: dim_student_historical has codes of another kind, which never agree.
+        b = r[r.node_id.str.match(r"b1[02]:")]
+        own = b.assign(school=b.node_id.map(tie["school"])).dropna(subset=["school"])
+        own = own.groupby("student_key").school.agg(set).to_dict()
+        board = set(tie["school"].values())
+        av = {fk: a["schools"] & board for fk, a in tie["avanti"].items() if a["schools"] & board}
+        m = m[[not (own.get(k) and av.get(str(fk))) or bool(own[k] & av[str(fk)])
+               for k, fk in zip(m.student_key, m.pk_student_id)]]
+    return m.assign(conf="record_name_dob_strong")[cols]
+
+
+def _strong_record_pass(rec: pd.DataFrame, blank: set, avanti_g12: pd.DataFrame,
+                        avanti_all: pd.DataFrame, tie: dict | None, pick=None) -> pd.DataFrame:
+    """Match the students in `blank` with the strong record pass tests. Returns rows in the
+    _match_fk_v2 output shape."""
+    r = rec[rec.student_key.isin(blank)]
+    g12 = _record_strong_candidates(r, avanti_g12, tie)
+    wide = _record_strong_candidates(r[~r.student_key.isin(set(g12.student_key))], avanti_all, tie)
+    cand = pd.concat([g12, wide], ignore_index=True).drop_duplicates()
+    return _settle_candidates(cand, _STRONG_RECORD_TIERS, pick)
+
+
 def _settle_candidates(cand: pd.DataFrame, tiers: dict, pick) -> pd.DataFrame:
     """Candidate rows (student_key, pk_student_id, conf) -> one row per student in the
     _match_fk_v2 output shape. One Avanti id -> filled (its best tier); two or more -> the
@@ -2134,6 +2259,12 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
             out = pd.concat([out[~out.student_key.isin(set(sp.student_key))], sp], ignore_index=True)
             print(f"  step 6 school pass (fill-only) — {sp.fk_avanti_student_id.notna().sum():,} filled, "
                   f"{(sp.match_confidence == 'ambiguous').sum():,} withheld (2+ Avanti students)")
+            # strong record pass — fill-only, last, for students that still have no candidate
+            gp = _strong_record_pass(rec, blank - set(rp.student_key) - set(sp.student_key),
+                                     avanti_g12, avanti_all, tie, pick)
+            out = pd.concat([out[~out.student_key.isin(set(gp.student_key))], gp], ignore_index=True)
+            print(f"  step 6 strong record pass (fill-only) — {gp.fk_avanti_student_id.notna().sum():,} filled, "
+                  f"{(gp.match_confidence == 'ambiguous').sum():,} withheld (2+ Avanti students)")
     n_pick = int((out.fk_avanti_student_id.notna() & (pd.to_numeric(out.match_count, errors="coerce") > 1)).sum())
     print(f"  step 6 forward tie-breaker — {n_pick:,} students got one of 2+ Avanti ids, "
           f"{(out.match_confidence == 'ambiguous').sum():,} stay ambiguous")
@@ -2141,10 +2272,10 @@ def _match_fk_v2(sid: pd.DataFrame, avanti_g12: pd.DataFrame, avanti_all: pd.Dat
 
 
 # Tier order of _match_fk_v2's match_confidence values, best first — used to rank
-# the claimants of one Avanti id in _reconcile_shared_fk. The record-pass tiers rank last.
+# the claimants of one Avanti id in _reconcile_shared_fk. The record-pass and school-pass tiers rank last.
 _CONF_PRI = {"direct_student_id": 1, "name_dob": 2, "name_dob_swapped": 3, "name_father": 4,
              "name_dob_strong": 5, "name_dob_fuzzy": 6, "roll10_crosswalk": 7,
-             "prod_nta_crosswalk": _PROD_NTA_PRI, **_RECORD_TIERS, **_SCHOOL_TIERS}
+             "prod_nta_crosswalk": _PROD_NTA_PRI, **_RECORD_TIERS, **_SCHOOL_TIERS, **_STRONG_RECORD_TIERS}
 
 
 _TIES = None   # scratch run: the 6b ties and their points (written to <out_table>_ties)
