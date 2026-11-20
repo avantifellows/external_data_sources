@@ -22,6 +22,10 @@ RAW_FILES = [
     "KA_engg_2025_HK_R3.pdf",
     "KA_engg_2025_all_cutoffs_R3.csv",
     "KA_engg_2025_draft_seat_matrix.pdf",
+    # pharmacy and agriculture (parse_streams_2025.py): KEA course code
+    # B / H / N / F / V / S x pool R (rest of Karnataka) / H (Kalyana-Karnataka)
+    "KA_streams_2025_cutoffs_R3.csv",
+    *[f"KA_{code}_2025_{pool}_R3.pdf" for code in "BHNFVS" for pool in "RH"],
 ]
 OPTIONAL_RAW_FILES = ["KA_engg_closing_ranks_govt_2024.csv"]
 

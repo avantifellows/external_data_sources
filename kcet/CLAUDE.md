@@ -5,7 +5,7 @@ See the [top-level CLAUDE.md](../CLAUDE.md) for cross-source conventions.
 
 ## What this folder is
 
-An ingestion pipeline for KCET (Karnataka CET) engineering seat-allotment
+An ingestion pipeline for KCET (Karnataka CET) engineering, pharmacy and agriculture seat-allotment
 cutoffs. Source data is KEA's official cutoff PDFs, parsed by `parse_KA_2025.py`
 in the `avantifellows/futures-v2` repo and deposited into `kcet/raw/` as a CSV.
 
@@ -49,6 +49,7 @@ HK pool appends `H`: `1H`, `2AH`, `GMH`, `SCH` …
 # Copy raw files from futures-v2 output into raw/
 # Then:
 python3 scripts/build_college_type_map.py --check
+python3 scripts/parse_streams_2025.py      # pharma + agriculture PDFs -> raw CSV
 python3 scripts/build_clean.py --dry-run   # validate
 python3 scripts/build_clean.py             # write clean/kcet_fact_cutoffs.parquet
 python3 scripts/upload_to_gcs.py
@@ -59,7 +60,7 @@ python3 scripts/load_bq.py
 
 | Table | Rows | Grain | Clustering |
 |---|---:|---|---|
-| `kcet_fact_cutoffs` | 13,604 | (college_code, course_name, domicile_pool, category_code, year, round) | year, domicile_pool, category_code, college_code |
+| `kcet_fact_cutoffs` | 15,372 (13,604 engineering, 1,000 pharma, 768 agriculture) | (college_code, course_name, domicile_pool, category_code, year, round) | year, domicile_pool, category_code, college_code |
 
 ## Design decisions
 
