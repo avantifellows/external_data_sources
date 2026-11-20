@@ -116,6 +116,9 @@ def main() -> None:
             if not path.exists():
                 sys.exit(f"missing {path.name}: download {URL.format(code=code, pool=p)}")
             got = parse(path, stream, pool)
+            for r in got:
+                r["source_file"] = path.name
+                r["source_url"] = URL.format(code=code, pool=p)
             print(f"  {label:26} {pool}: {len(got):5} ranks, {len({r['college_code'] for r in got})} colleges")
             rows += got
     df = pd.DataFrame(rows)
