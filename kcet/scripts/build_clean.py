@@ -200,12 +200,64 @@ def build() -> pd.DataFrame:
     return df
 
 
+STREAMS_CSV = "KA_streams_2025_cutoffs_R3.csv"
+# KEA's stream labels -> the table's lowercase `stream` values
+STREAM_VALUES = {"Pharma": "pharma", "Agriculture": "agriculture"}
+
+
+def build_streams() -> pd.DataFrame:
+    """KEA 2025 Round 3 cut-offs for B.Pharm / Pharm-D and the agriculture
+    courses (parse_streams_2025.py). KEA's seat matrix behind the
+    college-type codemap covers engineering colleges only, so these rows
+    carry college_type Unknown (absence is never proof of private)."""
+    path = _find_one(STREAMS_CSV)
+    print(f"Reading: {path.name}")
+    df = pd.read_csv(path, dtype={"college_code": "string"})
+    df["closing_rank"] = pd.to_numeric(df["closing_rank"], errors="raise")
+    df["year"] = pd.to_numeric(df["year"], errors="raise").astype("Int64")
+    df["round"] = pd.to_numeric(df["round"], errors="raise").astype("Int64")
+    unknown_streams = set(df["stream"]) - set(STREAM_VALUES)
+    if unknown_streams:
+        raise ValueError(f"Unexpected streams: {sorted(unknown_streams)}")
+    df["stream"] = df["stream"].map(STREAM_VALUES)
+    df["course_name_raw"] = df["course_name"]
+    df["college_type"] = "Unknown"
+    df["college_type_detail"] = "Unknown"
+    df["college_type_source"] = "unclassified"
+    df["state"] = "KARNATAKA"
+    df["cet_name"] = "KCET"
+    df = df[OUTPUT_COLS]
+    nulls = df.isna().any()
+    if nulls.any():
+        raise ValueError(f"Stream rows have nulls: {nulls[nulls].index.tolist()}")
+    expected = {"rows": 1_768, "pharma_rows": 1_000, "agriculture_rows": 768}
+    actual = {
+        "rows": len(df),
+        "pharma_rows": int((df["stream"] == "pharma").sum()),
+        "agriculture_rows": int((df["stream"] == "agriculture").sum()),
+    }
+    if actual != expected:
+        raise ValueError(f"KCET stream anchors changed: expected {expected}, got {actual}")
+    return df
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Validate without writing")
     args = parser.parse_args()
 
     df = build()
+    streams = build_streams()
+    # a college code is one stream's (E = engineering, B/H = pharmacy, ...)
+    clash = set(df["college_code"]) & set(streams["college_code"])
+    if clash:
+        raise ValueError(f"College codes in both engineering and streams: {sorted(clash)[:10]}")
+    df = pd.concat([df, streams], ignore_index=True)
+    dup = df.duplicated(GRAIN, keep=False)
+    if dup.any():
+        raise ValueError(f"Duplicate declared grain:\n{df.loc[dup, GRAIN].head(10).to_string(index=False)}")
+    print(df.groupby("stream").agg(rows=("closing_rank", "size"),
+                                   colleges=("college_code", "nunique")).to_string())
     print(
         f"\nValidated {len(df):,} rows; {df['college_code'].nunique()} colleges; "
         f"{df['course_name'].nunique()} courses; {df['category_code'].nunique()} categories"

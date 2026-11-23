@@ -4,9 +4,12 @@
 # BQ table:       avantifellows.external_data_sources.kcet_fact_cutoffs
 
 description: |
-  KCET (Karnataka Common Entrance Test) engineering seat-allotment cutoffs —
-  the closing rank for every (college, course, category) seat bucket.
-  13,604 rows across 229 colleges. One row = one allotted seat bucket in one
+  KCET (Karnataka Common Entrance Test) seat-allotment cutoffs — the closing
+  rank for every (college, course, category) seat bucket. 15,372 rows:
+  engineering 13,604 (229 colleges), pharma 1,000 (151: B-Pharma, Pharma-D)
+  and agriculture 768 (48: B.Sc. (Hons) agriculture and allied, B.V.Sc,
+  fisheries, agricultural engineering, food and dairy technology).
+  Filter by `stream` first. One row = one allotted seat bucket in one
   round of one year. Blank/`--` cells are intentionally absent.
 
   WHAT KCET IS. KCET is Karnataka's state-level engineering entrance exam,
@@ -45,7 +48,7 @@ description: |
      Never mix domicile_pool='GEN' and 'HK' rows without filtering by
      domicile_pool first.
 
-rows: 13604
+rows: 15372
 grain: (college_code, course_name, domicile_pool, category_code, year, round)
 
 columns:
@@ -62,7 +65,11 @@ columns:
   - name: stream
     type: STRING
     mode: REQUIRED
-    description: Stream. Always 'engineering' in this table.
+    description: >
+      Stream: 'engineering', 'pharma' or 'agriculture'. Each is its own KEA
+      list; college codes don't overlap (E = engineering, B = pharmacy,
+      F/N/S/V = agriculture). Non-engineering rows carry college_type
+      'Unknown' (the classifying seat matrix is engineering only).
 
   - name: year
     type: INTEGER
@@ -81,8 +88,8 @@ columns:
     type: STRING
     mode: REQUIRED
     description: >
-      KEA college code (e.g. 'E001'). The 'E' prefix denotes an engineering
-      college. Stable across years — use as the primary join key.
+      KEA college code (e.g. 'E001'). The prefix is the KEA list: 'E'
+      engineering, 'B' pharmacy, 'F'/'N'/'S'/'V' agriculture. Stable across years — use as the primary join key.
 
   - name: college_name
     type: STRING

@@ -1,8 +1,9 @@
 # kcet/
 
-KCET (Karnataka Common Entrance Test) engineering seat-allotment cutoffs —
-closing ranks for every (college, course, category) seat bucket. 13,604 rows,
-229 colleges, 2025 Third Round.
+KCET (Karnataka Common Entrance Test) seat-allotment cutoffs — closing ranks
+for every (college, course, category) seat bucket, in three streams:
+engineering (13,604 rows, 229 colleges), pharmacy (1,000 rows, 151 colleges)
+and agriculture (768 rows, 48 colleges). 15,372 rows, 2025 Third Round.
 
 ## Pipeline shape
 
@@ -86,7 +87,7 @@ python3 scripts/load_bq.py
 
 | Table | Grain | Rows | Clustering |
 |---|---|---:|---|
-| `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 13,604 | year, domicile_pool, category_code, college_code |
+| `kcet_fact_cutoffs` | (college_code, course_name, domicile_pool, category_code, year, round) | 15,372 | year, domicile_pool, category_code, college_code |
 
 Column docs: [`schemas/kcet_fact_cutoffs.yaml`](schemas/kcet_fact_cutoffs.yaml).
 
@@ -100,4 +101,8 @@ B.V.Sc, Agricultural Engineering). Category headers are read per table; ranks
 can be halves and some wrap across lines ("105579.\n5"). The "(Pract.)" lists
 (P, Q, T) rank on the practical exam, not KCET, and are not parsed.
 college-predictor's `scripts/merge_kcet_2025_engineering.py --streams-src`
-reads the CSV. Not yet loaded to BQ (kcet_fact_cutoffs is engineering only).
+reads the CSV. `build_clean.py` appends it to the engineering rows
+(`stream` 'pharma' / 'agriculture', `course_name_raw` = `course_name`,
+`source_file` / `source_url` per KEA PDF). KEA's seat matrix behind the
+college-type codemap covers engineering only, so these rows carry
+`college_type` 'Unknown'.
