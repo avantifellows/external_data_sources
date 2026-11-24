@@ -89,7 +89,7 @@ OUT_TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.jnv_student_outcome_mapping"
 # The per-stage name/father/mother/dob comparison columns served their purpose
 # (9 rounds of QA, see data-assistant-pr44.md findings #1-9) and are dropped
 # here; each stage's natural join key (roll/app/test_year) is kept so a consumer
-# can still reach the source row directly. 55 columns in total. The internal
+# can still reach the source row directly. The internal
 # `attempt_year` column is dropped from the OUTPUT (the grain is encoded via the
 # jee/neet _test_year columns); it is still used internally for sorting. The
 # outcome/marks payload (step 7, below the join keys) comes from
@@ -99,7 +99,7 @@ FINAL_COLS = [
     "match_confidence", "match_count",
     # resolved student identity — coalesced across the student's linked records
     # (same values the STEP-6 fk matcher keyed on; see _build_sid).
-    "student_name", "father_name", "mother_name", "student_dob",
+    "student_name", "father_name", "mother_name", "student_dob", "student_gender",
     "student_program", "student_product",
     # stage-availability flags — STUDENT-LEVEL (true if the student has that stage
     # in ANY of their rows, broadcast onto every row so one row is enough to filter).
@@ -108,22 +108,23 @@ FINAL_COLS = [
     "ncst_source", "ncst_test_year", "ncst_roll_no",
     # 10th
     "board_10th_exam_year", "board_10th_roll_number",
-    "board_10th_school_code", "board_10th_school_name",
+    "board_10th_school_code", "board_10th_school_name", "board_10th_school_udise_code",
     "marks_10_obtained", "result_10",
     "marks_10_math", "marks_10_science", "marks_10_english",
     # 12th
     "board_12th_exam_year", "board_12th_roll_number",
-    "board_12th_school_code", "board_12th_school_name",
+    "board_12th_school_code", "board_12th_school_name", "board_12th_school_udise_code",
     "marks_12_obtained", "result_12",
     "marks_12_physics", "marks_12_chemistry", "marks_12_maths", "marks_12_biology",
     # JEE (incl. advanced)
-    "jee_test_year", "jee_application_no",
+    "jee_test_year", "jee_application_no", "jee_category",
     "jee_total_percentile", "jee_air", "jee_category_rank",
     "jee_mains_qualified", "jee_advanced_qualified",
     "jee_adv_all_india_rank", "jee_adv_category_rank", "jee_adv_prep_category_rank",
     # NEET
-    "neet_test_year", "neet_application_no",
+    "neet_test_year", "neet_application_no", "neet_category",
     "neet_total_score", "neet_air", "neet_category_rank", "neet_qualified",
+    "neet_b1a_cleared", "neet_b1b_cleared",
 ]
 
 STAGES = ["ncst", "b10", "b12", "jee", "neet"]
@@ -1701,6 +1702,7 @@ def _read_dim_passthrough(client) -> pd.DataFrame:
             COALESCE(pk_student_id, apaar_id) AS fk_avanti_student_id,
             {name} AS student_name, {fname} AS father_name, {mname} AS mother_name,
             FORMAT_DATE('%Y-%m-%d', DATE(date_of_birth)) AS student_dob,
+            {_GENDER('student_gender')} AS student_gender,
             student_program, student_product,
             CAST(SUBSTR(CAST(academic_year AS STRING), 6, 4) AS INT64) AS cohort_year
         FROM `avantifellows.production_dbt_final.dim_student`
@@ -1711,6 +1713,7 @@ def _read_dim_passthrough(client) -> pd.DataFrame:
         df[c] = _S(df[c])
     df["father_name"] = df.father_name.where(_present(df.father_name))
     df["mother_name"] = df.mother_name.where(_present(df.mother_name))
+    df["student_gender"] = df.student_gender.where(_present(df.student_gender))
     df["cohort_year"] = pd.to_numeric(df.cohort_year, errors="coerce").astype("Int64")
     df = df[_present(df.fk_avanti_student_id) & _present(df.student_dob)]
     # a grade-12 repeater can appear in both AYs — keep the later cohort
@@ -1721,6 +1724,7 @@ _COALESCE_NAME_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
 _COALESCE_DOB_ORDER = ["b10", "jee", "neet", "ncst"]   # 12th board carries no usable DOB (verified empty)
 _COALESCE_FATHER_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
 _COALESCE_MOTHER_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
+_COALESCE_GENDER_ORDER = ["b12", "b10", "jee", "neet", "ncst"]
 
 
 def _coalesce_by_source(contrib: pd.DataFrame, col: str, order: list) -> pd.Series:
@@ -1763,6 +1767,10 @@ def _build_sid(nodes: dict, n2k: pd.Series, refs: dict, ncst24: pd.DataFrame,
     # gender: the one gender of the student's records; NA when they have none or both
     g = contrib.loc[_present(contrib.gender), ["student_key", "gender"]].drop_duplicates()
     sid["gender"] = g.drop_duplicates("student_key", keep=False).set_index("student_key").gender
+    # student_gender: the output column. It takes the first source that has a gender, in the
+    # same order as the name, so a student with two different genders still gets a value.
+    # The gender check of step 6 uses `gender` above, not this column.
+    sid["student_gender"] = _coalesce_by_source(contrib, "gender", _COALESCE_GENDER_ORDER)
     sid = sid.reset_index()
 
     # direct avanti id — jee (jee25+jee24) then neet (neet24) then b10 then ncst;
@@ -2469,6 +2477,7 @@ def _read_marks(client) -> dict:
             WHERE roll_number IS NOT NULL AND exam_year IS NOT NULL GROUP BY 1, 2""",
         "jee_results": """
             SELECT test_year AS jee_test_year, application_no AS jee_application_no,
+                ANY_VALUE(category)               AS jee_category,
                 ANY_VALUE(mains_total_score)      AS jee_total_percentile,
                 ANY_VALUE(mains_all_india_rank)   AS jee_air,
                 ANY_VALUE(mains_category_rank)    AS jee_category_rank,
@@ -2481,12 +2490,25 @@ def _read_marks(client) -> dict:
             WHERE application_no IS NOT NULL AND test_year IS NOT NULL GROUP BY 1, 2""",
         "neet_results": """
             SELECT test_year AS neet_test_year, application_no AS neet_application_no,
+                ANY_VALUE(category)            AS neet_category,
                 ANY_VALUE(neet_total_score)    AS neet_total_score,
                 ANY_VALUE(neet_all_india_rank) AS neet_air,
                 ANY_VALUE(neet_category_rank)  AS neet_category_rank,
-                ANY_VALUE(neet_qualified)      AS neet_qualified
+                ANY_VALUE(neet_qualified)      AS neet_qualified,
+                ANY_VALUE(b1a_cleared)         AS neet_b1a_cleared,
+                ANY_VALUE(b1b_cleared)         AS neet_b1b_cleared
             FROM `avantifellows.external_data_sources.jnv_fact_neet_results`
             WHERE application_no IS NOT NULL AND test_year IS NOT NULL GROUP BY 1, 2""",
+        # school_code -> UDISE code. A school code with two UDISE codes gives no value.
+        "school_udise": """
+            SELECT school_code, ANY_VALUE(udise) AS school_udise_code
+            FROM (
+                SELECT CAST(school_code AS STRING) AS school_code, TRIM(school_udise_code) AS udise
+                FROM `avantifellows.production_dbt_final.dim_school`
+                WHERE school_code IS NOT NULL AND NULLIF(TRIM(school_udise_code), '') IS NOT NULL
+            )
+            GROUP BY 1
+            HAVING COUNT(DISTINCT udise) = 1""",
         "program_lookup": """
             SELECT fk_avanti_student_id, student_program, student_product FROM (
                 SELECT COALESCE(pk_student_id, apaar_id) AS fk_avanti_student_id, student_program,
@@ -2507,7 +2529,7 @@ def _read_marks(client) -> dict:
         for c in df.columns:
             if c in _MARKS_YEAR_COLS:
                 df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")   # match v2 spine keys
-            elif c.endswith("_qualified"):
+            elif c.endswith(("_qualified", "_cleared")):
                 pass                                                             # boolean — leave as-is
             elif c.endswith("_rank") or c.startswith(("marks_", "jee_total", "jee_air",
                                                       "neet_total", "neet_air")):
@@ -2578,7 +2600,7 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
     # resolved per-student identity (name / parents / dob) for the output — the
     # SAME source-coalesced values the STEP-6 matcher used (see _build_sid), so
     # the emitted identity is consistent with what the fk match keyed on.
-    ident = sid[["student_key", "norm_name", "norm_father", "norm_mother", "dob"]].rename(
+    ident = sid[["student_key", "norm_name", "norm_father", "norm_mother", "dob", "student_gender"]].rename(
         columns={"norm_name": "student_name", "norm_father": "father_name",
                  "norm_mother": "mother_name", "dob": "student_dob"})
 
@@ -2617,6 +2639,11 @@ def _build_rows(nodes: dict, key: pd.DataFrame, refs: dict, avanti_g12: pd.DataF
             .merge(marks["jee_results"], on=["jee_test_year", "jee_application_no"], how="left")
             .merge(marks["neet_results"], on=["neet_test_year", "neet_application_no"], how="left")
             .merge(marks["program_lookup"], on="fk_avanti_student_id", how="left"))
+    # UDISE code of each board school: the join key to dim_school and the UDISE tables for
+    # the state, district and region of the school.
+    udise = marks["school_udise"].set_index("school_code").school_udise_code
+    for grade in ("10th", "12th"):
+        rows[f"board_{grade}_school_udise_code"] = rows[f"board_{grade}_school_code"].map(udise)
 
     # stage-availability flags — STUDENT-LEVEL (true if the student has that stage in
     # ANY of their attempt-year rows), broadcast across the student's rows. jee is

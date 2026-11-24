@@ -84,3 +84,7 @@ columns:
     type: boolean
   - name: neet_qualified
     type: boolean
+  - name: b1a_cleared
+    type: boolean
+  - name: b1b_cleared
+    type: boolean

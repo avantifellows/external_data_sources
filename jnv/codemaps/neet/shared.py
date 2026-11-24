@@ -34,6 +34,7 @@ CANONICAL_COLS = [
     "neet_all_india_rank", "neet_category_rank", "neet_all_india_pwd_rank",
     # NEET qualification
     "neet_qualified_from_data", "neet_qualified_calculated", "neet_qualified",
+    "b1a_cleared", "b1b_cleared",
 ]
 
 # ── Column types ──────────────────────────────────────────────────────────────
@@ -84,6 +85,8 @@ COLUMN_TYPES = {
     "neet_qualified_from_data":     "boolean",
     "neet_qualified_calculated":    "boolean",
     "neet_qualified":               "boolean",
+    "b1a_cleared":                  "boolean",
+    "b1b_cleared":                  "boolean",
 }
 
 
