@@ -3,13 +3,24 @@
 JEE Mains/Advanced, NEET, JNVST selection test, and EI Asset Test results for
 Jawahar Navodaya Vidyalaya (JNV) students.
 
-Produces six BigQuery tables:
-- `avantifellows.external_data_sources.jnv_fact_jee_results` (2021–2026)
-- `avantifellows.external_data_sources.jnv_fact_neet_results` (2021–2025)
-- `avantifellows.external_data_sources.jnv_fact_selection_test_results` (2018)
-- `avantifellows.external_data_sources.jnv_fact_ei_asset_test_results`
-- `avantifellows.external_data_sources.jnv_fact_board_results_10th` (2022–2026)
-- `avantifellows.external_data_sources.jnv_fact_board_results_12th` (2022–2026)
+## Which tables are external, and which are ours
+
+All tables are in `avantifellows.external_data_sources`.
+
+| Table | Whose data | Where the data comes from | Years |
+|---|---|---|---|
+| `jnv_fact_jee_results` | External | NTA files. JEE Main for each year. JEE Advanced ranks for 2024 and 2025 only. | Test years 2021–2026 |
+| `jnv_fact_neet_results` | External | NTA files. | Test years 2021–2025 |
+| `jnv_fact_board_results_10th` | External | CBSE Grade 10 board results, one file for each year from CBSE/NVS. | Exam years 2022–2026 |
+| `jnv_fact_board_results_12th` | External | CBSE Grade 12 board results, one file for each year from CBSE/NVS. | Exam years 2022–2026 |
+| `jnv_fact_selection_test_results` | External | JNVST, the Class 6 selection test for admission to a JNV. One file for all districts. | 2018 only |
+| `jnv_fact_ei_asset_test_results` | External | EI ASSET, a diagnostic test by Educational Initiatives (EI). One file. | 2025 only |
+| `jnv_student_outcome_mapping` | Ours | Built by `scripts/build_student_outcome_mapping.py` from the JEE, NEET and board tables above, the two NCST tables (`dakshana_fact_ncst_results`, `nvs_fact_ncst_results`) and Avanti's `dim_student`. | Cohort years 2021–2028 |
+
+An external table holds the data of the source file, cleaned. Some of its columns are ours:
+
+- `fk_avanti_student_id`, `match_confidence` and `match_count` on the JEE, NEET and board tables. `scripts/add_avanti_fk.py` writes them from the mapping.
+- The `*_qualified_calculated` columns on the JEE and NEET tables. The cleaning scripts calculate them from the cutoffs in `production_dbt_final.dim_nta_cutoffs`.
 
 See [`CLAUDE.md`](CLAUDE.md) for full pipeline orientation, design decisions, and pitfalls.
 
