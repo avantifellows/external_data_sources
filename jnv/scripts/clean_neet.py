@@ -35,9 +35,11 @@ from codemaps.neet.shared import (
 
 # ── BigQuery cutoff fetch ─────────────────────────────────────────────────────
 
-def fetch_neet_cutoffs():
+def fetch_neet_cutoffs(academic_level="NEET Qual."):
     """
-    Fetch NEET qualifying cutoffs from dim_nta_cutoffs.
+    Fetch the NEET cutoffs of one academic level from dim_nta_cutoffs.
+    "NEET Qual." is the qualifying cutoff (B2). "B1a" and "B1b" are the two B1 bars;
+    B1a is the higher bar.
     Returns dict[(test_year_str, category)] -> min_value, or None on failure.
     Cutoff values are raw marks (not percentile).
     """
@@ -50,13 +52,15 @@ def fetch_neet_cutoffs():
             SELECT CAST(test_year AS STRING) AS test_year, category, min_value
             FROM `avantifellows.production_dbt_final.dim_nta_cutoffs`
             WHERE test_name = 'NEET'
-              AND academic_level = 'NEET Qual.'
+              AND academic_level = @academic_level
         """
+        job_config = bigquery.QueryJobConfig(query_parameters=[
+            bigquery.ScalarQueryParameter("academic_level", "STRING", academic_level)])
         return {(row.test_year, row.category): row.min_value
-                for row in client.query(query).result()}
+                for row in client.query(query, job_config=job_config).result()}
     except Exception as exc:
-        print(f"  Warning: could not fetch NEET cutoffs from BigQuery ({exc}).\n"
-              "  neet_qualified_calculated will be null.")
+        print(f"  Warning: could not fetch the NEET {academic_level} cutoffs from BigQuery ({exc}).\n"
+              "  The flag that uses them will be null.")
         return None
 
 
@@ -124,7 +128,7 @@ def process_neet_year(df, codemap):
 # ── Post-processing ───────────────────────────────────────────────────────────
 
 def _qualify_neet_calculated(row, cutoffs):
-    """True/False vs NEET qualifying cutoff; None if score or cutoff unavailable."""
+    """True/False vs the cutoff of the row's year and category; None if score or cutoff unavailable."""
     year  = str(row.get("test_year") or "")
     cat   = str(row.get("category") or "")
     score = row.get("neet_total_score")
@@ -136,7 +140,7 @@ def _qualify_neet_calculated(row, cutoffs):
     return bool(float(score) >= float(cutoff))
 
 
-def post_process(df, cutoffs=None):
+def post_process(df, cutoffs=None, b1a_cutoffs=None, b1b_cutoffs=None):
     # ── Board mark pct derivation ─────────────────────────────────────────────
     for grade in ("12", "10"):
         pct = f"marks_{grade}_pct"
@@ -173,6 +177,17 @@ def post_process(df, cutoffs=None):
     df["neet_qualified"] = df["neet_qualified_from_data"].combine_first(
         df["neet_qualified_calculated"]
     )
+
+    # ── B1 flags ──────────────────────────────────────────────────────────────
+    # b1a_cleared / b1b_cleared: the score is at or above the B1a / B1b bar of the
+    # student's category. B1a is the higher bar. neet_qualified is the B2 flag.
+    # Production fact_student_neet_results has the same two flags, as b1a_cleared and
+    # b1_cleared.
+    for col, bars in (("b1a_cleared", b1a_cutoffs), ("b1b_cleared", b1b_cutoffs)):
+        if bars is not None:
+            df[col] = df.apply(lambda r, bars=bars: _qualify_neet_calculated(r, bars), axis=1)
+        else:
+            df[col] = None
 
     return df
 
@@ -215,9 +230,11 @@ def main():
 
     print("Fetching NEET qualifying cutoffs from BigQuery ...")
     cutoffs = fetch_neet_cutoffs()
+    b1a_cutoffs = fetch_neet_cutoffs("B1a")
+    b1b_cutoffs = fetch_neet_cutoffs("B1b")
 
     print("Post-processing ...")
-    combined = post_process(combined, cutoffs)
+    combined = post_process(combined, cutoffs, b1a_cutoffs, b1b_cutoffs)
 
     # Ensure canonical column order
     for col in CANONICAL_COLS:
@@ -240,6 +257,7 @@ def main():
     for col in [
         "neet_total_score", "neet_all_india_rank",
         "neet_qualified_from_data", "neet_qualified_calculated", "neet_qualified",
+        "b1a_cleared", "b1b_cleared",
     ]:
         pct = combined[col].isna().mean() * 100
         print(f"  {col}: {pct:.1f}% null")

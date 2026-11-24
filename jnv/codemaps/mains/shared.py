@@ -153,7 +153,9 @@ def normalize_gender(val):
 def normalize_category(cat_val, pwd_val):
     if pd.isna(cat_val):
         return None
-    c = str(cat_val).strip().upper().replace("-NCL", "").replace(" ", "")
+    # Remove the spaces first: NTA writes OBC as "OBC- NCL" and "OBC- NCL (Central List)",
+    # and "-NCL" does not match while the space is there.
+    c = str(cat_val).upper().replace(" ", "").replace("(CENTRALLIST)", "").replace("-NCL", "")
 
     # Detect PWD encoded in the category string itself (e.g. "Gen-EWS-PwD", "PWD-OBC", "OBC-PWD")
     cat_pwd = "PWD" in c

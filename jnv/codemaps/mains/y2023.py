@@ -69,7 +69,9 @@ CODEMAP = {
         "mains_sc_rank":                  ["AI_SC1"],
         "mains_st_rank":                  ["AI_ST1"],
         "mains_ews_rank":                 ["AI_EWS1"],
-        "jee_mains_qualified":      ["SELE", "Qualified"],
+        # No "jee_mains_qualified" entry: the 2023 file has no yes/no qualified column.
+        # SELE holds the name of a category list (for example UR-ALL), so the calculated
+        # flag gives the result for 2023.
         # NELIG_ADV: True = ineligible for JEE Advanced
         "jee_adv_ineligible":       ["NELIG_ADV"],
         "jee_adv_ineligibility_reason": ["NELIG_ADV", "NELIG_REM"],
