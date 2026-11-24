@@ -45,6 +45,21 @@ Agriculture; everything else collapses to "General graduate/PG"):
 | NIRF | [`../nirf/codemaps/discipline_crosswalk.csv`](../nirf/codemaps/discipline_crosswalk.csv) | `ranking_category` → NIRF discipline → PLFS |
 | AISHE | [`../aishe/codemaps/discipline_crosswalk.csv`](../aishe/codemaps/discipline_crosswalk.csv) | AISHE discipline → NIRF → PLFS |
 
+## Who consumes this
+
+The RoI numbers in avantifellows/avanti-overview-document rest on this analysis.
+That repo's `06_alumni_roi_calculation/publish_wage_curves.py` holds the per-tier
+seats, pay and employment rates derived here as cited constants, and writes
+`06/sources/wage_curves.parquet` from them. (Until 2026-11-24 that publisher sat
+here, untracked, as `build_avanti_overview_parquet.py`, and this folder existed
+only on an unpushed branch in a Dropbox clone.) When a number here changes,
+update the constant there and cite the change.
+
+`elite_growth_sources.csv` is the per-tier career-growth (CAGR) evidence with
+citations. The overview repo uses a copy at
+`06/sources/wage_growth_refresh/elite_growth_sources.csv` to override PLFS's
+cross-sectional multipliers for the elite tiers.
+
 ## Files
 
 | File | What |
