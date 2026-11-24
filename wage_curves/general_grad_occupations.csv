@@ -1,0 +1,24 @@
+nco_code,occupation,share_of_genpop_pct,median_wage_inr_mo,median_wage_inr_yr,n
+611,Market Gardeners & Crop Growers,5.5,10500,126000,505
+522,Shop Salespersons,5.0,12000,144000,751
+234,Primary School and Early Childhood Teachers,1.8,8000,96000,352
+411,General Office Clerks,1.6,16000,192000,267
+241,Finance Professionals,1.5,19000,228000,222
+233,Secondary Education Teachers,1.3,12000,144000,276
+413,Keyboard Operators,1.3,14000,168000,203
+112,Managing Directors and Chief Executives,1.2,20200,242400,152
+251,"Software and Application Developers, and",1.0,30000,360000,121
+613,Mixed Crop and Animal Workers,0.8,10000,120000,83
+931,Mining and Construction Labourers,0.8,15000,180000,96
+753,Garment and Related Trades Workers,0.8,4500,54000,98
+235,Other Teaching Professionals,0.8,6000,72000,130
+431,Numerical Clerks,0.8,18600,223200,118
+832,"Car, Van and Motorcycle Drivers",0.7,12000,144000,99
+521,Street and Market Salespersons,0.7,15000,180000,51
+524,Other Sales Workers,0.7,15000,180000,92
+541,Protective Service Workers,0.6,28000,336000,121
+332,Sales and Purchasing Agents and Brokers,0.6,18000,216000,73
+243,"Sales, Marketing and Public Relations",0.5,20000,240000,73
+122,"Sales, Marketing and Development Managers",0.5,25000,300000,71
+(other),Other occupations (each <0.5%),12.8,15000,180000,0
+(none),Not employed / out of labour force,58.8,,,0

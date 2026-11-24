@@ -1,0 +1,241 @@
+"""
+FULL wage curve — every tier of every discipline, top to tail, in one long table.
+
+Each discipline is decomposed into its NIRF-ranked elite tiers (where NIRF
+exists) plus the non-NIRF residual ("Others"), sized as AISHE total − ranked
+and priced off the PLFS population anchor (back-solved so the grad-weighted
+average reconciles to PLFS). Medical is special: its tiers are govt vs private
+MBBS+BDS (from NMC/College DB seats), priced by PLFS occupation wages (doctor /
+dentist / nurse), since doctor pay doesn't follow a campus-placement model.
+
+Layout (top to tail):
+  Engineering : IIT · IIIT · NIT · Top Colleges (rest of top-200 NIRF) · Others (non-NIRF)
+  Medical     : Govt Medical (MBBS+BDS) · Pvt Medical (MBBS+BDS) · Others (AYUSH/Nursing/allied)
+  Agriculture : NIRF ranked · Others (non-NIRF)
+  Law         : NIRF ranked · Others (non-NIRF)
+  Others      : all non-NIRF general disciplines (Arts/Commerce/Science/IT/Mgmt/…)
+
+Inputs: NIRF (BQ), AISHE outturn (parquet), JoSAA seats + govt medical seats
+(CSVs here), PLFS young-cohort anchors (constants below, from
+wage_by_discipline.py and PLFS NCO-occupation cuts).
+
+Output: wage_curves/wage_curve_full.csv      Run: python3 wage_curves/build_full_curve.py
+"""
+
+import csv as csvmod
+from pathlib import Path
+
+from datasource import bq, num as n, aishe_ug, aishe_grand_ug
+
+ROOT = Path(__file__).resolve().parent
+ENG_SQL = ROOT / "nirf_engineering_tiers.sql"
+SEATS_CSV = ROOT / "josaa_2022_seats.csv"
+MED_CSV = ROOT / "govt_medical_seats.csv"
+OUT = ROOT / "wage_curve_full.csv"
+
+COMPLETION = 0.93                  # UG seats → graduates
+# Elite engineering pool = JEE Main qualifiers eligible for JEE Advanced (~2.5 lakh).
+# IIT+IIIT+NIT+Top Colleges are anchored to sum to this; Top Colleges expands to fill it
+# by absorbing the TOP of the Engg-Others tail (assumed to perform like Top Colleges).
+ELITE_POOL = 250_000
+# PLFS ANNUAL wage anchors, ₹/yr — DEGREE buckets (rate + wage on the same population).
+# Eng & Agri are separable in PLFS (own tedu codes); Law is not → it falls in the general
+# graduate bucket (A_GEN). Medicine uses occupation wages because MBBS→doctor is a tight pipeline.
+A_ENG, A_AGRI, A_GEN = 360_000, 252_000, 180_000
+W_MBBS, W_BDS, W_NURS = 540_000, 240_000, 192_000   # occupation (NCO 221 doctor / 226 dentist / 222 nurse)
+# In-field occupation wages — reference only (what those WORKING in the field earn, not all grads):
+OCC_LAW, OCC_AGRI = 300_000, 300_000                # NCO 261 legal; NCO 131+213 agri (see general_grad_occupations.csv)
+# PLFS young-cohort employment rate (WPR), % — the placement-rate anchor per discipline
+# (wage_by_discipline.py --age-min 22 --age-max 28). NIRF "placement" is a
+# campus-offer %, PLFS is observed employment %; mixed first-order, like the wages.
+# Law has no PLFS degree bucket → uses the general-graduate WPR (P_GEN).
+P_ENG, P_MED, P_AGRI, P_GEN = 55.9, 50.6, 34.3, 38.5
+# Wage growth to ~age 40 (see wage_growth.py). PLFS cross-sectional 25→40 multiples
+# per discipline; NIRF-ranked ENGINEERING tiers sit above PLFS's range, so they get an
+# elite CAGR instead (9%/yr × 15y, anchored to IIT alumni data — see METHODOLOGY §11).
+ELITE_CAGR = 0.09
+ELITE_MULT = round((1 + ELITE_CAGR) ** 15, 2)            # ≈ 3.64
+GROWTH_PLFS = {"Engineering": 1.72, "Medical": 2.75, "Agriculture": 2.03,
+               "Law": 1.79, "Others (general)": 1.79}
+
+
+def growth_for(disc, tier):
+    """(multiple to age 40, basis label) for a row."""
+    if disc == "Engineering" and not tier.startswith("Others"):
+        return ELITE_MULT, f"elite {ELITE_CAGR:.0%} CAGR ×15y (above PLFS range)"
+    return GROWTH_PLFS.get(disc, 1.79), f"PLFS {disc} 25→40"
+
+
+def nirf_rollup(categories, year):
+    cl = ",".join(f'"{c}"' for c in categories)
+    rows = bq(f"""
+      WITH agg AS (SELECT * FROM `avantifellows.external_data_sources.nirf_fact_aggregate`
+                   WHERE ranking_category IN ({cl}) AND ranking_year = {year}),
+      grad AS (SELECT *, ROW_NUMBER() OVER (
+                 PARTITION BY institute_id, ranking_category, type ORDER BY academic_year DESC) rn
+               FROM agg WHERE students_placed IS NOT NULL)
+      SELECT COUNT(DISTINCT institute_id) n_inst, ROUND(SUM(graduating_on_time)) grads,
+             ROUND(100*SUM(students_placed)/NULLIF(SUM(graduating_on_time),0),1) placement,
+             ROUND(SUM(median_salary*students_placed)/NULLIF(SUM(students_placed),0)) wage
+      FROM grad WHERE rn = 1""")
+    return rows[0]
+
+
+def eng_tiers():
+    rows = bq(ENG_SQL.read_text().replace("@yr", "2022"))
+    return {r["tier"]: r for r in rows}
+
+
+def seats():
+    d = {r["tier"]: int(r["ug_seats_2022"]) for r in csvmod.DictReader(SEATS_CSV.open())}
+    return d
+
+
+def med_seats():
+    out = {}
+    for r in csvmod.DictReader(MED_CSV.open()):
+        out[(r["program"], r["segment"])] = int(r["ug_seats"])
+    return out
+
+
+def main():
+    rows = []
+    grand = aishe_grand_ug()   # all-India UG graduating class, all disciplines
+
+    def add(disc, tier, inst, grads, total, place, wage, src):
+        mult, gbasis = growth_for(disc, tier)
+        rows.append(dict(discipline=disc, tier=tier, institutes=inst,
+                         graduates=round(grads),
+                         share_in_disc_pct=round(grads / total * 100, 1),
+                         share_all_pct=round(grads / grand * 100, 2),
+                         placement_pct=place,
+                         start_wage_inr=round(wage) if wage else None,
+                         wage_growth_pct_to40=round((mult - 1) * 100) if wage else None,
+                         wage_at_40_inr=round(wage * mult) if wage else None,
+                         growth_basis=gbasis if wage else "",
+                         source=src))
+
+    # ---------------- ENGINEERING ----------------
+    et, se = eng_tiers(), seats()
+    eng_total = aishe_ug(["Engineering & Technology"])
+    pubs = {"IIT": "IIT", "IIIT": "IIIT", "NIT": "NIT"}
+    ranked_grads, wage_mass, place_mass = 0.0, 0.0, 0.0
+    eng_rows = []
+    for tier in ["IIT", "IIIT", "NIT"]:
+        g = se[tier] * COMPLETION
+        w, pl = n(et[tier]["wtd_median_salary"]), n(et[tier]["placement_rate"])
+        eng_rows.append((tier, se_count(tier), g, pl, w,
+                         f"NIRF 2022 median; grads = JoSAA {se[tier]:,} seats × {COMPLETION:.0%}"))
+        ranked_grads += g; wage_mass += g * w; place_mass += g * pl
+    # Top Colleges — expanded so IIT+IIIT+NIT+Top Colleges = the JEE-qualifier pool
+    # (ELITE_POOL). The expansion over NIRF's ~143k is the TOP of the Engg-Others tail,
+    # assumed to perform like Top Colleges (NIRF wage + placement). See METHODOLOGY §5.
+    tc = et["Other NIRF"]
+    w_tc, pl_tc = n(tc["wtd_median_salary"]), n(tc["placement_rate"])
+    nirf_tc = n(tc["graduates"])
+    g_tc = ELITE_POOL - ranked_grads          # ranked_grads here = IIT+IIIT+NIT
+    eng_rows.append(("Top Colleges (top-200 NIRF + similar)", None, g_tc, pl_tc, w_tc,
+                     f"NIRF 2022 median; expanded from {nirf_tc:,.0f} NIRF grads to fill the "
+                     f"{ELITE_POOL:,} JEE-qualifier pool (top of Engg-Others, assumed ~Top Colleges)"))
+    ranked_grads += g_tc; wage_mass += g_tc * w_tc; place_mass += g_tc * pl_tc
+    # Others (non-NIRF) — back-solve wage AND placement from the PLFS engineering anchors
+    g_oth = eng_total - ranked_grads
+    w_oth = (A_ENG * eng_total - wage_mass) / g_oth
+    p_oth = (P_ENG * eng_total - place_mass) / g_oth
+    for tier, inst, g, pl, w, src in eng_rows:
+        add("Engineering", tier, inst, g, eng_total, pl, w, src)
+    add("Engineering", "Others (non-NIRF)", None, g_oth, eng_total, round(p_oth, 1), w_oth,
+        f"PLFS back-solve (Eng degree ₹{A_ENG:,}, WPR {P_ENG}%)")
+
+    # ---------------- MEDICAL ----------------
+    ms = med_seats()
+    med_total = aishe_ug(["Medical Science", "Paramedical Science"])
+    for seg in ["Government", "Private"]:
+        mbbs, bds = ms[("MBBS", seg)], ms[("BDS", seg)]
+        g = (mbbs + bds) * COMPLETION
+        w = (mbbs * W_MBBS + bds * W_BDS) / (mbbs + bds)   # seat-weighted MBBS/BDS blend
+        add("Medical", f"{'Govt' if seg=='Government' else 'Pvt'} Medical (MBBS+BDS)",
+            None, g, med_total, P_MED, w,
+            f"PLFS doctor ₹{W_MBBS:,}/dentist ₹{W_BDS:,}; WPR {P_MED}% (Medicine&Health; doctor occ. higher); "
+            f"seats MBBS {mbbs:,}+BDS {bds:,}×{COMPLETION:.0%}")
+    g_used = sum((ms[(p, s)] for p in ("MBBS", "BDS") for s in ("Government", "Private"))) * COMPLETION
+    add("Medical", "Others (AYUSH/Nursing/allied)", None, med_total - g_used, med_total, P_MED, W_NURS,
+        f"PLFS NCO-222 nursing/allied; WPR {P_MED}%; residual of AISHE Medical Science")
+
+    # ---------------- AGRICULTURE ----------------
+    ag = nirf_rollup(["Agriculture and Allied Sectors"], 2023)
+    ag_total = aishe_ug(["Agriculture", "Veterinary & Animal Sciences", "Fisheries Science"])
+    g_ag, w_ag, pl_ag = n(ag["grads"]), n(ag["wage"]), n(ag["placement"])
+    add("Agriculture", "NIRF ranked", int(float(ag["n_inst"])), g_ag, ag_total, pl_ag,
+        w_ag, "NIRF 2023 median")
+    g_ago = ag_total - g_ag
+    w_ago = (A_AGRI * ag_total - g_ag * w_ag) / g_ago
+    p_ago = (P_AGRI * ag_total - g_ag * pl_ag) / g_ago
+    add("Agriculture", "Others (non-NIRF)", None, g_ago, ag_total, round(p_ago, 1), w_ago,
+        f"PLFS agri degree ₹{A_AGRI:,}, WPR {P_AGRI}% (agri-professionals in-field earn ~₹{OCC_AGRI:,}; small n)")
+
+    # ---------------- LAW ----------------
+    la = nirf_rollup(["Law"], 2022)
+    la_total = aishe_ug(["Law"])
+    g_la, w_la, pl_la = n(la["grads"]), n(la["wage"]), n(la["placement"])
+    add("Law", "NIRF ranked", int(float(la["n_inst"])), g_la, la_total, pl_la,
+        w_la, "NIRF 2022 median")
+    g_lao = la_total - g_la
+    w_lao = (A_GEN * la_total - g_la * w_la) / g_lao
+    p_lao = (P_GEN * la_total - g_la * pl_la) / g_lao
+    add("Law", "Others (non-NIRF)", None, g_lao, la_total, round(p_lao, 1), w_lao,
+        f"PLFS general-graduate ₹{A_GEN:,}, WPR {P_GEN}% (law not separable; practising lawyers in-field earn ~₹{OCC_LAW:,})")
+
+    # ---------------- OTHERS (general non-NIRF) ----------------
+    covered = eng_total + med_total + ag_total + la_total
+    g_gen = grand - covered
+    add("Others (general)", "All non-NIRF disciplines", None, g_gen, g_gen, P_GEN, A_GEN,
+        f"PLFS General graduate/PG (wage ₹{A_GEN:,}, WPR {P_GEN}%); Arts/Commerce/Science/IT/Mgmt/…")
+
+    # ---- bottom-line aggregations ----
+    # "Top 3L seats" = the genuinely selective pool — JEE-elite engineering (IIT/IIIT/NIT/
+    # Top Colleges) + govt medical (MBBS+BDS); ~3.1 lakh grads. "Others" = everyone else.
+    TOP3L = {("Engineering", "IIT"), ("Engineering", "IIIT"), ("Engineering", "NIT"),
+             ("Engineering", "Top Colleges (top-200 NIRF + similar)"),
+             ("Medical", "Govt Medical (MBBS+BDS)")}
+
+    def agg_row(label, subset, src):
+        g = sum(r["graduates"] for r in subset)
+        gw = lambda k: sum(r["graduates"] * r[k] for r in subset) / g
+        start, w40, place = gw("start_wage_inr"), gw("wage_at_40_inr"), gw("placement_pct")
+        return dict(discipline="Aggregate", tier=label, institutes=None, graduates=g,
+                    share_in_disc_pct="", share_all_pct=round(g / grand * 100, 1),
+                    placement_pct=round(place, 1), start_wage_inr=round(start),
+                    wage_growth_pct_to40=round((w40 / start - 1) * 100),
+                    wage_at_40_inr=round(w40), growth_basis="graduate-weighted aggregate",
+                    source=src)
+
+    top3l = [r for r in rows if (r["discipline"], r["tier"]) in TOP3L]
+    other = [r for r in rows if (r["discipline"], r["tier"]) not in TOP3L]
+    rows.append(agg_row("Top 3L seats", top3l, "IIT+IIIT+NIT+Top Colleges+Govt Medical"))
+    rows.append(agg_row("Others", other, "all tiers except Top 3L"))
+
+    # ---- write + print ----
+    cols = ["discipline", "tier", "institutes", "graduates", "share_in_disc_pct",
+            "share_all_pct", "placement_pct", "start_wage_inr",
+            "wage_growth_pct_to40", "wage_at_40_inr", "growth_basis", "source"]
+    with OUT.open("w", newline="") as f:
+        w = csvmod.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
+
+    print(f"Wrote {ROOT.name}/{OUT.name}  ({len(rows)} rows)\n")
+    print(f'{"Discipline":<16}{"Tier":<34}{"Grads":>10}{"%all":>6}{"Place%":>7}'
+          f'{"Start ₹":>11}{"Grow%":>7}{"@40 ₹":>12}')
+    print("-" * 103)
+    for r in rows:
+        print(f'{r["discipline"]:<16}{r["tier"][:34]:<34}'
+              f'{r["graduates"]:>10,}{r["share_all_pct"]:>6}'
+              f'{(str(r["placement_pct"]) if r["placement_pct"] else "—"):>7}'
+              f'{r["start_wage_inr"]:>11,}{r["wage_growth_pct_to40"]:>6}%{r["wage_at_40_inr"]:>12,}')
+
+
+def se_count(tier):
+    return {"IIT": 23, "IIIT": 26, "NIT": 31}[tier]
+
+
+if __name__ == "__main__":
+    main()

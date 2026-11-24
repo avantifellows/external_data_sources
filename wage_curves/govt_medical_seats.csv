@@ -1,0 +1,7 @@
+program,segment,colleges,ug_seats,year,source,note
+MBBS,Government,430,60324,2024-25,NMC Revised UG Seat Matrix 2024-25 (repo nmc/ source),management contains 'Govt' incl. govt-society
+MBBS,Private,350,57866,2024-25,NMC Revised UG Seat Matrix 2024-25 (repo nmc/ source),Trust / Society / Private
+MBBS,All,780,118190,2024-25,NMC Revised UG Seat Matrix 2024-25 (repo nmc/ source),
+BDS,Government,60,4046,2025-26,Avanti college DB (medical-national-ranks; DCI/MCC),govt dental colleges
+BDS,Private,270,23970,2025-26,Avanti college DB (medical-national-ranks; DCI/MCC),All − Government
+BDS,All,330,28016,2025-26,Avanti college DB (medical-national-ranks; DCI/MCC),
