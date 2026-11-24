@@ -1,0 +1,115 @@
+# mcc_fact_closing_ranks
+#
+# Source parquet: gs://avantifellows-external-data/mcc/clean/mcc_fact_closing_ranks.parquet
+# BQ table:       avantifellows.external_data_sources.mcc_fact_closing_ranks
+
+description: |
+  MCC All India Quota (AIQ) medical-admission cutoffs — the closing and
+  opening NEET rank for every (institute, course, quota, category) seat bucket
+  allotted in the national counselling round.
+
+  WHAT MCC / AIQ IS. The Medical Counselling Committee (MCC), under DGHS, runs
+  the NATIONAL medical admission counselling. It allots: (a) the 15% All India
+  Quota of government MBBS/BDS seats, (b) 100% of deemed-university and central
+  seats (AIIMS, JIPMER, ESIC, DU, AMU, BHU, etc.), plus NRI/ESI/paid pools.
+  Admission is purely on the NEET-UG All India Rank (AIR) — one national merit
+  rank for all medical aspirants. This is the medical analogue of JoSAA's
+  engineering counselling, and the NATIONAL counterpart to the state-quota
+  ~85% pool counselled by ~30 state authorities (see `state_medical_*`).
+
+  THE RANK IS A NEET AIR. opening_rank / closing_rank are NEET-UG All India
+  Ranks (lower = better; rank 1 = national topper). closing_rank is the cutoff
+  — the worst AIR that still got a seat in that bucket. Because BDS and the
+  paid/deemed/NRI pools sit far down the merit list, their closing ranks run
+  into the hundreds of thousands — that is expected, not an error.
+
+  SCOPE — THIS IS THE FULL AIQ ALLOTMENT, NOT GOVT-ONLY. Every quota MCC
+  counsels is here: All India (govt 15%), Open Seat Quota (central/deemed open),
+  Deemed/Paid, Non-Resident Indian, ESI, university-specific quotas, B.Sc
+  Nursing, etc. We did NOT filter to government colleges (the College DB repo
+  has a govt-scoped cut for Avanti analysis; this neutral source keeps the
+  whole allotment). Use `quota` to restrict if you want only the govt AIQ pool
+  (`quota = 'All India'`).
+
+  CYCLE COVERAGE. Currently the 2025-26 cycle, Round 1 only (`year`=2025,
+  `round`=1). MCC R2/R3/stray-vacancy rounds are parsed upstream but not yet
+  unioned in. When they are, they append as new `round` values — design your
+  queries to filter on `round`, and take the max round per bucket for "final".
+
+  NO AVANTI OPINION. No salary tiers, no college tiering, no govt/private
+  bucketing beyond MCC's own `quota`. Those live in College DB.
+
+rows: ~3100
+grain: (institute, course, quota, category, is_pwd, year, round)
+
+columns:
+  - name: institute
+    type: STRING
+    mode: REQUIRED
+    description: |
+      College name as MCC publishes it (e.g. "AB Shetty Memorial Inst. of
+      Dental Sce., Mangaluru"). Abbreviations/spelling vary — keyword-match,
+      don't equality-match. Not mapped to a canonical id in this source.
+
+  - name: course
+    type: STRING
+    mode: REQUIRED
+    description: Degree allotted — MBBS, BDS, or 'B.Sc. Nursing'. (BDS cutoffs are far lower-merit than MBBS.)
+
+  - name: quota
+    type: STRING
+    mode: REQUIRED
+    description: |
+      The AIQ sub-pool the seat belongs to, as MCC labels it. Key values:
+      'All India' (the 15% govt AIQ pool — the bulk), 'Open Seat Quota'
+      (central/deemed open seats), 'Deemed/Paid Seats Quota', 'Non-Resident
+      Indian', 'Employees State Insurance Scheme(ESI)', plus university-specific
+      quotas (Delhi University Quota, IP University Quota, …). Filter
+      `quota = 'All India'` for just the government AIQ pool.
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Reservation category MCC allotted under: Open (unreserved), OBC (= OBC
+      central list), SC, ST, EWS. Split out from MCC's combined label; the PwD
+      part is in is_pwd.
+
+  - name: is_pwd
+    type: BOOLEAN
+    mode: REQUIRED
+    description: |
+      TRUE if this is a Person-with-Disability sub-pool seat (MCC tags these
+      "<Category> PwD"). PwD cutoffs differ from the general category — filter
+      on this flag rather than string-matching the category.
+
+  - name: opening_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: Best (lowest) NEET AIR allotted this bucket in this round.
+
+  - name: closing_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: |
+      Cutoff — worst (highest) NEET AIR that still got a seat in this bucket.
+      The headline number. Large values (100k+) are normal for BDS / paid /
+      deemed pools.
+
+  - name: allotted_count
+    type: INTEGER
+    mode: NULLABLE
+    description: Number of seats allotted in this bucket in this round (the basis spanning opening→closing).
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: NEET/MCC counselling cycle year. Currently 2025 (the 2025-26 cycle).
+
+  - name: round
+    type: INTEGER
+    mode: REQUIRED
+    description: |
+      MCC counselling round. Currently 1 only. R2/R3/stray rounds will append
+      as higher values once unioned in — don't sum across rounds; take the max
+      round per bucket for the final cutoff.

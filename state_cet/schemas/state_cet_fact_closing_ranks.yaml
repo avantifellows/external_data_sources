@@ -1,0 +1,167 @@
+# state_cet_fact_closing_ranks
+#
+# Source parquet: gs://avantifellows-external-data/state_cet/clean/state_cet_fact_closing_ranks.parquet
+# BQ table:       avantifellows.external_data_sources.state_cet_fact_closing_ranks
+
+description: |
+  State-CET admission cutoffs — closing (and opening) rank/mark for govt
+  engineering & allied seats allotted through India's STATE Common Entrance
+  Tests, harmonized across 10 states into one fact.
+
+  WHAT A STATE CET IS. Most Indian states run their OWN engineering admission
+  exam + counselling for the state-quota seats in their colleges, separate
+  from the national JoSAA pool. Examples: Maharashtra MHT-CET, Karnataka KCET,
+  Tamil Nadu TNEA, Andhra/Telangana EAMCET, West Bengal WBJEE, Kerala KEAM,
+  Gujarat ACPC, Bihar BCECE, Odisha OJEE. Each has its own authority, rank
+  scale, category labels, quota rules, and counselling format. This table is
+  the harmonized union of those — the state-quota counterpart to JoSAA
+  (`josaa_*`, which covers the centrally-funded IIT/NIT/IIIT/GFTI national pool).
+
+  RANK BASIS VARIES PER CET — DO NOT COMPARE ACROSS STATES NAÏVELY. Each CET
+  has its own merit-rank scale (a KCET rank and an MHT-CET rank are unrelated
+  populations). Some CETs publish a cutoff MARK rather than a rank (e.g. TNEA
+  cutoff mark out of 200). The `rank_basis` column states exactly what the
+  number means for each row; `opening_mark`/`closing_mark` carry the mark when
+  the CET is mark-based. Always read `rank_basis` before interpreting a value.
+
+  IMPORTANT — THIS IS A CURATED SUBSET, NOT UNTOUCHED SOURCE. Three curation
+  choices were made upstream (College DB state-cet-scrape) and are baked into
+  every row here:
+    1. GOVT SCOPE ONLY. Filtered to government colleges (state govt + state
+       university departments + govt-aided). Private/deemed/management-quota
+       seats are NOT in this table. See `college_type`.
+    2. CATEGORY HARMONIZED to the canonical 5-cat space GEN/EWS/OBC-NCL/SC/ST.
+       The states' own labels (Karnataka GM/2A/3B, Kerala SM/EZ/MU, Maharashtra
+       OPEN/SEBC/VJA, …) were mapped to these. The original state labels are
+       NOT preserved here — they live per-state in the College DB repo.
+    3. CLOSING RANK = LAST/MAX ROUND. `closing_rank` is the final-round cutoff
+       (the worst rank that still got a seat), not a per-round series.
+  If you need raw state labels, private colleges, or per-round detail, go to
+  the College DB state-cet-scrape pipeline — they are deliberately not here.
+
+  NO AVANTI TIER OPINION. This table stops at govt-scope + 5-cat + closing
+  rank. Salary tiers, stream-tier cutoffs, and college bucketing live in
+  College DB, not here.
+
+rows: ~7800
+grain: (state, cet_name, stream, year, college_code, branch_code, quota, category, gender)
+
+columns:
+  - name: state
+    type: STRING
+    mode: REQUIRED
+    description: State running the CET, uppercase NCST-canonical (e.g. MAHARASHTRA, TAMIL NADU).
+
+  - name: cet_name
+    type: STRING
+    mode: REQUIRED
+    description: |
+      The state entrance test / counselling brand: MHT-CET, KCET, TNEA,
+      AP-EAMCET, TG-EAPCET, WBJEE, KEAM, ACPC, BCECE, OJEE, … One per state
+      (a few states run more than one stream under one brand).
+
+  - name: stream
+    type: STRING
+    mode: REQUIRED
+    description: Discipline — engineering (the bulk), pharmacy, nursing, architecture.
+
+  - name: year
+    type: INTEGER
+    mode: REQUIRED
+    description: Counselling year. Coverage varies by state (most 2024–2025).
+
+  - name: round
+    type: STRING
+    mode: NULLABLE
+    description: |
+      Free-text round descriptor as published (e.g. "Final", "Final last-rank
+      (post-counselling 2022)"). NOT a clean integer — states describe their
+      final allotment differently. See last_round_with_max.
+
+  - name: college_code
+    type: STRING
+    mode: NULLABLE
+    description: The CET authority's college/institute code (scoped to that state's scheme).
+
+  - name: college_name
+    type: STRING
+    mode: REQUIRED
+    description: College name as published (PDF newlines flattened to single spaces). Varies — use keyword matching.
+
+  - name: college_type
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Government sub-type within the govt scope: 'Govt' (state government),
+      'State-Univ-Dept' (state university constituent/department), 'Govt-Aided'
+      (govt-aided private). All private/deemed are already excluded.
+
+  - name: branch_code
+    type: STRING
+    mode: NULLABLE
+    description: Branch/program code as the CET authority publishes it.
+
+  - name: branch_name
+    type: STRING
+    mode: NULLABLE
+    description: Branch/program name (e.g. Computer Science Engineering). Labelling varies by state.
+
+  - name: quota
+    type: STRING
+    mode: REQUIRED
+    description: |
+      Seat quota as published — usually a domicile pool, e.g. "State (TN
+      domicile)", "HS (Home State)", "State Level", "State (rest of
+      Karnataka)". Semantics differ per state; do not assume uniformity.
+
+  - name: category
+    type: STRING
+    mode: REQUIRED
+    description: |
+      HARMONIZED reservation category: GEN / EWS / OBC-NCL / SC / ST. Mapped
+      upstream from each state's own labels. Original labels not retained here.
+
+  - name: gender
+    type: STRING
+    mode: REQUIRED
+    description: Gender pool — 'All', 'Girls', or 'Boys' (some states have gender-segregated seats).
+
+  - name: opening_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: Best rank allotted the bucket, in this CET's rank scale. NULL when the CET is mark-based or not published.
+
+  - name: closing_rank
+    type: INTEGER
+    mode: NULLABLE
+    description: |
+      Cutoff — worst rank that got a seat (final/MAX round), in this CET's rank
+      scale. The headline number. NULL when the CET reports marks not ranks.
+
+  - name: opening_mark
+    type: FLOAT
+    mode: NULLABLE
+    description: Best cutoff MARK (for mark-based CETs like TNEA). NULL for rank-based CETs.
+
+  - name: closing_mark
+    type: FLOAT
+    mode: NULLABLE
+    description: Cutoff MARK (for mark-based CETs). NULL for rank-based CETs. Read rank_basis to know which applies.
+
+  - name: last_round_with_max
+    type: STRING
+    mode: NULLABLE
+    description: Which round the reported closing value is taken from (the round carrying the MAX/final cutoff).
+
+  - name: rank_basis
+    type: STRING
+    mode: REQUIRED
+    description: |
+      What the rank/mark MEANS for this CET, e.g. "MHT-CET State Merit Rank",
+      "TNEA Cutoff Mark / State Merit Rank", "KEAM State Rank". Read this before
+      interpreting opening/closing values — scales are not comparable across CETs.
+
+  - name: source_url
+    type: STRING
+    mode: NULLABLE
+    description: URL of the official cutoff PDF/page the row was extracted from (provenance).
