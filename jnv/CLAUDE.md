@@ -452,8 +452,8 @@ and `codemaps/advanced/`.
   cohort and supersedes `JEE Mains 2025.xlsx` (4,037 rows, a subset).
   The All JNV file also carries richer JNV metadata and adv/prep flags.
 - **2025 fills the empty name, DOB and 12th roll number from a recovery copy.**
-  `raw/jee_mains/jee_2025_clean.parquet` is a cleaned export; the NTA raw files
-  that it was made from are missing. It is not the source of record: `y2025.py`
+  `raw/jee_mains/jee_2025_clean.parquet` is a cleaned export; the NTA raw file
+  with the name and the DOB is missing. It is not the source of record: `y2025.py`
   fills only empty cells from it, on the application number. See "JEE 2025: the
   recovery copy" in the README.
 - **2026 is split across two mains files.** `y2026_eligible.py` covers

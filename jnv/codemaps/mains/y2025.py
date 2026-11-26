@@ -8,7 +8,7 @@ import pandas as pd
 _MAINS_2025 = Path(__file__).resolve().parent.parent.parent / "raw" / "jee_mains" / "JEE Mains 2025.xlsx"
 
 # Recovery copy: a cleaned export of the 2025 results that has the name, the DOB and the
-# 12th roll number of all candidates. The NTA raw files that it was made from are missing,
+# 12th roll number of the candidates. The NTA raw file with the name and the DOB is missing,
 # so this file is not the source of record. It only fills the cells that the raw files
 # leave empty. See "JEE 2025: the recovery copy" in jnv/README.md.
 _RECOVERY_2025 = Path(__file__).resolve().parent.parent.parent / "raw" / "jee_mains" / "jee_2025_clean.parquet"

@@ -337,9 +337,12 @@ The other rows get the name, the DOB and the 12th roll number from a recovery co
 - File: `gs://avantifellows-private-data/akshay-data-cleanup/sources/jnv_clean/jee_2025_clean.parquet`.
   Before you run `clean_jee.py`, copy it to `raw/jee_mains/jee_2025_clean.parquet`.
 - What it is: a cleaned export of the 2025 results, with one row for each application number of
-  the "All JNV Candidates" file. It was made from two NTA files (the "Appeared Candidates Data"
-  and the "Registered Candidates Data"). Those two raw files are missing: they are not in GCS
-  and not in this repo.
+  the "All JNV Candidates" file. It was made from two NTA files:
+  - the "Appeared Candidates Data", which has the name and the DOB. This raw file is missing:
+    it is not in GCS and not in this repo.
+  - the "Registered Candidates Data", which has the 12th roll number. This raw file is in GCS
+    as `jnv/raw/jee_mains/2025 NTA JNV - JEE Main.csv`. The pipeline does not read it; each
+    12th roll number in the recovery copy is the same as in this file.
 - How it is used: it is a recovery copy, not the source of record. `codemaps/mains/y2025.py`
   joins it on the application number and fills only the cells that are empty. A value from a
   raw file does not change.
@@ -348,4 +351,4 @@ The other rows get the name, the DOB and the 12th roll number from a recovery co
 - Limit: it has no father's name and no mother's name. The rows that it fills link on the name
   and the DOB, without the check on the parents' names.
 
-When the two NTA raw files are found, make them the source and remove the recovery copy.
+When the missing NTA raw file is found, make the two raw files the source and remove the recovery copy.
