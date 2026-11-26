@@ -325,3 +325,30 @@ NTA files and Dakshana's self-reported data). GCS is the source of truth for the
 Drive copy is a human-browsable backup — keep them in sync when new source files arrive.
 
 Recorded per avantifellows/external_data_sources#28.
+
+### JEE 2025: the recovery copy
+
+The JEE 2025 rows come from `JEE 2025 - All JNV Candidates.xlsx`. That file has no student name,
+no DOB and no 12th roll number. `JEE Mains 2025.xlsx` gives the name, the DOB and the parents'
+names for a part of the rows only.
+
+The other rows get the name, the DOB and the 12th roll number from a recovery copy:
+
+- File: `gs://avantifellows-private-data/akshay-data-cleanup/sources/jnv_clean/jee_2025_clean.parquet`.
+  Before you run `clean_jee.py`, copy it to `raw/jee_mains/jee_2025_clean.parquet`.
+- What it is: a cleaned export of the 2025 results, with one row for each application number of
+  the "All JNV Candidates" file. It was made from two NTA files:
+  - the "Appeared Candidates Data", which has the name and the DOB. This raw file is missing:
+    it is not in GCS and not in this repo.
+  - the "Registered Candidates Data", which has the 12th roll number. This raw file is in GCS
+    as `jnv/raw/jee_mains/2025 NTA JNV - JEE Main.csv`. The pipeline does not read it; each
+    12th roll number in the recovery copy is the same as in this file.
+- How it is used: it is a recovery copy, not the source of record. `codemaps/mains/y2025.py`
+  joins it on the application number and fills only the cells that are empty. A value from a
+  raw file does not change.
+- DOB: the file has two formats, `DD-MM-YYYY` and `M/D/YYYY` (month first). The codemap writes
+  both as `DD-MM-YYYY`.
+- Limit: it has no father's name and no mother's name. The rows that it fills link on the name
+  and the DOB, without the check on the parents' names.
+
+When the missing NTA raw file is found, make the two raw files the source and remove the recovery copy.

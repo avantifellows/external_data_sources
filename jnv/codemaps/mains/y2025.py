@@ -7,11 +7,72 @@ import pandas as pd
 # CNAME, DOB, FNAME, MNAME — columns absent from the main file.
 _MAINS_2025 = Path(__file__).resolve().parent.parent.parent / "raw" / "jee_mains" / "JEE Mains 2025.xlsx"
 
+# Recovery copy: a cleaned export of the 2025 results that has the name, the DOB and the
+# 12th roll number of the candidates. The NTA raw file with the name and the DOB is missing,
+# so this file is not the source of record. It only fills the cells that the raw files
+# leave empty. See "JEE 2025: the recovery copy" in jnv/README.md.
+_RECOVERY_2025 = Path(__file__).resolve().parent.parent.parent / "raw" / "jee_mains" / "jee_2025_clean.parquet"
+_RECOVERY_COLS = ["student_full_name", "dob", "roll_no_12"]
+
+
+def _blank(series):
+    """True where a cell has no value (null, or a string that is empty or a null marker)."""
+    return series.isna() | series.astype(str).str.strip().isin(["", "nan", "None", "<NA>"])
+
+
+def _recovery_dob(series):
+    """Write each DOB of the recovery copy as DD-MM-YYYY.
+
+    The file has two formats: DD-MM-YYYY (dash, day first) and M/D/YYYY (slash, month
+    first). The slash dates are changed to the dash format; a date that does not parse
+    becomes null.
+    """
+    s = series.astype("string").str.strip()
+    slash = s.str.contains("/", na=False)
+    parsed = pd.to_datetime(s[slash], format="%m/%d/%Y", errors="coerce").dt.strftime("%d-%m-%Y")
+    s = s.astype(object)
+    s[slash] = parsed.astype(object)
+    return s.where(s.notna(), None)
+
+
+def fill_from_recovery_copy(out_df):
+    """Fill the empty name, DOB and 12th roll number cells from the recovery copy.
+
+    The join key is the JEE application number. A cell that has a value does not change.
+    """
+    if not _RECOVERY_2025.exists():
+        print(f"    [2025] WARN: {_RECOVERY_2025} not found — rows without a name stay empty")
+        return out_df
+
+    rec = pd.read_parquet(_RECOVERY_2025, columns=["application_no", *_RECOVERY_COLS])
+    rec["application_no"] = rec["application_no"].astype(str).str.strip()
+    if rec["application_no"].duplicated().any():
+        raise ValueError("jee_2025_clean.parquet has an application number on more than one row")
+    rec["dob"] = _recovery_dob(rec["dob"])
+    rec = rec.rename(columns={c: f"_r_{c}" for c in _RECOVERY_COLS})
+
+    out_df["application_no"] = out_df["application_no"].astype(str).str.strip()
+    n_before = len(out_df)
+    out_df = out_df.merge(rec, on="application_no", how="left")
+    assert len(out_df) == n_before
+    for col in _RECOVERY_COLS:
+        src = out_df[f"_r_{col}"]
+        if col not in out_df.columns:
+            out_df[col] = None
+        fill = _blank(out_df[col]) & ~_blank(src)
+        out_df[col] = out_df[col].astype(object).where(~fill, src.astype(object))
+        out_df = out_df.drop(columns=[f"_r_{col}"])
+        print(f"    [2025] recovery copy: {col} filled on {int(fill.sum()):,} rows, "
+              f"{int((~_blank(out_df[col])).sum()):,} / {len(out_df):,} rows now have a value")
+    return out_df
+
 
 def post_transform(raw_df, out_df):
     """
     1. Merge name/DOB/parent names from JEE Mains 2025.xlsx (4,037-row subset
        that has CNAME/DOB/FNAME/MNAME, absent from All JNV Candidates).
+       Then fill the name, DOB and 12th roll number that are still empty
+       from the recovery copy (jee_2025_clean.parquet).
     2. Derive mains_category_pwd_rank from per-category PWD rank columns.
     3. Capture jee_adv_qualified / jee_prep_qualified from the mains file
        into the _from_data columns as a fallback.  clean_jee.py will
@@ -43,6 +104,9 @@ def post_transform(raw_df, out_df):
         print(f"    [2025] merged JEE Mains 2025.xlsx: {filled:,} / {len(out_df):,} rows now have a name")
     else:
         print(f"    [2025] WARN: {_MAINS_2025} not found — name/DOB will be null for all 2025 rows")
+
+    # ── Step 1b: fill the cells that are still empty from the recovery copy ──────
+    out_df = fill_from_recovery_copy(out_df)
 
     cols_lower = {c.lower().strip(): c for c in raw_df.columns}
 

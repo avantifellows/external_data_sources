@@ -451,6 +451,11 @@ and `codemaps/advanced/`.
   `JEE 2025 - All JNV Candidates.xlsx` (12,103 rows) is the full JNV
   cohort and supersedes `JEE Mains 2025.xlsx` (4,037 rows, a subset).
   The All JNV file also carries richer JNV metadata and adv/prep flags.
+- **2025 fills the empty name, DOB and 12th roll number from a recovery copy.**
+  `raw/jee_mains/jee_2025_clean.parquet` is a cleaned export; the NTA raw file
+  with the name and the DOB is missing. It is not the source of record: `y2025.py`
+  fills only empty cells from it, on the application number. See "JEE 2025: the
+  recovery copy" in the README.
 - **2026 is split across two mains files.** `y2026_eligible.py` covers
   candidates who passed Class 12 in 2025 or later (`jee_adv_ineligible =
   False`). `y2026_ineligible.py` covers 2+ year droppers (`jee_adv_ineligible
